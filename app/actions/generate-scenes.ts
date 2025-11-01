@@ -1,7 +1,7 @@
 'use server'
 
 import { generateImageRest } from '@/lib/imagen';
-import { getScenarioPrompt, getScenesPrompt } from '@/app/prompts';
+import { getScenarioPrompt, getScenesPrompt, scenarioSchema, storyboardSchema } from '@/app/prompts';
 import { generateContent, generateImage } from '@/lib/gemini'
 import { Type } from '@google/genai';
 import { imagePromptToString } from '@/lib/prompt-utils';
@@ -26,6 +26,7 @@ export async function generateScenario(name: string, pitch: string, numScenes: n
           thinkingBudget: thinkingBudget,
         },
         responseMimeType: 'application/json',
+        responseSchema: scenarioSchema,
       },
       modelName
     )
@@ -165,155 +166,10 @@ export async function generateStoryboard(scenario: Scenario, numScenes: number, 
       {
         thinkingConfig: {
           includeThoughts: false,
-          thinkingBudget: 0,
+          thinkingBudget: -1,
         },
         responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            'scenes': {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  'imagePrompt': {
-                    type: Type.OBJECT,
-                    nullable: false,
-                    properties: {
-                      'Style': {
-                        type: Type.STRING,
-                        nullable: false,
-                      },
-                      'Composition': {
-                        type: Type.OBJECT,
-                        nullable: false,
-                        properties: {
-                          'shot_type': {
-                            type: Type.STRING,
-                            nullable: false,
-                          },
-                          'lighting': {
-                            type: Type.STRING,
-                            nullable: false,
-                          },
-                          'overall_mood': {
-                            type: Type.STRING,
-                            nullable: false,
-                          }
-                        },
-                        required: ['shot_type', 'lighting', 'overall_mood'],
-                      },
-                      'Subject': {
-                        type: Type.ARRAY,
-                        nullable: false,
-                        items: {
-                          type: Type.OBJECT,
-                          properties: {
-                            'name': {
-                              type: Type.STRING,
-                              nullable: false,
-                            }
-                          },
-                          required: ['name'],
-                        }
-                      },
-                      'Prop': {
-                        type: Type.ARRAY,
-                        nullable: false,
-                        items: {
-                          type: Type.OBJECT,
-                          properties: {
-                            'name': {
-                              type: Type.STRING,
-                              nullable: false,
-                            }
-                          },
-                          required: ['name'],
-                        }
-                      },
-                      'Context': {
-                        type: Type.ARRAY,
-                        nullable: false,
-                        items: {
-                          type: Type.OBJECT,
-                          properties: {
-                            'name': {
-                              type: Type.STRING,
-                              nullable: false,
-                            }
-                          },
-                          required: ['name'],
-                        }
-                      },
-                      'Scene': {
-                        type: Type.STRING,
-                        nullable: false,
-                      }
-                    },
-                    required: ['Style', 'Composition', 'Subject', 'Prop', 'Context', 'Scene'],
-                  },
-                  'videoPrompt': {
-                    type: Type.OBJECT,
-                    nullable: false,
-                    properties: {
-                      'Action': {
-                        type: Type.STRING,
-                        nullable: false,
-                      },
-                      'Camera_Motion': {
-                        type: Type.STRING,
-                        nullable: false,
-                      },
-                      'Ambiance_Audio': {
-                        type: Type.STRING,
-                        nullable: false,
-                      },
-                      'Dialogue': {
-                        type: Type.ARRAY,
-                        nullable: false,
-                        items: {
-                          type: Type.OBJECT,
-                          properties: {
-                            'name': {
-                              type: Type.STRING,
-                              nullable: false,
-                            },
-                            'speaker': {
-                              type: Type.STRING,
-                              nullable: false,
-                            },
-                            'line': {
-                              type: Type.STRING,
-                              nullable: false,
-                            }
-                          },
-                          required: ['name', 'speaker', 'line'],
-                        }
-                      }
-                    },
-                    required: ['Action', 'Camera_Motion', 'Ambiance_Audio', 'Dialogue'],
-                  },
-                  'description': {
-                    type: Type.STRING,
-                    nullable: false,
-                  },
-                  'voiceover': {
-                    type: Type.STRING,
-                    nullable: false,
-                  },
-                  'charactersPresent': {
-                    type: Type.ARRAY,
-                    items: {
-                      type: Type.STRING
-                    }
-                  }
-                },
-                required: ['imagePrompt', 'videoPrompt', 'description', 'voiceover', 'charactersPresent'],
-              }
-            }
-          },
-          required: ['scenes'],
-        },
+        responseSchema: storyboardSchema,
       }
     )
     logger.debug(text)
@@ -367,10 +223,17 @@ export async function generateStoryboard(scenario: Scenario, numScenes: number, 
               [createPartFromText(prop.name), createPartFromUri(prop.imageGcsUri!, 'image/png')]
             )
             const settingsParts = settings.flatMap(setting =>
-              [createPartFromText(setting.name), createPartFromUri(setting.imageGcsUri!, 'image/png')]
+              [createPartFromText(setting.name), createPartFromText(setting.description)]
             )
             result = await generateImage(
-              characterParts.concat(propsParts).concat(settingsParts).concat([createPartFromText(prompt)])
+              characterParts.concat(propsParts).concat(settingsParts).concat([createPartFromText(prompt)]),
+              {
+                responseModalities: ["IMAGE"],
+                candidateCount: 1,
+                imageConfig: {
+                  aspectRatio: scenario.aspectRatio,
+                }
+              }
             )
           } else {
             const collageUri = await createCollage(
@@ -379,10 +242,17 @@ export async function generateStoryboard(scenario: Scenario, numScenes: number, 
               scenario.aspectRatio
             );
             const settingsParts = settings.flatMap(setting =>
-              [createPartFromText(setting.name), createPartFromUri(setting.imageGcsUri!, 'image/png')]
+              [createPartFromText(setting.name), createPartFromText(setting.description)]
             )
             result = await generateImage(
-              [createPartFromUri(collageUri, 'image/png')].concat(settingsParts).concat([createPartFromText(prompt)])
+              [createPartFromUri(collageUri, 'image/png')].concat(settingsParts).concat([createPartFromText(prompt)]),
+              {
+                responseModalities: ["IMAGE"],
+                candidateCount: 1,
+                imageConfig: {
+                  aspectRatio: scenario.aspectRatio,
+                }
+              }
             )
           }
           if (result.success) {

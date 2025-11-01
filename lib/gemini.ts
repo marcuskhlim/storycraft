@@ -18,7 +18,7 @@ export async function generateContent(
         },
         responseMimeType: 'application/json',
     },
-    model: string = 'gemini-2.5-flash'
+    model: string = 'gemini-2.5-pro'
 ): Promise<string | undefined> {
 
     const useSearchAndBrowser = false;
@@ -48,9 +48,12 @@ interface GenerateNanoBananaImageResponse {
 export async function generateImage(
     prompt: ContentListUnion,
     config: GenerateContentConfig = {
-        responseModalities: ["TEXT", "IMAGE"],
-        candidateCount: 1
+        responseModalities: ["IMAGE"],
+        candidateCount: 1,
     }): Promise<GenerateNanoBananaImageResponse> {
+
+
+    logger.debug(JSON.stringify(prompt, null, 2))
 
     const maxRetries = 5; // Maximum number of retries
     const initialDelay = 1000; // Initial delay in milliseconds (1 second)

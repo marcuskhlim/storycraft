@@ -14,6 +14,9 @@
     * upload style image
 
 # Next:
+    * specify model when generating content
+    * specify aspectRation when generatingImage
+    * refactor regenerate-image
     * resize scenes images
     * fix scene action full character description
     * Review Scene data:

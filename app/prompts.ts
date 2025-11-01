@@ -1,5 +1,5 @@
 import { Scene, Scenario, Language } from "./types"
-
+import { Type } from '@google/genai';
 
 export function getScenarioPrompt(pitch: string, numScenes: number, style: string, language: Language): string {
   const prompt = `
@@ -62,49 +62,29 @@ Here's an example of how your output should be structured:
  "characters": [
   {
     "name": "[character 1 name]", 
-    "voice" "[character's voice description. One sentence.]
-    "description": [
-      "character 1 description in ${language.name}",
-      "Be hyper-specific and affirmative and short, one sentence max. Include age, gender, ethnicity, specific facial features if any, hair style and color, facial hair or absence of it for male, skin details and exact clothing, including textures and accessories.",
-      // "Describe the character's voice clearly to guide the audio generation for any dialogue."
-      ]
+    "voice" "[character's voice description. One sentence.],
+    "description": "character 1 description in ${language.name}. Be hyper-specific and affirmative and short, one sentence max. Include age, gender, ethnicity, specific facial features if any, hair style and color, facial hair or absence of it for male, skin details and exact clothing, including textures and accessories.",
   },
   {
     "name": "[character 2 name]", 
-    "voice" "[character's voice description. One sentence.]
-    "description": [
-      "character 2 description in ${language.name}",
-      "Be hyper-specific and affirmative and short, one sentence max. Include age, gender, ethnicity, specific facial features if any, hair style and color, facial hair or absence of it for male, skin details and exact clothing, including textures and accessories.",
-      // "Describe the character's voice clearly to guide the audio generation for any dialogue."
-      ]
+    "voice" "[character's voice description. One sentence.]",
+    "description": "character 2 description in ${language.name}.Be hyper-specific and affirmative and short, one sentence max. Include age, gender, ethnicity, specific facial features if any, hair style and color, facial hair or absence of it for male, skin details and exact clothing, including textures and accessories."
   },
   [...]
  ],
  "settings": [
   {
     "name": "[setting 1 name]", 
-    "description": [
-      "setting 1 description in ${language.name}",
-      "This description establishes the atmosphere, lighting, and key features that must remain consistent.",
-      "Be Evocative and short, one sentence max: Describe the mood, the materials, the lighting, and even the smell or feeling of the air."
-    ]
+    "description": "setting 1 description in ${language.name}. This description establishes the atmosphere, lighting, and key features that must remain consistent. Be Evocative and short, one sentence max: Describe the mood, the materials, the lighting, and even the smell or feeling of the air."
   },
   {
     "name": "[setting 2 name]", 
-    "description": [
-      "setting 2 description in ${language.name}",
-      "This description establishes the atmosphere, lighting, and key features that must remain consistent.",
-      "Be Evocative and short, one sentence max: Describe the mood, the materials, the lighting, and even the smell or feeling of the air."
-    ]
+    "description": "setting 2 description in ${language.name}. This description establishes the atmosphere, lighting, and key features that must remain consistent. Be Evocative and short, one sentence max: Describe the mood, the materials, the lighting, and even the smell or feeling of the air. Be Evocative and short, one sentence max: Describe the mood, the materials, the lighting, and even the smell or feeling of the air."
   }, 
   "props": [
   {
     "name": "[prop 1 name]", 
-    "description": [
-      "prop 1 description in ${language.name}",
-      "This description establishes the atmosphere, lighting, and key features that must remain consistent.",
-      "Be Evocative and short, one sentence max: Describe the mood, the materials, the lighting, and even the smell or feeling of the air."
-    ]
+    "description": "prop 1 description in ${language.name}, This description establishes the atmosphere, lighting, and key features that must remain consistent. Be Evocative and short, one sentence max: Describe the mood, the materials, the lighting, and even the smell or feeling of the air."
   }
   [...]
  ]
@@ -113,6 +93,102 @@ Here's an example of how your output should be structured:
 Remember, your goal is to create a compelling and visually interesting story that can be effectively illustrated through a storyboard. Be creative, consistent, and detailed in your scenario and prompts.
 `;
   return prompt
+}
+
+export const scenarioSchema = {
+  type: Type.OBJECT,
+  properties: {
+    'scenario': {
+      type: Type.STRING,
+      nullable: false,
+    },
+    'genre': {
+      type: Type.STRING,
+      nullable: false,
+    },
+    'mood': {
+      type: Type.STRING,
+      nullable: false,
+    },
+    'music': {
+      type: Type.STRING,
+      nullable: false,
+    },
+      'language': {
+      type: Type.OBJECT,
+      nullable: false,
+      properties: {
+        'name': {
+          type: Type.STRING,
+          nullable: false,
+        },
+        'code': {
+          type: Type.STRING,
+          nullable: false,
+        }
+      },
+      required: ['name', 'code'],
+    },
+    'characters': {
+      type: Type.ARRAY,
+      nullable: false,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          'name': {
+            type: Type.STRING,
+            nullable: false,
+          },
+          'voice': {
+            type: Type.STRING,
+            nullable: false,
+          },
+          'description': {
+            type: Type.STRING,
+            nullable: false,
+          }
+        },
+        required: ['name', 'voice', 'description'],
+      }
+    },
+    'settings': {
+      type: Type.ARRAY,
+      nullable: false,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          'name': {
+            type: Type.STRING,
+            nullable: false,
+          },
+          'description': {
+            type: Type.STRING,
+            nullable: false,
+          }
+        },
+        required: ['name', 'description'],
+      }
+    },
+    'props': {
+      type: Type.ARRAY,
+      nullable: false,
+      items: {
+        type: Type.OBJECT,  
+        properties: {
+          'name': {
+            type: Type.STRING,
+            nullable: false,
+          },
+          'description': {
+            type: Type.STRING,
+            nullable: false,
+          }
+        },
+        required: ['name', 'description'],
+      }
+    }
+  },
+  required: ['scenario', 'genre', 'mood', 'music', 'language', 'characters', 'settings', 'props'],
 }
 
 export function getScenesPrompt(scenario: Scenario, numScenes: number, style: string, language: Language): string {
@@ -151,7 +227,7 @@ ${scenario.mood}
  a. For each scene, provide:
  1. A video prompt in ${language.name}, focusing on the movement of the characters, objects, in the scene, the style should be ${style}. No children. Return as a JSON object with the following schema:
 {
-  "Action": "Describe precisely what the subject(s) is(are) doing within the ${durationSeconds} seconds clip. Be specific and evocative. Separate description from action. The Subject field describes who they are; the Action field describes what they do.",
+  "Action": "Describe precisely what the subject(s) is(are) doing within the ${durationSeconds} seconds clip. Be specific and evocative. Describe the action in detail : characters and objects positions, actions, and interactions.",
   "Camera_Motion": "Explicitly state the camera movement, even if it's static. This removes ambiguity.",
   "Ambiance_Audio": "Diegetic Sound Only. This is crucial. Describe only the sounds that exist within the world of the scene. Do not mention music or narration, as those are post-production layers for different models. Be specific.",
   "Dialogue": [
@@ -168,7 +244,7 @@ ${scenario.mood}
  No children. Return as a JSON object with the following schema:
 {
   "Style": "Define the visual language of your project",
-  "Scene": "Describe the specific scene being depicted - what is happening in this moment, the action or situation being shown, and how it fits into the overall narrative flow. Focus on the immediate action and situation. Ensure the depiction avoids showing elements beyond this specific moment. Exclude any details that suggest a broader story or character arcs. The scene should be self-contained, not implying past events or future developments.",
+  "Scene": "Describe the specific scene being depicted - what is happening in this moment, the action or situation being shown, and how it fits into the overall narrative flow. Focus on the immediate action and situation. Describe the scene : characters (short description only) and objects positions, actions, and interactions. Ensure the depiction avoids showing elements beyond this specific moment. Exclude any details that suggest a broader story or character arcs. The scene should be self-contained, not implying past events or future developments.",
   "Composition": {
     "shot_type": "Examples include Cinematic close-up, Wide establishing shot, etc.",
     "lighting": "Examples include high-contrast, soft natural light, etc.",
@@ -255,4 +331,151 @@ Here's an example of how your output should be structured:
 Remember, your goal is to create a compelling and visually interesting story that can be effectively illustrated through a storyboard. Be creative, consistent, and detailed in your prompts.
 Remember, the number of scenes should be exactly ${numScenes}.`
   return prompt;
+}
+
+export const storyboardSchema = {
+  type: Type.OBJECT,
+  properties: {
+    'scenes': {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          'imagePrompt': {
+            type: Type.OBJECT,
+            nullable: false,
+            properties: {
+              'Style': {
+                type: Type.STRING,
+                nullable: false,
+              },
+              'Composition': {
+                type: Type.OBJECT,
+                nullable: false,
+                properties: {
+                  'shot_type': {
+                    type: Type.STRING,
+                    nullable: false,
+                  },
+                  'lighting': {
+                    type: Type.STRING,
+                    nullable: false,
+                  },
+                  'overall_mood': {
+                    type: Type.STRING,
+                    nullable: false,
+                  }
+                },
+                required: ['shot_type', 'lighting', 'overall_mood'],
+              },
+              'Subject': {
+                type: Type.ARRAY,
+                nullable: false,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    'name': {
+                      type: Type.STRING,
+                      nullable: false,
+                    }
+                  },
+                  required: ['name'],
+                }
+              },
+              'Prop': {
+                type: Type.ARRAY,
+                nullable: false,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    'name': {
+                      type: Type.STRING,
+                      nullable: false,
+                    }
+                  },
+                  required: ['name'],
+                }
+              },
+              'Context': {
+                type: Type.ARRAY,
+                nullable: false,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    'name': {
+                      type: Type.STRING,
+                      nullable: false,
+                    }
+                  },
+                  required: ['name'],
+                }
+              },
+              'Scene': {
+                type: Type.STRING,
+                nullable: false,
+              }
+            },
+            required: ['Style', 'Composition', 'Subject', 'Prop', 'Context', 'Scene'],
+          },
+          'videoPrompt': {
+            type: Type.OBJECT,
+            nullable: false,
+            properties: {
+              'Action': {
+                type: Type.STRING,
+                nullable: false,
+              },
+              'Camera_Motion': {
+                type: Type.STRING,
+                nullable: false,
+              },
+              'Ambiance_Audio': {
+                type: Type.STRING,
+                nullable: false,
+              },
+              'Dialogue': {
+                type: Type.ARRAY,
+                nullable: false,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    'name': {
+                      type: Type.STRING,
+                      nullable: false,
+                    },
+                    'speaker': {
+                      type: Type.STRING,
+                      nullable: false,
+                    },
+                    'line': {
+                      type: Type.STRING,
+                      nullable: false,
+                    }
+                  },
+                  required: ['name', 'speaker', 'line'],
+                }
+              }
+            },
+            required: ['Action', 'Camera_Motion', 'Ambiance_Audio', 'Dialogue'],
+          },
+          'description': {
+            type: Type.STRING,
+            nullable: false,
+          },
+          'voiceover': {
+            type: Type.STRING,
+            nullable: false,
+          },
+          'charactersPresent': {
+            type: Type.ARRAY,
+            items: {
+              type: Type.STRING
+            }
+          }
+        },
+        required: ['imagePrompt', 'videoPrompt', 'description', 'voiceover', 'charactersPresent'],
+      }
+    }
+  },
+  required: ['scenes'],
 }

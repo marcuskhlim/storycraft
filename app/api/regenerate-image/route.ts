@@ -52,10 +52,18 @@ export async function POST(request: NextRequest) {
           [createPartFromText(prop.name), createPartFromUri(prop.imageGcsUri!, 'image/png')]
         )
         const settingsParts = settings.flatMap(setting =>
-          [createPartFromText(setting.name), createPartFromUri(setting.imageGcsUri!, 'image/png')]
+          [createPartFromText(setting.name), createPartFromText(setting.description)]
         )
+        logger.debug(JSON.stringify(settingsParts, null, 2))
         result = await generateImage(
-          characterParts.concat(propsParts).concat(settingsParts).concat([createPartFromText(promptString)])
+          characterParts.concat(propsParts).concat(settingsParts).concat([createPartFromText(promptString)]),
+          {
+            responseModalities: ["IMAGE"],
+            candidateCount: 1,
+            imageConfig: {
+              aspectRatio: scenario.aspectRatio,
+            }
+          }
         )
       } else {
         const collageUri = await createCollage(
@@ -64,10 +72,17 @@ export async function POST(request: NextRequest) {
           scenario.aspectRatio
         );
         const settingsParts = settings.flatMap(setting =>
-          [createPartFromText(setting.name), createPartFromUri(setting.imageGcsUri!, 'image/png')]
+          [createPartFromText(setting.name), createPartFromText(setting.description)]
         )
         result = await generateImage(
-          [createPartFromUri(collageUri, 'image/png')].concat(settingsParts).concat([createPartFromText(promptString)])
+          [createPartFromUri(collageUri, 'image/png')].concat(settingsParts).concat([createPartFromText(promptString)]),
+          {
+            responseModalities: ["IMAGE"],
+            candidateCount: 1,
+            imageConfig: {
+              aspectRatio: scenario.aspectRatio,
+            }
+          }
         )
       }
       return NextResponse.json(result);
