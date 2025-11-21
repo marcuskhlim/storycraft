@@ -77,13 +77,25 @@ export async function generateScenario(name: string, pitch: string, numScenes: n
             description: character.description,
             // prohibited_elements: "watermark, text overlay, warped face, floating limbs, distorted hands, blurry edges"
           };
-          const resultJson = await generateImageRest(yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }), "1:1", true);
-          if (resultJson.predictions[0].raiFilteredReason) {
-            throw new Error(getRAIUserMessage(getRAIUserMessage(resultJson.predictions[0].raiFilteredReason)))
-          } else {
-            logger.debug(`Generated character image: ${resultJson.predictions[0].gcsUri}`);
-            return { ...character, imageGcsUri: resultJson.predictions[0].gcsUri };
-          }
+          // const resultJson = await generateImageRest(yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }), "1:1", true);
+          const result = await generateImage(
+            yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }),
+            {
+              responseModalities: ["IMAGE"],
+              candidateCount: 1,
+              imageConfig: {
+                aspectRatio: "1:1",
+              }
+            }
+          )
+          result.imageGcsUri!
+          // if (resultJson.predictions[0].raiFilteredReason) {
+          //   throw new Error(getRAIUserMessage(getRAIUserMessage(resultJson.predictions[0].raiFilteredReason)))
+          // } else {
+          //   logger.debug(`Generated character image: ${resultJson.predictions[0].gcsUri}`);
+          //   return { ...character, imageGcsUri: resultJson.predictions[0].gcsUri };
+          // }
+          return { ...character, imageGcsUri: result.imageGcsUri! };
         } catch (error) {
           logger.error('Error generating character image:', error);
           return { ...character, imageGcsUri: undefined };
@@ -100,13 +112,24 @@ export async function generateScenario(name: string, pitch: string, numScenes: n
             description: setting.description,
             //prohibited_elements: "people, characters, watermark, text overlay, warped face, floating limbs, distorted hands, blurry edges"
           };
-          const resultJson = await generateImageRest(yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }), aspectRatio, true);
-          if (resultJson.predictions[0].raiFilteredReason) {
-            throw new Error(getRAIUserMessage(resultJson.predictions[0].raiFilteredReason))
-          } else {
-            logger.debug(`Generated setting image: ${resultJson.predictions[0].gcsUri}`);
-            return { ...setting, imageGcsUri: resultJson.predictions[0].gcsUri };
-          }
+          // const resultJson = await generateImageRest(yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }), aspectRatio, true);
+          const result = await generateImage(
+            yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }),
+            {
+              responseModalities: ["IMAGE"],
+              candidateCount: 1,
+              imageConfig: {
+                aspectRatio: aspectRatio,
+              }
+            }
+          )
+          // if (resultJson.predictions[0].raiFilteredReason) {
+          //   throw new Error(getRAIUserMessage(resultJson.predictions[0].raiFilteredReason))
+          // } else {
+          //   logger.debug(`Generated setting image: ${resultJson.predictions[0].gcsUri}`);
+          //   return { ...setting, imageGcsUri: resultJson.predictions[0].gcsUri };
+          // }
+          return { ...setting, imageGcsUri: result.imageGcsUri! };
         }
         catch (error) {
           logger.error('Error generating setting image:', error);
@@ -124,13 +147,24 @@ export async function generateScenario(name: string, pitch: string, numScenes: n
             description: prop.description,
             //prohibited_elements: "people, characters, watermark, text overlay, warped face, floating limbs, distorted hands, blurry edges"
           };
-          const resultJson = await generateImageRest(yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }), "1:1", true);
-          if (resultJson.predictions[0].raiFilteredReason) {
-            throw new Error(getRAIUserMessage(resultJson.predictions[0].raiFilteredReason))
-          } else {
-            logger.debug(`Generated prop image: ${resultJson.predictions[0].gcsUri}`);
-            return { ...prop, imageGcsUri: resultJson.predictions[0].gcsUri };
-          }
+          // const resultJson = await generateImageRest(yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }), "1:1", true);
+          const result = await generateImage(
+            yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }),
+            {
+              responseModalities: ["IMAGE"],
+              candidateCount: 1,
+              imageConfig: {
+                aspectRatio: "1:1",
+              }
+            }
+          )
+          // if (resultJson.predictions[0].raiFilteredReason) {
+          //   throw new Error(getRAIUserMessage(resultJson.predictions[0].raiFilteredReason))
+          // } else {
+          //   logger.debug(`Generated prop image: ${resultJson.predictions[0].gcsUri}`);
+          //   return { ...prop, imageGcsUri: resultJson.predictions[0].gcsUri };
+          // }
+          return { ...prop, imageGcsUri: result.imageGcsUri! };
         }
         catch (error) {
           logger.error('Error generating prop image:', error);

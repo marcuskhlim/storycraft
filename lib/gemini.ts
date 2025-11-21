@@ -1,4 +1,4 @@
-import { ContentListUnion, GenerateContentConfig, GoogleGenAI } from '@google/genai';
+import { ContentListUnion, GenerateContentConfig, GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { v4 as uuidv4 } from 'uuid'
 import { uploadImage } from '@/lib/storage'
 import logger from '@/app/logger';
@@ -6,20 +6,31 @@ import logger from '@/app/logger';
 const LOCATION = process.env.LOCATION
 const PROJECT_ID = process.env.PROJECT_ID
 
-const ai = new GoogleGenAI({ vertexai: true, project: PROJECT_ID, location: LOCATION });
+const ai = new GoogleGenAI({ vertexai: true, project: PROJECT_ID, location: 'global' });
 
 
 export async function generateContent(
     prompt: ContentListUnion,
     config: GenerateContentConfig = {
         thinkingConfig: {
-            includeThoughts: true,
+            // includeThoughts: true,
             thinkingBudget: -1,
         },
         responseMimeType: 'application/json',
     },
-    model: string = 'gemini-2.5-pro'
+    model: string = 'gemini-3-pro-preview'
 ): Promise<string | undefined> {
+
+    logger.debug("Generate content : " + model)
+    if (model === 'gemini-3-pro-preview') {
+        config = {
+            thinkingConfig: {
+                // includeThoughts: true,
+                thinkingLevel: ThinkingLevel.LOW,
+            },
+            responseMimeType: 'application/json',
+        }
+    }
 
     const useSearchAndBrowser = false;
     if (useSearchAndBrowser) {
@@ -29,7 +40,7 @@ export async function generateContent(
         ]
         config.responseMimeType = 'text/plain'
     }
-    
+
     const response = await ai.models.generateContent({
         model,
         config,
@@ -52,7 +63,7 @@ export async function generateImage(
         candidateCount: 1,
     }): Promise<GenerateNanoBananaImageResponse> {
 
-
+    
     logger.debug(JSON.stringify(prompt, null, 2))
 
     const maxRetries = 5; // Maximum number of retries
@@ -66,7 +77,8 @@ export async function generateImage(
                 location: 'global'
             });
 
-            const model = 'gemini-2.5-flash-image';
+            const model = 'gemini-3-pro-image-preview';
+            logger.debug("Generate Image : " + model)
             const response = await ai.models.generateContent({
                 model,
                 config,

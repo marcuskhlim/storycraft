@@ -72,6 +72,11 @@ const validateDuration = (duration: number): number => {
 
 const MODEL_OPTIONS = [
   { 
+    label: "Scenario with Gemini 3.0 Pro Preview", 
+    modelName: "gemini-3-pro-preview", 
+    thinkingBudget: 0 
+  },
+  { 
     label: "Scenario with Gemini 2.5 Flash", 
     modelName: "gemini-2.5-flash", 
     thinkingBudget: 0 
