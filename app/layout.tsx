@@ -10,8 +10,8 @@ const dmSans = DM_Sans({
 })
 
 export const metadata = {
-  title: 'StoryCraft',
-  description: 'AI-powered storyboard generation',
+  title: 'VidFreak',
+  description: 'Create cinematic AI scenes that tell your brand story',
 }
 
 export default function RootLayout({
