@@ -15,7 +15,7 @@
 
 # Next:
     * specify model when generating content
-    * specify aspectRation when generatingImage
+    * specify aspectRatio when generatingImage
     * refactor regenerate-image
     * resize scenes images
     * fix scene action full character description
@@ -28,12 +28,18 @@
     * add images to conversational edit (e.g. add this logo onto ...)
     * linter and prettier format
     * Editor:
-        * shorten move clips
+        ✅ shorten move clips
         * refactor editor and data model
         * logo text overlays
         * captions https://www.angel1254.com/blog/posts/word-by-word-captions
-        * https://github.com/redotvideo/revideo 👍
-        * upload music
+        * upload music/video
+        * zoom
+        * undo/redo 
+        * transitions
+        * cut clips
+        * full screen
+        * show hide timeline
+        * timestamp display
     * character poses variation
     * Posthog / Analytics
     * Tests (Jest/Vitest + E2E Playwright/Cypress)

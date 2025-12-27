@@ -1,10 +1,12 @@
+'use client'
+
 import { TimelineLayer } from '@/app/types'
 import { Button } from '@/components/ui/button'
 import { Film, Loader2, X } from 'lucide-react'
-import Image from 'next/image'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Scenario, TimelineItem } from '../../types'
 import { AudioWaveform } from './audio-wave-form'
+import { MediabunnyPlayer } from './mediabunny-player'
 import { MusicParams, MusicSelectionDialog } from './music-selection-dialog'
 import { VideoThumbnail } from './video-thumbnail'
 import { Voice, VoiceSelectionDialog } from './voice-selection-dialog'
@@ -32,7 +34,6 @@ interface EditorTabProps {
 const TIMELINE_DURATION = 65 // Total timeline duration in seconds
 const MARKER_INTERVAL = 5 // Time marker interval in seconds
 const CLIP_PADDING = 2 // Padding between clips in pixels
-const FADE_DURATION = 0.15; // 150ms for audio fade-in/out
 
 // Format time in mm:SS format
 const formatTime = (seconds: number): string => {
@@ -60,76 +61,38 @@ export function EditorTab({
     onRemoveMusic,
 }: EditorTabProps) {
 
-    const SCENE_DURATION = scenario.durationSeconds || 8 // Duration of each scene in seconds
+    const SCENE_DURATION = scenario.durationSeconds || 8
     const timelineRef = useRef<HTMLDivElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
-    const [isDragging, setIsDragging] = useState(false)
+    
+    // Simplified state management
     const [selectedItem, setSelectedItem] = useState<{ layerId: string, itemId: string } | null>(null)
+    
+    // Resize state
     const [isResizing, setIsResizing] = useState(false)
     const [resizeStartX, setResizeStartX] = useState(0)
     const [resizeStartTime, setResizeStartTime] = useState(0)
     const [resizeStartDuration, setResizeStartDuration] = useState(0)
+    const [resizeStartTrimStart, setResizeStartTrimStart] = useState(0) // Track initial trim offset
     const [resizeHandle, setResizeHandle] = useState<'start' | 'end' | null>(null)
+    const [resizingItem, setResizingItem] = useState<{ layerId: string, itemId: string } | null>(null)
 
-    // Add new state for tracking playback
+    // Drag state for moving clips
+    const [isDragging, setIsDragging] = useState(false)
+    const [dragStartX, setDragStartX] = useState(0)
+    const [dragStartTime, setDragStartTime] = useState(0)
+    const [draggingItem, setDraggingItem] = useState<{ layerId: string, itemId: string } | null>(null)
+    const [dropIndicator, setDropIndicator] = useState<{ layerId: string, position: number } | null>(null)
+    const originalLayerItemsRef = useRef<TimelineItem[]>([]) // Store original positions for swap detection
+
+    // Playback state - driven by MediabunnyPlayer
     const [isPlaying, setIsPlaying] = useState(false)
-    const videoRef = useRef<HTMLVideoElement>(null)
-    const [currentVideoUrl, setCurrentVideoUrl] = useState<string | null>(null)
     
-    // Voice selection dialog state
+    // Dialog states
     const [isVoiceDialogOpen, setIsVoiceDialogOpen] = useState(false)
-    
-    // Music selection dialog state
     const [isMusicDialogOpen, setIsMusicDialogOpen] = useState(false)
     
-    // Audio-related refs
-    const audioContextRef = useRef<AudioContext | null>(null)
-    const audioBuffersRef = useRef<Map<string, AudioBuffer>>(new Map())
-    const activeAudioNodes = useRef<Map<string, {
-        source: AudioBufferSourceNode;
-        gainNode: GainNode;
-        type: 'voiceover' | 'music';
-        fadeOutTimeoutId?: NodeJS.Timeout;
-        stopTime?: number;
-    }>>(new Map());
-
-    const handleLogoClick = () => {
-        fileInputRef.current?.click()
-    }
-
-    // Voice selection handlers
-    const handleOpenVoiceDialog = () => {
-        setIsVoiceDialogOpen(true)
-    }
-
-    const handleCloseVoiceDialog = () => {
-        setIsVoiceDialogOpen(false)
-    }
-
-    const handleVoiceSelect = async (voice: Voice) => {
-        setIsVoiceDialogOpen(false)
-        await onGenerateVoiceover(voice)
-    }
-
-    // Music selection handlers
-    const handleOpenMusicDialog = () => {
-        setIsMusicDialogOpen(true)
-    }
-
-    const handleCloseMusicDialog = () => {
-        setIsMusicDialogOpen(false)
-    }
-
-    const handleMusicGenerate = async (params: MusicParams) => {
-        setIsMusicDialogOpen(false)
-        // Call the music generation function with the music parameters
-        await onGenerateMusic(params)
-    }
-
-    // Calculate the scale factor to fit all scenes within the timeline
-    const totalSceneDuration = scenario.scenes.length * SCENE_DURATION
-    const timeScale = TIMELINE_DURATION / totalSceneDuration
-
+    // Timeline layers
     const [layers, setLayers] = useState<TimelineLayer[]>([
         {
             id: 'videos',
@@ -139,7 +102,7 @@ export function EditorTab({
                 id: `video-${index}`,
                 startTime: index * SCENE_DURATION,
                 duration: SCENE_DURATION,
-                content: '', // Will be updated when videoUri is resolved
+                content: '',
                 type: 'video',
                 metadata: {
                     logoOverlay: scenario.logoOverlay || undefined
@@ -150,52 +113,82 @@ export function EditorTab({
             id: 'voiceovers',
             name: 'Voiceovers',
             type: 'voiceover',
-            items: [] // Empty items array, will be populated when voiceovers are generated
+            items: []
         },
         {
             id: 'music',
             name: 'Music',
             type: 'music',
-            items: [] // Empty items array, will be populated when music is generated
+            items: []
         }
     ])
 
-    // Add function to get audio duration
+    const handleLogoClick = () => {
+        fileInputRef.current?.click()
+    }
+
+    // Voice selection handlers
+    const handleOpenVoiceDialog = () => setIsVoiceDialogOpen(true)
+    const handleCloseVoiceDialog = () => setIsVoiceDialogOpen(false)
+    const handleVoiceSelect = async (voice: Voice) => {
+        setIsVoiceDialogOpen(false)
+        await onGenerateVoiceover(voice)
+    }
+
+    // Music selection handlers
+    const handleOpenMusicDialog = () => setIsMusicDialogOpen(true)
+    const handleCloseMusicDialog = () => setIsMusicDialogOpen(false)
+    const handleMusicGenerate = async (params: MusicParams) => {
+        setIsMusicDialogOpen(false)
+        await onGenerateMusic(params)
+    }
+
+    // Get audio duration helper
     const getAudioDuration = async (url: string): Promise<number> => {
         return new Promise((resolve) => {
             const audio = new Audio(url)
-            audio.addEventListener('loadedmetadata', () => {
-                resolve(audio.duration)
-            })
-            audio.addEventListener('error', () => {
-                console.error('Error loading audio:', url)
-                resolve(SCENE_DURATION) // Fallback to scene duration if audio fails to load
-            })
+            audio.addEventListener('loadedmetadata', () => resolve(audio.duration))
+            audio.addEventListener('error', () => resolve(SCENE_DURATION))
         })
     }
 
-    // Update resolveUrlsAndUpdateLayers to handle empty items arrays
+    // Get video duration helper
+    const getVideoDuration = async (url: string): Promise<number> => {
+        return new Promise((resolve) => {
+            const video = document.createElement('video')
+            video.preload = 'metadata'
+            video.addEventListener('loadedmetadata', () => resolve(video.duration))
+            video.addEventListener('error', () => resolve(SCENE_DURATION))
+            video.src = url
+        })
+    }
+
+    // Resolve URLs and update layers
     useEffect(() => {
         const resolveUrlsAndUpdateLayers = async () => {
-            if (layers.length === 0) return; // Ensure layers are initialized
+            if (layers.length === 0) return
 
-            const updatedLayers = JSON.parse(JSON.stringify(layers)) as TimelineLayer[]; // Deep copy
-
+            const updatedLayers = JSON.parse(JSON.stringify(layers)) as TimelineLayer[]
             const videoLayer = updatedLayers.find(layer => layer.id === 'videos')
             const voiceoverLayer = updatedLayers.find(layer => layer.id === 'voiceovers')
             const musicLayer = updatedLayers.find(layer => layer.id === 'music')
             
+            // Resolve video URLs and get original durations
             if (videoLayer) {
                 for (let i = 0; i < scenario.scenes.length; i++) {
                     const scene = scenario.scenes[i]
                     if (scene.videoUri) {
                         try {
                             const result = await getDynamicImageUrl(scene.videoUri)
-                            const videoUrl = result!.url!
-                            // Update the video layer item content directly
-                            const videoItem = videoLayer.items[i]
-                            if (videoItem) {
-                                videoItem.content = videoUrl
+                            if (result?.url && videoLayer.items[i]) {
+                                videoLayer.items[i].content = result.url
+                                // Get and store the original video duration and initialize trim
+                                const originalDuration = await getVideoDuration(result.url)
+                                videoLayer.items[i].metadata = {
+                                    ...videoLayer.items[i].metadata,
+                                    originalDuration,
+                                    trimStart: 0  // Start from beginning of source video
+                                }
                             }
                         } catch (error) {
                             console.error(`Error resolving video URL for scene ${i}:`, error)
@@ -204,27 +197,28 @@ export function EditorTab({
                 }
             }
 
+            // Resolve voiceover URLs
             if (voiceoverLayer) {
-                // Only add voiceover items if they exist in the scenario
                 const voiceoverItems: TimelineItem[] = []
                 for (let i = 0; i < scenario.scenes.length; i++) {
                     const scene = scenario.scenes[i]
                     if (scene.voiceoverAudioUri) {
                         try {
                             const result = await getDynamicImageUrl(scene.voiceoverAudioUri)
-                            const url = result!.url!
-
-                            // Get the actual duration of the audio file
-                            const duration = await getAudioDuration(url)
-
-                            // Add a new voiceover item
-                            voiceoverItems.push({
-                                id: `voiceover-${i}`,
-                                startTime: i * SCENE_DURATION,
-                                duration: duration,
-                                content: url,
-                                type: 'voiceover'
-                            })
+                            if (result?.url) {
+                                const duration = await getAudioDuration(result.url)
+                                voiceoverItems.push({
+                                    id: `voiceover-${i}`,
+                                    startTime: i * SCENE_DURATION,
+                                    duration,
+                                    content: result.url,
+                                    type: 'voiceover',
+                                    metadata: {
+                                        originalDuration: duration,
+                                        trimStart: 0
+                                    }
+                                })
+                            }
                         } catch (error) {
                             console.error(`Error resolving voiceover for scene ${i}:`, error)
                         }
@@ -233,27 +227,30 @@ export function EditorTab({
                 voiceoverLayer.items = voiceoverItems
             }
 
+            // Resolve music URL
             if (musicLayer) {
-                // Only add music item if it exists in the scenario
                 if (scenario.musicUrl) {
                     try {
                         const result = await getDynamicImageUrl(scenario.musicUrl)
-                        const url = result!.url!
-                        if (url) {
-                            const duration = await getAudioDuration(url)
+                        if (result?.url) {
+                            const duration = await getAudioDuration(result.url)
                             musicLayer.items = [{
                                 id: 'background-music',
                                 startTime: 0,
-                                duration: duration,
-                                content: url,
-                                type: 'music'
+                                duration,
+                                content: result.url,
+                                type: 'music',
+                                metadata: {
+                                    originalDuration: duration,
+                                    trimStart: 0
+                                }
                             }]
                         }
                     } catch (error) {
-                        console.error(`Error resolving music:`, error)
+                        console.error('Error resolving music:', error)
                     }
                 } else {
-                    musicLayer.items = [] // Ensure music layer is empty if no music
+                    musicLayer.items = []
                 }
             }
 
@@ -261,54 +258,135 @@ export function EditorTab({
         }
 
         resolveUrlsAndUpdateLayers()
-    }, [scenario, layers.length === 0]) // Rerun if scenario changes or initial layers were empty
+    }, [scenario, SCENE_DURATION])
 
+    // Item selection handler
     const handleItemClick = (e: React.MouseEvent, layerId: string, itemId: string) => {
-        e.stopPropagation() // Prevent timeline click
+        e.stopPropagation()
         setSelectedItem({ layerId, itemId })
     }
 
+    // Resize handlers
     const handleResizeStart = (e: React.MouseEvent, layerId: string, itemId: string, handle: 'start' | 'end') => {
         e.stopPropagation()
+        e.preventDefault()
         setIsResizing(true)
         setResizeHandle(handle)
         setResizeStartX(e.clientX)
+        setResizingItem({ layerId, itemId })
+        setSelectedItem({ layerId, itemId })
 
         const layer = layers.find(l => l.id === layerId)
         const item = layer?.items.find(i => i.id === itemId)
         if (item) {
             setResizeStartTime(item.startTime)
             setResizeStartDuration(item.duration)
+            setResizeStartTrimStart((item.metadata?.trimStart as number) || 0)
         }
     }
 
-    const handleResizeMove = (e: React.MouseEvent) => {
-        if (!isResizing || !timelineRef.current || !selectedItem || !resizeHandle) return
+    const handleResizeMove = (e: MouseEvent | React.MouseEvent) => {
+        if (!isResizing || !timelineRef.current || !resizingItem || !resizeHandle) return
 
         const rect = timelineRef.current.getBoundingClientRect()
         const timeScale = rect.width / TIMELINE_DURATION
         const deltaX = e.clientX - resizeStartX
         const deltaTime = deltaX / timeScale
 
-        const updatedLayers = layers.map(layer => {
-            if (layer.id !== selectedItem.layerId) return layer
+        // Find neighboring clips to prevent overlap
+        const layer = layers.find(l => l.id === resizingItem.layerId)
+        const currentItem = layer?.items.find(i => i.id === resizingItem.itemId)
+        if (!layer || !currentItem) return
+
+        const sortedItems = [...layer.items].sort((a, b) => a.startTime - b.startTime)
+        const currentIndex = sortedItems.findIndex(i => i.id === resizingItem.itemId)
+        const prevItem = currentIndex > 0 ? sortedItems[currentIndex - 1] : null
+        const nextItem = currentIndex < sortedItems.length - 1 ? sortedItems[currentIndex + 1] : null
+
+        // Get the original duration for clips with trim capability (video, voiceover, music)
+        const originalDuration = currentItem.metadata?.originalDuration as number | undefined
+        const hasTrimmableContent = originalDuration !== undefined
+
+        const updatedLayers = layers.map(l => {
+            if (l.id !== resizingItem.layerId) return l
 
             return {
-                ...layer,
-                items: layer.items.map(item => {
-                    if (item.id !== selectedItem.itemId) return item
+                ...l,
+                items: l.items.map(item => {
+                    if (item.id !== resizingItem.itemId) return item
 
-                    let newStartTime = item.startTime
-                    let newDuration = item.duration
+                    let newStartTime = resizeStartTime
+                    let newDuration = resizeStartDuration
+                    let newTrimStart = resizeStartTrimStart
 
                     if (resizeHandle === 'start') {
-                        newStartTime = Math.max(0, Math.min(resizeStartTime + deltaTime, item.startTime + item.duration - 1))
-                        newDuration = resizeStartDuration - (newStartTime - resizeStartTime)
+                        // Dragging start handle
+                        const potentialNewStart = resizeStartTime + deltaTime
+                        const minStart = prevItem ? prevItem.startTime + prevItem.duration : 0
+                        
+                        if (deltaTime > 0) {
+                            // Dragging RIGHT - shrink clip, increase trimStart (skip more of content start)
+                            // Can't shrink below 0.5s duration
+                            const maxDelta = resizeStartDuration - 0.5
+                            const clampedDelta = Math.min(deltaTime, maxDelta)
+                            newStartTime = resizeStartTime + clampedDelta
+                            newDuration = resizeStartDuration - clampedDelta
+                            
+                            if (hasTrimmableContent) {
+                                // Increase trimStart - we're skipping more of the beginning
+                                newTrimStart = resizeStartTrimStart + clampedDelta
+                            }
+                        } else {
+                            // Dragging LEFT - expand clip, decrease trimStart (show earlier content)
+                            if (hasTrimmableContent) {
+                                // Can only expand if trimStart > 0 (there's hidden content at the start)
+                                const maxExpand = Math.min(resizeStartTrimStart, resizeStartTime - minStart)
+                                const expandAmount = Math.min(-deltaTime, maxExpand)
+                                newStartTime = resizeStartTime - expandAmount
+                                newDuration = resizeStartDuration + expandAmount
+                                newTrimStart = resizeStartTrimStart - expandAmount
+                            } else {
+                                // Non-trimmable clips: just move start, respecting min boundary
+                                newStartTime = Math.max(minStart, potentialNewStart)
+                                newDuration = resizeStartDuration - (newStartTime - resizeStartTime)
+                            }
+                        }
                     } else {
-                        newDuration = Math.max(1, resizeStartDuration + deltaTime)
+                        // Dragging end handle
+                        const maxEnd = nextItem ? nextItem.startTime : TIMELINE_DURATION
+                        
+                        if (deltaTime < 0) {
+                            // Dragging LEFT - shrink clip (cut end of content)
+                            // Can't shrink below 0.5s duration
+                            newDuration = Math.max(0.5, resizeStartDuration + deltaTime)
+                            // trimStart stays the same - we're just showing less of the end
+                        } else {
+                            // Dragging RIGHT - expand clip (show more of content end)
+                            if (hasTrimmableContent) {
+                                // Can only expand if trimStart + duration < originalDuration
+                                const currentTrimEnd = resizeStartTrimStart + resizeStartDuration
+                                const availableAtEnd = originalDuration - currentTrimEnd
+                                const maxExpandForTimeline = maxEnd - (resizeStartTime + resizeStartDuration)
+                                const maxExpand = Math.min(availableAtEnd, maxExpandForTimeline)
+                                const expandAmount = Math.min(deltaTime, maxExpand)
+                                newDuration = resizeStartDuration + expandAmount
+                            } else {
+                                // Non-trimmable clips: just expand, respecting timeline boundary
+                                const maxDuration = maxEnd - resizeStartTime
+                                newDuration = Math.min(resizeStartDuration + deltaTime, maxDuration)
+                            }
+                        }
                     }
 
-                    return { ...item, startTime: newStartTime, duration: newDuration }
+                    return { 
+                        ...item, 
+                        startTime: newStartTime, 
+                        duration: newDuration,
+                        metadata: {
+                            ...item.metadata,
+                            trimStart: newTrimStart
+                        }
+                    }
                 })
             }
         })
@@ -317,437 +395,513 @@ export function EditorTab({
     }
 
     const handleResizeEnd = () => {
+        if (isResizing && resizingItem) {
+            // Notify parent of the update
+            const layer = layers.find(l => l.id === resizingItem.layerId)
+            const item = layer?.items.find(i => i.id === resizingItem.itemId)
+            if (item) {
+                onTimelineItemUpdate(resizingItem.layerId, resizingItem.itemId, {
+                    startTime: item.startTime,
+                    duration: item.duration,
+                    metadata: item.metadata
+                })
+            }
+        }
         setIsResizing(false)
         setResizeHandle(null)
+        setResizingItem(null)
     }
 
-    // Function to get the current audio clips based on timeline time
-    const getCurrentAudioClips = (time: number) => {
-        const voiceoverLayer = layers.find(layer => layer.id === 'voiceovers')
-        const musicLayer = layers.find(layer => layer.id === 'music')
-        const clips: { id: string, url: string, startTime: number, type: 'voiceover' | 'music' }[] = []
+    // Snap threshold in seconds
+    const SNAP_THRESHOLD = 0.3
+    // Small epsilon for floating-point comparisons
+    const OVERLAP_EPSILON = 0.001
 
-        // Get current voiceover
-        if (voiceoverLayer) {
-            const voiceoverClip = voiceoverLayer.items.find(item =>
-                time >= item.startTime && time < item.startTime + item.duration
-            )
-            if (voiceoverClip && voiceoverClip.content) {
-                clips.push({
-                    id: voiceoverClip.id,
-                    url: voiceoverClip.content,
-                    startTime: time - voiceoverClip.startTime,
-                    type: 'voiceover'
-                })
-            }
-        }
+    // Drag handlers for moving clips
+    const handleDragStart = (e: React.MouseEvent, layerId: string, itemId: string) => {
+        // Don't start drag if we're on resize handles
+        const target = e.target as HTMLElement
+        if (target.classList.contains('resize-handle')) return
 
-        // Get current music
-        if (musicLayer) {
-            const musicClip = musicLayer.items.find(item =>
-                time >= item.startTime && time < item.startTime + item.duration
-            )
-            if (musicClip && musicClip.content) {
-                clips.push({
-                    id: musicClip.id,
-                    url: musicClip.content,
-                    startTime: time - musicClip.startTime,
-                    type: 'music'
-                })
-            }
-        }
+        e.stopPropagation()
+        e.preventDefault()
+        setIsDragging(true)
+        setDragStartX(e.clientX)
+        setDraggingItem({ layerId, itemId })
+        setSelectedItem({ layerId, itemId })
 
-        return clips
-    }
-
-    // Function to get the current video clip based on timeline time
-    const getCurrentVideoClip = (time: number) => {
-        const videoLayer = layers.find(layer => layer.id === 'videos')
-        if (!videoLayer) return null
-
-        const currentClip = videoLayer.items.find(item =>
-            time >= item.startTime && time < item.startTime + item.duration
-        )
-
-        if (!currentClip || !currentClip.content) return null
-
-        return {
-            url: currentClip.content,
-            startTime: time - currentClip.startTime,
-            clipStartTime: currentClip.startTime,
-            clipDuration: currentClip.duration
+        const layer = layers.find(l => l.id === layerId)
+        const item = layer?.items.find(i => i.id === itemId)
+        if (item && layer) {
+            setDragStartTime(item.startTime)
+            // Store original positions of all items for reordering
+            originalLayerItemsRef.current = layer.items.map(i => ({ ...i }))
         }
     }
 
-    // Initialize audio context and general cleanup
-    useEffect(() => {
-        const initAudioContext = async () => {
-            if (!audioContextRef.current) {
-                audioContextRef.current = new AudioContext({
-                    latencyHint: 'playback',
-                    sampleRate: 48000
-                });
+    // Check if a position would overlap during drag (uses original positions)
+    // Uses epsilon to allow edge-to-edge placement
+    const checkOverlapDuringDrag = (startTime: number, duration: number, excludeItemId: string): boolean => {
+        const endTime = startTime + duration
+        return originalLayerItemsRef.current.some(clip => {
+            if (clip.id === excludeItemId) return false
+            const clipEnd = clip.startTime + clip.duration
+            // Use epsilon to allow clips to touch at edges
+            return startTime < clipEnd - OVERLAP_EPSILON && endTime > clip.startTime + OVERLAP_EPSILON
+        })
+    }
 
-                const resumeAudio = async () => {
-                    if (audioContextRef.current?.state === 'suspended') {
-                        try {
-                            await audioContextRef.current.resume();
-                        } catch (error) {
-                            console.error('Error resuming audio context:', error);
-                        }
-                    }
-                };
-                document.addEventListener('click', resumeAudio, { once: true });
-                document.addEventListener('keydown', resumeAudio, { once: true });
-            }
-        };
-        initAudioContext();
+    // Find snap points for a clip being dragged (only non-overlapping positions)
+    const findSnapPoint = (proposedStart: number, clipDuration: number, excludeItemId: string): number => {
+        const proposedEnd = proposedStart + clipDuration
+        const otherClips = originalLayerItemsRef.current.filter(i => i.id !== excludeItemId)
+        
+        let bestSnap = proposedStart
+        let closestDistance = SNAP_THRESHOLD
 
-        return () => { // Component unmount cleanup
-            const audioContext = audioContextRef.current;
-            if (audioContext) {
-                activeAudioNodes.current.forEach(({ source, gainNode, fadeOutTimeoutId }) => {
-                    if (fadeOutTimeoutId) clearTimeout(fadeOutTimeoutId);
-                    try {
-                        gainNode.gain.cancelScheduledValues(audioContext.currentTime);
-                        gainNode.gain.setValueAtTime(0.0001, audioContext.currentTime); // Cut immediately
-                        source.stop(audioContext.currentTime);
-                        source.disconnect();
-                        gainNode.disconnect();
-                    } catch (e) { /* Ignore errors */ }
-                });
-                activeAudioNodes.current.clear();
-
-                audioBuffersRef.current.clear();
-
-                audioContext.close().catch(console.error);
-                audioContextRef.current = null;
-            }
-        };
-    }, []);
-
-    // Function to load audio buffer
-    const loadAudioBuffer = async (url: string): Promise<AudioBuffer> => {
-        if (audioBuffersRef.current.has(url)) {
-            return audioBuffersRef.current.get(url)!;
-        }
-        if (!audioContextRef.current) {
-            throw new Error("AudioContext not initialized");
-        }
-        try {
-            const response = await fetch(url);
-            const arrayBuffer = await response.arrayBuffer();
-            const audioBuffer = await audioContextRef.current!.decodeAudioData(arrayBuffer);
-            audioBuffersRef.current.set(url, audioBuffer);
-            return audioBuffer;
-        } catch (error) {
-            console.error(`Error loading audio ${url}:`, error);
-            throw error;
-        }
-    };
-
-    // Pre-buffer all audio files when layers change
-    useEffect(() => {
-        const loadAllAudio = async () => {
-            if (!audioContextRef.current) return;
-            const audioUrlsToLoad = new Set<string>();
-            layers.forEach(layer => {
-                if ((layer.type === 'voiceover' || layer.type === 'music') && layer.items) {
-                    layer.items.forEach(item => {
-                        if (item.content) audioUrlsToLoad.add(item.content);
-                    });
-                }
-            });
-
-            for (const url of audioUrlsToLoad) {
-                if (url && !audioBuffersRef.current.has(url)) {
-                    try {
-                        await loadAudioBuffer(url);
-                    } catch (error) {
-                        // Error already logged in loadAudioBuffer
-                    }
-                }
-            }
-        };
-
-        if (layers.length > 0) {
-            loadAllAudio();
-        }
-    }, [layers]);
-
-    // Main playback synchronization effect for Audio and Video
-    useEffect(() => {
-        const audioContext = audioContextRef.current;
-        const video = videoRef.current;
-
-        if (!audioContext || !video) {
-            // If context or video isn't ready, ensure all audio is stopped.
-            activeAudioNodes.current.forEach(({ source, gainNode, fadeOutTimeoutId }) => {
-                if (fadeOutTimeoutId) clearTimeout(fadeOutTimeoutId);
-                try {
-                    gainNode.gain.cancelScheduledValues(audioContext?.currentTime ?? 0);
-                    source.stop();
-                } catch (e) { }
-            });
-            activeAudioNodes.current.clear();
-            return;
-        }
-
-        const currentTimelineTime = currentTime; // Capture for stable use in this effect run
-
-        // --- Audio Management ---
-        const desiredPlayingAudioClips = isPlaying ? getCurrentAudioClips(currentTimelineTime) : [];
-        const desiredPlayingClipIds = new Set(desiredPlayingAudioClips.map(c => c.id));
-
-        // 1. Fade out and stop clips that are no longer desired or need restart
-        activeAudioNodes.current.forEach((node, clipId) => {
-            if (!desiredPlayingClipIds.has(clipId)) {
-                if (node.fadeOutTimeoutId) clearTimeout(node.fadeOutTimeoutId);
-
-                node.gainNode.gain.cancelScheduledValues(audioContext.currentTime);
-                // Start fade from current gain value for smoother transition if already fading
-                const currentGain = node.gainNode.gain.value;
-                node.gainNode.gain.setValueAtTime(currentGain, audioContext.currentTime);
-                node.gainNode.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + FADE_DURATION);
-
-                const stopTimeForNode = audioContext.currentTime + FADE_DURATION;
-                try {
-                    node.source.stop(stopTimeForNode);
-                } catch (e) { /* Already stopped or invalid state */ }
-                node.stopTime = stopTimeForNode; // Mark for cleanup
-
-                // Schedule for actual map removal after fade out
-                const removalTimeoutId = setTimeout(() => {
-                    if (activeAudioNodes.current.get(clipId) === node) {
-                        activeAudioNodes.current.delete(clipId);
-                    }
-                }, FADE_DURATION * 1000 + 50); // 50ms buffer
-                (node as any).removalTimeoutId = removalTimeoutId; // Store for potential clear on unmount
-            }
-        });
-
-        // 2. Start new clips
-        for (const clip of desiredPlayingAudioClips) {
-            if (!activeAudioNodes.current.has(clip.id)) {
-                const playNewAudioClipAsync = async () => {
-                    // Re-check conditions as state might have changed during async ops or if clip is already added
-                    if (!audioContextRef.current || !isPlaying || currentTime !== currentTimelineTime || activeAudioNodes.current.has(clip.id)) {
-                        return;
-                    }
-                    const currentContext = audioContextRef.current; // Use captured context
-
-                    try {
-                        const buffer = await loadAudioBuffer(clip.url);
-                        // Final check before playing
-                        if (!isPlaying || currentTime !== currentTimelineTime || activeAudioNodes.current.has(clip.id)) return;
-
-                        const source = currentContext.createBufferSource();
-                        const gainNode = currentContext.createGain();
-                        source.buffer = buffer;
-                        source.connect(gainNode);
-                        gainNode.connect(currentContext.destination);
-
-                        const targetVolume = clip.type === 'voiceover' ? 0.8 : 0.5; // Adjusted volumes
-                        gainNode.gain.setValueAtTime(0.0001, currentContext.currentTime);
-                        gainNode.gain.exponentialRampToValueAtTime(targetVolume, currentContext.currentTime + FADE_DURATION);
-
-                        const offsetInClipFile = Math.max(0, clip.startTime); // clip.startTime is offset into the audio file
-                        source.start(currentContext.currentTime, offsetInClipFile);
-
-                        // Find the original timeline item for its duration on the timeline
-                        const layer = layers.find(l => l.items.some(i => i.id === clip.id));
-                        const timelineItem = layer?.items.find(i => i.id === clip.id);
-
-                        if (!timelineItem) {
-                            console.warn("Timeline item not found for audio clip:", clip.id, ". Playing for natural duration.");
-                            // Fallback: play for natural duration if timelineItem not found
-                            const naturalDurationRemaining = buffer.duration - offsetInClipFile;
-                            if (naturalDurationRemaining > 0) {
-                                const naturalStopTime = currentContext.currentTime + naturalDurationRemaining;
-                                const naturalFadeOutPoint = naturalStopTime - FADE_DURATION;
-                                if (naturalFadeOutPoint > currentContext.currentTime + FADE_DURATION) {
-                                    gainNode.gain.setValueAtTime(targetVolume, naturalFadeOutPoint);
-                                    gainNode.gain.exponentialRampToValueAtTime(0.0001, naturalStopTime);
-                                } else {
-                                    gainNode.gain.exponentialRampToValueAtTime(0.0001, naturalStopTime);
-                                }
-                                source.stop(naturalStopTime);
-                                activeAudioNodes.current.set(clip.id, { source, gainNode, type: clip.type, stopTime: naturalStopTime });
-                            } else {
-                                try { source.stop(currentContext.currentTime) } catch (e) { } // stop immediately if no duration
-                            }
-                            return;
-                        }
-
-                        // Calculate how long this specific segment of the clip should play based on timeline
-                        const timeIntoTimelineItemView = currentTimelineTime - timelineItem.startTime;
-                        const remainingDurationInTimelineItemView = Math.max(0, timelineItem.duration - timeIntoTimelineItemView);
-                        const remainingDurationInAudioContentItself = Math.max(0, buffer.duration - offsetInClipFile);
-
-                        const actualPlaybackDuration = Math.min(remainingDurationInTimelineItemView, remainingDurationInAudioContentItself);
-
-                        if (actualPlaybackDuration <= 0) {
-                            try { source.stop(currentContext.currentTime); } catch (e) { }
-                            return; // No duration to play
-                        }
-
-                        const scheduledStopTime = currentContext.currentTime + actualPlaybackDuration;
-                        const fadeOutStartTime = scheduledStopTime - FADE_DURATION;
-
-                        if (fadeOutStartTime > currentContext.currentTime + FADE_DURATION) {
-                            gainNode.gain.setValueAtTime(targetVolume, fadeOutStartTime); // Hold target volume until fade
-                            gainNode.gain.exponentialRampToValueAtTime(0.0001, scheduledStopTime);
-                        } else { // Clip is too short for full fade-in then separate fade-out
-                            gainNode.gain.exponentialRampToValueAtTime(0.0001, scheduledStopTime);
-                        }
-                        source.stop(scheduledStopTime);
-
-                        const nodeData = { source, gainNode, type: clip.type, stopTime: scheduledStopTime };
-                        activeAudioNodes.current.set(clip.id, nodeData);
-
-                        // Schedule self-removal from map after it's supposed to stop
-                        const cleanupTimeoutId = setTimeout(() => {
-                            if (activeAudioNodes.current.get(clip.id) === nodeData) { // Ensure it's the same node
-                                activeAudioNodes.current.delete(clip.id);
-                            }
-                        }, actualPlaybackDuration * 1000 + FADE_DURATION * 1000 + 100); // Buffer for cleanup
-                        (nodeData as any).fadeOutTimeoutId = cleanupTimeoutId; // Store for potential early clear
-
-                    } catch (error) {
-                        console.error(`Error playing audio ${clip.url}:`, error);
-                        activeAudioNodes.current.delete(clip.id); // Clean up if error
-                    }
-                };
-                playNewAudioClipAsync();
+        // Check snap to start of timeline
+        if (Math.abs(proposedStart) < closestDistance) {
+            const snapPos = 0
+            if (!checkOverlapDuringDrag(snapPos, clipDuration, excludeItemId)) {
+                bestSnap = snapPos
+                closestDistance = Math.abs(proposedStart)
             }
         }
 
-        // --- Video Management ---
-        const currentVideoClip = getCurrentVideoClip(currentTimelineTime);
-        if (currentVideoClip) {
-            if (currentVideoUrl !== currentVideoClip.url) {
-                setCurrentVideoUrl(currentVideoClip.url);
-                video.src = currentVideoClip.url;
-                video.currentTime = currentVideoClip.startTime; // startTime is offset within the video file
-            } else {
-                // Sync video's internal time with where it should be, if off by a bit
-                const expectedVideoInternalTime = currentTimelineTime - currentVideoClip.clipStartTime;
-                if (Math.abs(video.currentTime - expectedVideoInternalTime) > 0.2) { // 200ms tolerance
-                    video.currentTime = expectedVideoInternalTime;
+        // Check snap to end of timeline
+        if (Math.abs(proposedEnd - TIMELINE_DURATION) < closestDistance) {
+            const snapPos = TIMELINE_DURATION - clipDuration
+            if (!checkOverlapDuringDrag(snapPos, clipDuration, excludeItemId)) {
+                bestSnap = snapPos
+                closestDistance = Math.abs(proposedEnd - TIMELINE_DURATION)
+            }
+        }
+
+        for (const clip of otherClips) {
+            const clipEnd = clip.startTime + clip.duration
+
+            // Snap our start to their end (place after this clip)
+            if (Math.abs(proposedStart - clipEnd) < closestDistance) {
+                const snapPos = clipEnd
+                if (!checkOverlapDuringDrag(snapPos, clipDuration, excludeItemId)) {
+                    bestSnap = snapPos
+                    closestDistance = Math.abs(proposedStart - clipEnd)
                 }
             }
 
-            if (isPlaying) {
-                video.play().catch(error => {
-                    console.error('Error playing video:', error);
-                    setIsPlaying(false); // Stop if video fails
-                });
-            } else {
-                video.pause();
+            // Snap our end to their start (place before this clip)
+            if (Math.abs(proposedEnd - clip.startTime) < closestDistance) {
+                const snapPos = clip.startTime - clipDuration
+                if (snapPos >= 0 && !checkOverlapDuringDrag(snapPos, clipDuration, excludeItemId)) {
+                    bestSnap = snapPos
+                    closestDistance = Math.abs(proposedEnd - clip.startTime)
+                }
             }
+        }
+
+        return bestSnap
+    }
+
+    const handleDragMove = (e: MouseEvent | React.MouseEvent) => {
+        if (!isDragging || !timelineRef.current || !draggingItem) return
+
+        const rect = timelineRef.current.getBoundingClientRect()
+        const timeScale = rect.width / TIMELINE_DURATION
+        const deltaX = e.clientX - dragStartX
+        const deltaTime = deltaX / timeScale
+
+        const originalItem = originalLayerItemsRef.current.find(i => i.id === draggingItem.itemId)
+        if (!originalItem) return
+
+        // Calculate proposed position (clamped to timeline bounds)
+        const proposedStart = Math.max(0, Math.min(dragStartTime + deltaTime, TIMELINE_DURATION - originalItem.duration))
+        
+        // Try snapping to edges of other clips (using ORIGINAL positions)
+        const snappedStart = findSnapPointForInsert(proposedStart, originalItem.duration, draggingItem.itemId)
+        
+        // Use snapped position if close enough, otherwise use proposed
+        const SNAP_THRESHOLD = 0.5 // seconds
+        let finalPosition: number
+        if (Math.abs(snappedStart - proposedStart) < SNAP_THRESHOLD) {
+            finalPosition = snappedStart
         } else {
-            video.pause();
-            // setCurrentVideoUrl(null); // Keep current video displayed when paused at end of clip but not end of timeline
+            finalPosition = proposedStart
         }
 
-        return () => {
-            // Cleanup for this effect instance when dependencies change (not full unmount)
-            // Clear any scheduled map removal timeouts for nodes that might be re-evaluated.
-            activeAudioNodes.current.forEach(node => {
-                if ((node as any).removalTimeoutId) {
-                    clearTimeout((node as any).removalTimeoutId);
-                    delete (node as any).removalTimeoutId;
-                }
-                // If a node was started in this effect run via an async call that hasn't completed,
-                // the re-checks (`!isPlaying || currentTime !== currentTimelineTime`) inside async should prevent issues.
-            });
-        };
+        // Store the drop position for handleDragEnd
+        setDropIndicator({ layerId: draggingItem.layerId, position: finalPosition })
 
-    }, [currentTime, isPlaying, layers, scenario]); // scenario for getCurrentVideo/AudioClips if they derive from it indirectly via layers
-
-    // Handle video time update (mostly for driving the main timeline currentTime)
-    const handleVideoTimeUpdate = () => {
-        if (!videoRef.current || !isPlaying) return
-
-        const video = videoRef.current
-        const currentClip = getCurrentVideoClip(currentTime)
-
-        if (currentClip) {
-            const newTime = currentClip.clipStartTime + video.currentTime
-            if (newTime >= currentClip.clipStartTime + currentClip.clipDuration) {
-                // Move to next clip
-                const videoLayer = layers.find(layer => layer.id === 'videos')
-                if (!videoLayer) return
-
-                const currentClipIndex = videoLayer.items.findIndex(item =>
-                    item.startTime === currentClip.clipStartTime
-                )
-
-                if (currentClipIndex < videoLayer.items.length - 1) {
-                    const nextClip = videoLayer.items[currentClipIndex + 1]
-                    onTimeUpdate(nextClip.startTime)
+        // Calculate cascade positions (same logic as handleDragEnd) for live preview
+        const draggedDuration = originalItem.duration
+        
+        // Get all other clips using ORIGINAL positions
+        const otherClips = originalLayerItemsRef.current
+            .filter(i => i.id !== draggingItem.itemId)
+            .map(i => ({ ...i }))
+            .sort((a, b) => a.startTime - b.startTime)
+        
+        // Find clips that would overlap with the proposed position
+        const overlappingClips = otherClips.filter(clip => {
+            const clipEnd = clip.startTime + clip.duration
+            const draggedEndTime = finalPosition + draggedDuration
+            return finalPosition < clipEnd && draggedEndTime > clip.startTime
+        })
+        
+        // Build a map of preview positions for all clips
+        const previewPositions = new Map<string, number>()
+        
+        let draggedPreviewPosition = finalPosition
+        
+        if (overlappingClips.length > 0) {
+            // Find the leftmost overlapping clip
+            const leftmostOverlap = overlappingClips.sort((a, b) => a.startTime - b.startTime)[0]
+            
+            // Position the dragged clip at the leftmost overlapping clip's start
+            draggedPreviewPosition = leftmostOverlap.startTime
+        }
+        
+        previewPositions.set(draggingItem.itemId, draggedPreviewPosition)
+        
+        // Cascade push: start from where the dragged clip ends
+        let currentEndTime = draggedPreviewPosition + draggedDuration
+        
+        // Get clips that might need to be pushed
+        const clipsToProcess = otherClips
+            .filter(clip => {
+                const clipEnd = clip.startTime + clip.duration
+                return clip.startTime >= draggedPreviewPosition || 
+                       (draggedPreviewPosition < clipEnd && currentEndTime > clip.startTime)
+            })
+            .sort((a, b) => a.startTime - b.startTime)
+        
+        // Cascade push
+        for (const clip of clipsToProcess) {
+            const clipOriginalStart = clip.startTime
+            const clipEnd = clipOriginalStart + clip.duration
+            
+            if (clipOriginalStart < currentEndTime && clipEnd > draggedPreviewPosition) {
+                // This clip needs to be pushed
+                const newStart = currentEndTime
+                
+                if (newStart + clip.duration <= TIMELINE_DURATION) {
+                    previewPositions.set(clip.id, newStart)
+                    currentEndTime = newStart + clip.duration
                 } else {
-                    // End of timeline
-                    setIsPlaying(false)
-                    onTimeUpdate(0)
+                    previewPositions.set(clip.id, clipOriginalStart)
                 }
-            } else {
-                onTimeUpdate(newTime)
             }
         }
+        
+        // Clips not affected keep their original positions
+        for (const clip of otherClips) {
+            if (!previewPositions.has(clip.id)) {
+                previewPositions.set(clip.id, clip.startTime)
+            }
+        }
+
+        // Update all clip positions for live preview
+        const updatedLayers = layers.map(l => {
+            if (l.id !== draggingItem.layerId) return l
+
+            return {
+                ...l,
+                items: l.items.map(i => {
+                    const previewPos = previewPositions.get(i.id)
+                    if (previewPos !== undefined) {
+                        return { ...i, startTime: previewPos }
+                    }
+                    return i
+                })
+            }
+        })
+
+        setLayers(updatedLayers)
+    }
+    
+    // Find snap point for insert mode - snaps to edges of other clips
+    const findSnapPointForInsert = (proposedStart: number, duration: number, excludeItemId: string): number => {
+        const SNAP_THRESHOLD = 0.5 // seconds
+        
+        const otherClips = originalLayerItemsRef.current
+            .filter(i => i.id !== excludeItemId)
+            .sort((a, b) => a.startTime - b.startTime)
+        
+        let bestSnap = proposedStart
+        let minDistance = SNAP_THRESHOLD
+        
+        // Snap to timeline start
+        if (Math.abs(proposedStart) < minDistance) {
+            minDistance = Math.abs(proposedStart)
+            bestSnap = 0
+        }
+        
+        // Snap to timeline end
+        const endPos = TIMELINE_DURATION - duration
+        if (Math.abs(proposedStart - endPos) < minDistance) {
+            minDistance = Math.abs(proposedStart - endPos)
+            bestSnap = endPos
+        }
+        
+        for (const clip of otherClips) {
+            const clipEnd = clip.startTime + clip.duration
+            
+            // Snap dragged clip's START to this clip's END
+            if (Math.abs(proposedStart - clipEnd) < minDistance) {
+                minDistance = Math.abs(proposedStart - clipEnd)
+                bestSnap = clipEnd
+            }
+            
+            // Snap dragged clip's END to this clip's START
+            const alignedStart = clip.startTime - duration
+            if (alignedStart >= 0 && Math.abs(proposedStart - alignedStart) < minDistance) {
+                minDistance = Math.abs(proposedStart - alignedStart)
+                bestSnap = alignedStart
+            }
+            
+            // Snap dragged clip's START to this clip's START
+            if (Math.abs(proposedStart - clip.startTime) < minDistance) {
+                minDistance = Math.abs(proposedStart - clip.startTime)
+                bestSnap = clip.startTime
+            }
+        }
+        
+        return bestSnap
     }
 
-    // Handle video ended event
-    const handleVideoEnded = () => {
-        if (!isPlaying) return
+    // Check if a position would overlap with any other clip
+    const wouldOverlap = (startTime: number, duration: number, excludeItemId: string): boolean => {
+        const endTime = startTime + duration
+        return originalLayerItemsRef.current.some(clip => {
+            if (clip.id === excludeItemId) return false
+            const clipEnd = clip.startTime + clip.duration
+            // Check for any overlap
+            return startTime < clipEnd && endTime > clip.startTime
+        })
+    }
 
-        const videoLayer = layers.find(layer => layer.id === 'videos')
-        if (!videoLayer) return
+    // Find the nearest valid position that doesn't overlap
+    const findNearestValidPosition = (proposedStart: number, duration: number, excludeItemId: string): number => {
+        if (!wouldOverlap(proposedStart, duration, excludeItemId)) {
+            return proposedStart
+        }
 
-        const currentClipIndex = videoLayer.items.findIndex(item =>
-            currentTime >= item.startTime && currentTime < item.startTime + item.duration
-        )
+        const proposedEnd = proposedStart + duration
+        const otherClips = originalLayerItemsRef.current
+            .filter(i => i.id !== excludeItemId)
+            .sort((a, b) => a.startTime - b.startTime)
 
-        if (currentClipIndex < videoLayer.items.length - 1) {
-            // Move to the next clip
-            const nextClip = videoLayer.items[currentClipIndex + 1]
-            onTimeUpdate(nextClip.startTime)
-        } else {
-            // End of timeline
+        // Find the best alternative position
+        let bestPosition = proposedStart
+        let minDistance = Infinity
+
+        // Try placing before each clip
+        for (const clip of otherClips) {
+            const beforePos = clip.startTime - duration
+            if (beforePos >= 0 && !wouldOverlap(beforePos, duration, excludeItemId)) {
+                const distance = Math.abs(proposedStart - beforePos)
+                if (distance < minDistance) {
+                    minDistance = distance
+                    bestPosition = beforePos
+                }
+            }
+
+            // Try placing after each clip
+            const afterPos = clip.startTime + clip.duration
+            if (afterPos + duration <= TIMELINE_DURATION && !wouldOverlap(afterPos, duration, excludeItemId)) {
+                const distance = Math.abs(proposedStart - afterPos)
+                if (distance < minDistance) {
+                    minDistance = distance
+                    bestPosition = afterPos
+                }
+            }
+        }
+
+        // Try start of timeline
+        if (!wouldOverlap(0, duration, excludeItemId)) {
+            const distance = Math.abs(proposedStart - 0)
+            if (distance < minDistance) {
+                minDistance = distance
+                bestPosition = 0
+            }
+        }
+
+        return bestPosition
+    }
+
+    const handleDragEnd = () => {
+        if (isDragging && draggingItem && dropIndicator) {
+            const originalDraggedItem = originalLayerItemsRef.current.find(i => i.id === draggingItem.itemId)
+            
+            if (originalDraggedItem) {
+                // Get the proposed position (already snapped during drag)
+                const proposedStartTime = dropIndicator.position
+                const draggedDuration = originalDraggedItem.duration
+                
+                // Get all other clips in the same layer (excluding the dragged one), using ORIGINAL positions
+                const otherClips = originalLayerItemsRef.current
+                    .filter(i => i.id !== draggingItem.itemId)
+                    .map(i => ({ ...i })) // Clone to avoid mutation
+                    .sort((a, b) => a.startTime - b.startTime)
+                
+                // Find clips that would overlap with the proposed position
+                const overlappingClips = otherClips.filter(clip => {
+                    const clipEnd = clip.startTime + clip.duration
+                    const draggedEndTime = proposedStartTime + draggedDuration
+                    return proposedStartTime < clipEnd && draggedEndTime > clip.startTime
+                })
+                
+                // Build a map of new positions for all clips
+                const newPositions = new Map<string, number>()
+                
+                let finalDraggedPosition = proposedStartTime
+                
+                if (overlappingClips.length > 0) {
+                    // Find the leftmost overlapping clip
+                    const leftmostOverlap = overlappingClips.sort((a, b) => a.startTime - b.startTime)[0]
+                    
+                    // Position the dragged clip at the leftmost overlapping clip's start
+                    finalDraggedPosition = leftmostOverlap.startTime
+                }
+                
+                // Set the dragged clip's new position
+                newPositions.set(draggingItem.itemId, finalDraggedPosition)
+                
+                // Now cascade push: start from where the dragged clip ends and push everything to the right
+                let currentEndTime = finalDraggedPosition + draggedDuration
+                
+                // Get all clips sorted by their original start time
+                // We need to process clips that might need to be pushed
+                const clipsToProcess = otherClips
+                    .filter(clip => {
+                        // Only process clips that are at or after the dragged clip's new position
+                        // OR clips that overlap with where the dragged clip will be
+                        const clipEnd = clip.startTime + clip.duration
+                        return clip.startTime >= finalDraggedPosition || 
+                               (finalDraggedPosition < clipEnd && currentEndTime > clip.startTime)
+                    })
+                    .sort((a, b) => a.startTime - b.startTime)
+                
+                // Cascade push: for each clip in order, if it overlaps with currentEndTime, push it
+                for (const clip of clipsToProcess) {
+                    const clipOriginalStart = clip.startTime
+                    const clipEnd = clipOriginalStart + clip.duration
+                    
+                    // Check if this clip overlaps with the current end time (where the previous clip ends)
+                    if (clipOriginalStart < currentEndTime && clipEnd > finalDraggedPosition) {
+                        // This clip needs to be pushed - snap it right after the current end
+                        const newStart = currentEndTime
+                        
+                        // Make sure we don't exceed timeline
+                        if (newStart + clip.duration <= TIMELINE_DURATION) {
+                            newPositions.set(clip.id, newStart)
+                            currentEndTime = newStart + clip.duration
+                        } else {
+                            // Can't fit, keep original (edge case)
+                            newPositions.set(clip.id, clipOriginalStart)
+                        }
+                    } else {
+                        // This clip doesn't overlap, keep its original position
+                        // But update currentEndTime if this clip is snapped after our chain
+                        if (clipOriginalStart >= currentEndTime) {
+                            // No push needed, clip stays in place
+                            // Don't update currentEndTime - we stop the cascade here
+                        }
+                    }
+                }
+                
+                // Clips that weren't processed keep their original positions
+                for (const clip of otherClips) {
+                    if (!newPositions.has(clip.id)) {
+                        newPositions.set(clip.id, clip.startTime)
+                    }
+                }
+                
+                // Apply all positions
+                let updatedLayers = layers.map(l => {
+                    if (l.id !== draggingItem.layerId) return l
+                    
+                    return {
+                        ...l,
+                        items: l.items.map(item => {
+                            const newPos = newPositions.get(item.id)
+                            if (newPos !== undefined) {
+                                return { ...item, startTime: newPos }
+                            }
+                            return item
+                        })
+                    }
+                })
+                
+                // Sort items by start time
+                updatedLayers = updatedLayers.map(l => {
+                    if (l.id !== draggingItem.layerId) return l
+                    const sortedItems = [...l.items].sort((a, b) => a.startTime - b.startTime)
+                    return { ...l, items: sortedItems }
+                })
+                
+                setLayers(updatedLayers)
+                
+                // Notify parent of all position changes
+                newPositions.forEach((newStart, itemId) => {
+                    const originalItem = originalLayerItemsRef.current.find(i => i.id === itemId)
+                    if (originalItem && originalItem.startTime !== newStart) {
+                        onTimelineItemUpdate(draggingItem.layerId, itemId, { startTime: newStart })
+                    }
+                })
+            }
+        }
+        setIsDragging(false)
+        setDraggingItem(null)
+        setDropIndicator(null)
+        originalLayerItemsRef.current = []
+    }
+
+    // Global mouse event handlers for drag/resize outside timeline
+    useEffect(() => {
+        const handleGlobalMouseMove = (e: MouseEvent) => {
+            if (isResizing) handleResizeMove(e)
+            if (isDragging) handleDragMove(e)
+        }
+
+        const handleGlobalMouseUp = () => {
+            if (isResizing) handleResizeEnd()
+            if (isDragging) handleDragEnd()
+        }
+
+        if (isResizing || isDragging) {
+            document.addEventListener('mousemove', handleGlobalMouseMove)
+            document.addEventListener('mouseup', handleGlobalMouseUp)
+        return () => {
+                document.removeEventListener('mousemove', handleGlobalMouseMove)
+                document.removeEventListener('mouseup', handleGlobalMouseUp)
+            }
+        }
+    }, [isResizing, isDragging, resizingItem, draggingItem, resizeHandle, layers])
+
+    // Playback controls
+    const togglePlay = useCallback(() => {
+        setIsPlaying(prev => !prev)
+    }, [])
+
+    const handlePlaybackEnded = useCallback(() => {
             setIsPlaying(false)
             onTimeUpdate(0)
-        }
-    }
+    }, [onTimeUpdate])
 
-    // Add keyboard event listener for spacebar
+    // Keyboard controls
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Only toggle if spacebar is pressed and we're not in an input field
             if (e.code === 'Space' && !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)) {
-                e.preventDefault() // Prevent page scroll
-                console.log('Spacebar pressed, current isPlaying:', isPlaying)
+                e.preventDefault()
                 togglePlay()
             }
         }
 
         window.addEventListener('keydown', handleKeyDown)
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown)
-        }
-    }, [isPlaying]) // Add isPlaying to dependencies to get current value
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [togglePlay])
 
-    // Toggle play/pause
-    const togglePlay = () => {
-        console.log('togglePlay called, current isPlaying:', isPlaying)
-        const audioCtx = audioContextRef.current;
-        if (audioCtx && audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
-        setIsPlaying(!isPlaying);
-        console.log('isPlaying set to:', !isPlaying)
-    }
-
-    // Handle timeline click
+    // Timeline click handler
     const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!timelineRef.current) return
 
@@ -756,12 +910,9 @@ export function EditorTab({
         const timeScale = rect.width / TIMELINE_DURATION
         const newTime = Math.max(0, Math.min(TIMELINE_DURATION, clickPosition / timeScale))
 
-        // Update time and pause playback
         setIsPlaying(false)
         onTimeUpdate(newTime)
     }
-
-    
 
     return (
         <div className="space-y-8">
@@ -786,71 +937,34 @@ export function EditorTab({
                             </Button>
                         </div>
 
-            {/* Video Preview */}
-            <div className="w-full max-w-3xl mx-auto relative">
-                <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
-                    <video
-                        ref={videoRef}
-                        className="w-full h-full object-contain"
-                        onTimeUpdate={handleVideoTimeUpdate}
-                        onEnded={handleVideoEnded}
-                        onLoadedMetadata={(e) => {
-                            const video = e.currentTarget;
-                            video.volume = 0.5;
-                        }}
-                        playsInline={true}
-                        preload="auto"
-                    />
-                    {logoOverlay && (
-                        <div className="absolute top-4 right-4 w-24 aspect-video">
-                            <Image
-                                src={logoOverlay}
-                                alt="Logo Overlay"
-                                className="w-full h-full object-contain"
-                                fill
-                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                            />
-                        </div>
-                    )}
-                </div>
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-                    <Button
-                        variant="secondary"
-                        size="icon"
-                        onClick={togglePlay}
-                        className="bg-black/50 hover:bg-green-500 hover:text-white"
-                    >
-                        {isPlaying ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                                <rect x="6" y="4" width="4" height="16" />
-                                <rect x="14" y="4" width="4" height="16" />
-                            </svg>
-                        ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                                <polygon points="5 3 19 12 5 21 5 3" />
-                            </svg>
-                        )}
-                        <span className="sr-only">{isPlaying ? "Pause" : "Play"}</span>
-                    </Button>
-                </div>
+            {/* Video Preview - Using MediabunnyPlayer */}
+            <div className="w-full max-w-3xl mx-auto">
+                <MediabunnyPlayer
+                    layers={layers}
+                    currentTime={currentTime}
+                    isPlaying={isPlaying}
+                    onPlayPause={togglePlay}
+                    onTimeUpdate={onTimeUpdate}
+                    onEnded={handlePlaybackEnded}
+                    logoOverlay={logoOverlay}
+                    aspectRatio={scenario.aspectRatio === '9:16' ? '9:16' : '16:9'}
+                />
             </div>
 
             {/* Timeline */}
             <div className="space-y-2">
-                {/* Timeline Header */}
                 <div
                     ref={timelineRef}
-                    className="relative w-full bg-gray-100 rounded-lg cursor-pointer"
-                    onClick={handleTimelineClick}
+                    className={`relative w-full bg-gray-100 rounded-lg ${
+                        isDragging || isResizing ? 'cursor-grabbing' : 'cursor-pointer'
+                    }`}
+                    onClick={!isDragging && !isResizing ? handleTimelineClick : undefined}
                 >
-                    {/* Time markers and layers container */}
-                    <div
-                        className="relative pt-4 pb-4"
-                    >
+                    <div className="relative pt-4 pb-4">
                         {/* Time markers */}
                         <div className="absolute top-0 left-0 right-0 h-6 flex justify-between text-xs text-gray-500">
                             {Array.from({ length: TIMELINE_DURATION / MARKER_INTERVAL + 1 }).map((_, i) => (
-                                <div key={i} className="relative" style={{ left: i === 0 ? '0' : i === TIMELINE_DURATION / MARKER_INTERVAL ? 'auto' : undefined }}>
+                                <div key={i} className="relative">
                                     <div className="absolute -top-4 left-0 transform -translate-x-1/2 select-none">
                                         {formatTime(i * MARKER_INTERVAL)}
                                     </div>
@@ -859,15 +973,16 @@ export function EditorTab({
                             ))}
                         </div>
 
-                        {/* Playhead */}
+                        {/* Playhead - Smooth RAF-driven positioning */}
                         <div
-                            className="absolute top-0 bottom-0 w-px bg-red-500 z-10"
+                            className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10 pointer-events-none transition-none"
                             style={{
                                 left: `${(currentTime / TIMELINE_DURATION) * 100}%`,
-                                height: '100%'
+                                height: '100%',
+                                willChange: 'left',
                             }}
                         >
-                            <div className="absolute -top-2 -left-2 w-4 h-4 bg-red-500 rounded-full" />
+                            <div className="absolute -top-2 -left-2 w-4 h-4 bg-red-500 rounded-full shadow-md" />
                         </div>
 
                         {/* Layers */}
@@ -883,29 +998,40 @@ export function EditorTab({
                                             const isSelected = selectedItem?.layerId === layer.id && selectedItem?.itemId === item.id
                                             const timelineWidth = timelineRef.current?.clientWidth || 0
                                             const paddingTime = (CLIP_PADDING * 2 * TIMELINE_DURATION) / timelineWidth
+                                                const hasContent = !!item.content
 
-                                            // Check if item.content exists before rendering thumbnails/waveforms
-                                            const hasContent = !!item.content;
+                                                const isBeingDragged = draggingItem?.layerId === layer.id && draggingItem?.itemId === item.id
+                                                const isBeingResized = resizingItem?.layerId === layer.id && resizingItem?.itemId === item.id
+                                                
+                                                // Check if this clip is being pushed (position changed from original)
+                                                const originalItem = originalLayerItemsRef.current.find(i => i.id === item.id)
+                                                const isBeingPushed = isDragging && !isBeingDragged && originalItem && 
+                                                    Math.abs(item.startTime - originalItem.startTime) > 0.01
 
                                             return (
                                                 <div
                                                     key={item.id}
-                                                    className={`absolute top-1 bottom-1 rounded overflow-hidden cursor-move group
-                          ${isSelected ? 'ring-2 ring-blue-500 ring-offset-1' : ''}`}
+                                                        className={`absolute top-1 bottom-1 rounded overflow-hidden group
+                                                            ${isDragging || isBeingPushed ? '' : 'transition-shadow'}
+                                                            ${isSelected ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
+                                                            ${isBeingDragged ? 'ring-2 ring-blue-400 shadow-xl z-20' : ''}
+                                                            ${isBeingPushed ? 'ring-2 ring-amber-400 ring-offset-1 z-10' : ''}
+                                                            ${isBeingResized ? 'z-20' : ''}
+                                                            ${!isDragging && !isResizing ? 'cursor-grab hover:shadow-md' : ''}`}
                                                     style={{
                                                         left: `${((item.startTime + paddingTime / 2) / TIMELINE_DURATION) * 100}%`,
                                                         width: `calc(${(item.duration / TIMELINE_DURATION) * 100}% - ${CLIP_PADDING * 2}px)`,
                                                     }}
-                                                    onClick={(e) => handleItemClick(e, layer.id, item.id)}
-                                                    draggable
-                                                    onDragStart={(e) => {
-                                                        e.dataTransfer.setData('text/plain', JSON.stringify({ layerId: layer.id, itemId: item.id }))
-                                                    }}
+                                                        onClick={(e) => !isDragging && handleItemClick(e, layer.id, item.id)}
+                                                        onMouseDown={(e) => handleDragStart(e, layer.id, item.id)}
                                                 >
                                                     {layer.type === 'video' && hasContent ? (
                                                         <VideoThumbnail
                                                             src={item.content!}
                                                             duration={item.duration}
+                                                            trimStart={(item.metadata?.trimStart as number) || 0}
+                                                            originalDuration={(item.metadata?.originalDuration as number) || undefined}
+                                                            isResizing={isBeingResized}
                                                             className="w-full h-full"
                                                         />
                                                     ) : layer.type === 'voiceover' && hasContent ? (
@@ -915,144 +1041,93 @@ export function EditorTab({
                                                                 className="w-full h-full"
                                                                 color="bg-green-500"
                                                                 duration={item.duration}
+                                                                trimStart={(item.metadata?.trimStart as number) || 0}
+                                                                originalDuration={(item.metadata?.originalDuration as number) || undefined}
+                                                                isResizing={isBeingResized}
                                                             />
-                                                            {/* Remove button - only show on hover */}
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    // Extract scene index from voiceover item id (format: voiceover-{index})
-                                                                    const sceneIndex = parseInt(item.id.replace('voiceover-', ''));
+                                                                        e.stopPropagation()
+                                                                        const sceneIndex = parseInt(item.id.replace('voiceover-', ''))
                                                                     if (!isNaN(sceneIndex) && onRemoveVoiceover) {
-                                                                        onRemoveVoiceover(sceneIndex);
+                                                                            onRemoveVoiceover(sceneIndex)
                                                                     }
                                                                 }}
                                                                 className="absolute top-0 right-0 w-6 h-6 p-0 bg-red-500 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
                                                                 title="Remove voiceover"
                                                             >
                                                                 <X className="h-3 w-3" />
-                                                                <span className="sr-only">Remove voiceover</span>
-                                                            </Button>
-                                                        </div>
-                                                    ) : layer.type === 'voiceover' && !hasContent ? (
-                                                        <div className="w-full h-full flex items-center justify-center bg-gray-100 border border-gray-200 rounded p-1">
-                                                            <Button
-                                                                variant="secondary"
-                                                                size="sm"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleOpenVoiceDialog();
-                                                                }}
-                                                                disabled={isGeneratingVoiceover}
-                                                                className="bg-black/50 hover:bg-green-500 hover:text-white flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                            >
-                                                                {isGeneratingVoiceover ? (
-                                                                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                                    </svg>
-                                                                ) : (
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                                                                        <path d="M9 18V5l12-2v13" />
-                                                                        <circle cx="6" cy="18" r="3" />
-                                                                        <circle cx="18" cy="16" r="3" />
-                                                                    </svg>
-                                                                )}
-                                                                {isGeneratingVoiceover ? 'Generating...' : 'Generate voiceover with ChirpV3'}
                                                             </Button>
                                                         </div>
                                                     ) : layer.type === 'music' && hasContent ? (
-                                                        <div className="w-full h-full bg-green-500/10 border border-green-500/30 rounded p-1 relative">
+                                                            <div className="w-full h-full bg-purple-500/10 border border-purple-500/30 rounded p-1 relative">
                                                             <AudioWaveform
                                                                 src={item.content!}
                                                                 className="w-full h-full"
-                                                                color="bg-green-500"
+                                                                color="bg-purple-500"
                                                                 duration={item.duration}
+                                                                trimStart={(item.metadata?.trimStart as number) || 0}
+                                                                originalDuration={(item.metadata?.originalDuration as number) || undefined}
+                                                                isResizing={isBeingResized}
                                                             />
-                                                            {/* Remove button - only show on hover */}
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    if (onRemoveMusic) {
-                                                                        onRemoveMusic();
-                                                                    }
+                                                                        e.stopPropagation()
+                                                                        if (onRemoveMusic) onRemoveMusic()
                                                                 }}
                                                                 className="absolute top-0 right-0 w-6 h-6 p-0 bg-red-500 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
                                                                 title="Remove music"
                                                             >
                                                                 <X className="h-3 w-3" />
-                                                                <span className="sr-only">Remove music</span>
                                                             </Button>
                                                         </div>
-                                                    ) : layer.type === 'music' && !hasContent ? (
-                                                        <div className="w-full h-full flex items-center justify-center bg-gray-100 border border-gray-200 rounded p-1">
-                                                            <Button
-                                                                variant="secondary"
-                                                                size="sm"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleOpenMusicDialog();
-                                                                }}
-                                                                disabled={isGeneratingMusic}
-                                                                className="bg-black/50 hover:bg-green-500 hover:text-white flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                            >
-                                                                {isGeneratingMusic ? (
-                                                                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                                    </svg>
-                                                                ) : (
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                                                                        <path d="M9 18V5l12-2v13" />
-                                                                        <circle cx="6" cy="18" r="3" />
-                                                                        <circle cx="18" cy="16" r="3" />
-                                                                    </svg>
-                                                                )}
-                                                                {isGeneratingMusic ? 'Generating...' : 'Generate music with Lyria'}
-                                                            </Button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className={`w-full h-full rounded ${layer.type === 'video' ? 'bg-blue-500/20 border border-blue-500' : 'bg-gray-300/20 border border-gray-400'}`} />
-                                                    )}
+                                                        ) : (
+                                                            <div className={`w-full h-full rounded ${
+                                                                layer.type === 'video' ? 'bg-blue-500/20 border border-blue-500' : 'bg-gray-300/20 border border-gray-400'
+                                                            }`} />
+                                                        )}
 
-                                                    {/* Resize handles */}
-                                                    {isSelected && (
-                                                        <>
-                                                            <div
-                                                                className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500/50"
+                                                        {/* Resize handles - always visible on hover */}
+                                                        <div
+                                                            className="resize-handle absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize 
+                                                                bg-gradient-to-r from-blue-500/60 to-transparent
+                                                                opacity-0 group-hover:opacity-100 hover:!opacity-100 hover:from-blue-500
+                                                                transition-opacity z-10"
                                                                 onMouseDown={(e) => handleResizeStart(e, layer.id, item.id, 'start')}
-                                                            />
+                                                        >
+                                                            <div className="absolute left-0.5 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-white rounded-full shadow" />
+                                                        </div>
                                                             <div
-                                                                className="absolute right-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500/50"
+                                                            className="resize-handle absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize 
+                                                                bg-gradient-to-l from-blue-500/60 to-transparent
+                                                                opacity-0 group-hover:opacity-100 hover:!opacity-100 hover:from-blue-500
+                                                                transition-opacity z-10"
                                                                 onMouseDown={(e) => handleResizeStart(e, layer.id, item.id, 'end')}
-                                                            />
-                                                        </>
-                                                    )}
+                                                        >
+                                                            <div className="absolute right-0.5 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-white rounded-full shadow" />
+                                                        </div>
                                                 </div>
                                             )
                                             })
                                         ) : (
-                                            // Show generate button when layer is empty
                                             <div className="w-full h-full flex items-center justify-center bg-gray-100 border border-gray-200 rounded p-1">
                                                 {layer.type === 'voiceover' ? (
                                                     <Button
                                                         variant="secondary"
                                                         size="sm"
                                                         onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleOpenVoiceDialog();
+                                                            e.stopPropagation()
+                                                            handleOpenVoiceDialog()
                                                         }}
                                                         disabled={isGeneratingVoiceover}
-                                                        className="bg-black/50 hover:bg-green-500 hover:text-white flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        className="bg-black/50 hover:bg-green-500 hover:text-white flex items-center gap-2"
                                                     >
                                                         {isGeneratingVoiceover ? (
-                                                            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                            </svg>
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
                                                         ) : (
                                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                                                                 <path d="M9 18V5l12-2v13" />
@@ -1060,24 +1135,21 @@ export function EditorTab({
                                                                 <circle cx="18" cy="16" r="3" />
                                                             </svg>
                                                         )}
-                                                        {isGeneratingVoiceover ? 'Generating...' : 'Generate voiceover with ChirpV3'}
+                                                        {isGeneratingVoiceover ? 'Generating...' : 'Generate voiceover with Gemini-TTS'}
                                                     </Button>
                                                 ) : layer.type === 'music' ? (
                                                     <Button
                                                         variant="secondary"
                                                         size="sm"
                                                         onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleOpenMusicDialog();
+                                                            e.stopPropagation()
+                                                            handleOpenMusicDialog()
                                                         }}
                                                         disabled={isGeneratingMusic}
-                                                        className="bg-black/50 hover:bg-green-500 hover:text-white flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        className="bg-black/50 hover:bg-purple-500 hover:text-white flex items-center gap-2"
                                                     >
                                                         {isGeneratingMusic ? (
-                                                            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                            </svg>
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
                                                         ) : (
                                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                                                                 <path d="M9 18V5l12-2v13" />

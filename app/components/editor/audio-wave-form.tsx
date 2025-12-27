@@ -1,78 +1,250 @@
-import { useEffect, useRef, useState } from 'react'
+'use client'
+
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 
 interface AudioWaveformProps {
-    src: string
-    className?: string
-    color?: string
-    duration: number
+  src: string
+  className?: string
+  color?: string
+  duration: number
+  trimStart?: number
+  originalDuration?: number
+  isResizing?: boolean
 }
 
-export function AudioWaveform({ src, className, color = 'bg-green-500', duration }: AudioWaveformProps) {
-    const [waveformData, setWaveformData] = useState<number[]>([])
-    const audioContextRef = useRef<AudioContext | null>(null)
-    const analyserRef = useRef<AnalyserNode | null>(null)
+// Cache for waveform data - keyed by audio URL only
+interface WaveformData {
+  waveform: number[]
+  audioDuration: number
+}
 
-    useEffect(() => {
-        const analyzeAudio = async () => {
-            try {
-                // Create audio context and analyzer
-                audioContextRef.current = new AudioContext()
-                analyserRef.current = audioContextRef.current.createAnalyser()
-                analyserRef.current.fftSize = 256 // Adjust for desired detail level
+const waveformCache = new Map<string, WaveformData>()
+const loadingPromises = new Map<string, Promise<WaveformData>>()
 
-                // Fetch and decode audio
-                const response = await fetch(src)
-                const arrayBuffer = await response.arrayBuffer()
-                const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer)
+// Fixed number of bars to extract for the full audio
+const BARS_PER_AUDIO = 200
 
-                // Calculate number of bars based on duration (10 bars per second)
-                const samples = Math.max(10, Math.floor(duration * 10)) // At least 10 bars, then 10 per second
-                const blockSize = Math.floor(audioBuffer.length / samples)
-                const waveform: number[] = []
+// Bars per second for display
+const DISPLAY_BARS_PER_SECOND = 10
 
-                // Get waveform data
-                const channelData = audioBuffer.getChannelData(0)
-                for (let i = 0; i < samples; i++) {
-                    const start = blockSize * i
-                    let sum = 0
-                    for (let j = 0; j < blockSize; j++) {
-                        sum += Math.abs(channelData[start + j])
-                    }
-                    waveform.push(sum / blockSize)
-                }
+export function AudioWaveform({
+  src,
+  className,
+  color = 'bg-green-500',
+  duration,
+  trimStart = 0,
+  originalDuration,
+  isResizing = false,
+}: AudioWaveformProps) {
+  const [waveformData, setWaveformData] = useState<WaveformData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const mountedRef = useRef(true)
+  
+  // Store committed values that only update when NOT resizing
+  const committedValuesRef = useRef({ duration, trimStart })
+  
+  // Only update committed values when resize ends
+  useEffect(() => {
+    if (!isResizing) {
+      committedValuesRef.current = { duration, trimStart }
+    }
+  }, [isResizing, duration, trimStart])
 
-                // Normalize waveform data
-                const max = Math.max(...waveform)
-                const normalizedWaveform = waveform.map(value => value / max)
-                setWaveformData(normalizedWaveform)
-            } catch (error) {
-                console.error('Error analyzing audio:', error)
-                // Fallback to a simple waveform if analysis fails
-                setWaveformData(Array(Math.max(10, Math.floor(duration * 10))).fill(0.5))
-            }
+  // Extract waveform for the FULL audio once
+  const extractFullWaveform = useCallback(async (audioUrl: string): Promise<WaveformData> => {
+    const cacheKey = audioUrl
+
+    // Check cache
+    if (waveformCache.has(cacheKey)) {
+      return waveformCache.get(cacheKey)!
+    }
+
+    // Check if already loading
+    if (loadingPromises.has(cacheKey)) {
+      return loadingPromises.get(cacheKey)!
+    }
+
+    const extractionPromise = (async (): Promise<WaveformData> => {
+      try {
+        const audioContext = new AudioContext()
+        const response = await fetch(audioUrl)
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        
+        const arrayBuffer = await response.arrayBuffer()
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+        const audioDuration = audioBuffer.duration
+
+        const blockSize = Math.floor(audioBuffer.length / BARS_PER_AUDIO)
+        const waveform: number[] = []
+        const channelData = audioBuffer.getChannelData(0)
+
+        for (let i = 0; i < BARS_PER_AUDIO; i++) {
+          const start = blockSize * i
+          let sum = 0
+          const end = Math.min(start + blockSize, channelData.length)
+          for (let j = start; j < end; j++) {
+            sum += Math.abs(channelData[j])
+          }
+          waveform.push(sum / blockSize)
         }
 
-        analyzeAudio()
+        // Normalize
+        const max = Math.max(...waveform, 0.001)
+        const normalized = waveform.map(v => v / max)
 
-        return () => {
-            if (audioContextRef.current) {
-                audioContextRef.current.close()
-            }
+        await audioContext.close()
+        
+        const data: WaveformData = { waveform: normalized, audioDuration }
+        waveformCache.set(cacheKey, data)
+        loadingPromises.delete(cacheKey)
+        return data
+      } catch (error) {
+        console.error('Waveform extraction failed:', error)
+        loadingPromises.delete(cacheKey)
+        // Return placeholder data
+        return { 
+          waveform: Array(BARS_PER_AUDIO).fill(0).map(() => 0.3 + Math.random() * 0.4),
+          audioDuration: duration
         }
-    }, [src, duration])
+      }
+    })()
 
+    loadingPromises.set(cacheKey, extractionPromise)
+    return extractionPromise
+  }, [duration])
+
+  // Load waveform data once when src changes
+  useEffect(() => {
+    mountedRef.current = true
+    
+    if (!src) {
+      setIsLoading(false)
+      return
+    }
+
+    // Check if already cached
+    if (waveformCache.has(src)) {
+      setWaveformData(waveformCache.get(src)!)
+      setIsLoading(false)
+      return
+    }
+
+    setIsLoading(true)
+
+    extractFullWaveform(src)
+      .then(data => {
+        if (mountedRef.current) {
+          setWaveformData(data)
+          setIsLoading(false)
+        }
+      })
+      .catch(() => {
+        if (mountedRef.current) {
+          setIsLoading(false)
+        }
+      })
+
+    return () => {
+      mountedRef.current = false
+    }
+  }, [src, extractFullWaveform])
+
+  // Calculate which waveform bars to display based on trimStart and duration
+  const { visibleBars, barStripStyle } = useMemo(() => {
+    if (!waveformData || waveformData.waveform.length === 0) {
+      return { visibleBars: [], barStripStyle: {} }
+    }
+
+    const { waveform, audioDuration } = waveformData
+    const actualAudioDuration = originalDuration || audioDuration
+    
+    if (actualAudioDuration <= 0) {
+      return { visibleBars: waveform, barStripStyle: {} }
+    }
+
+    // Use committed values during resize, current values otherwise
+    const stableDuration = isResizing ? committedValuesRef.current.duration : duration
+    const stableTrimStart = isResizing ? committedValuesRef.current.trimStart : trimStart
+
+    // Calculate how many bars to display based on STABLE duration
+    const desiredCount = Math.max(5, Math.round(stableDuration * DISPLAY_BARS_PER_SECOND))
+
+    // Each source bar represents a time range
+    const timePerSourceBar = actualAudioDuration / waveform.length
+
+    // Select bars from the STABLE visible range
+    const result: number[] = []
+    
+    for (let i = 0; i < desiredCount; i++) {
+      const timeOffset = stableDuration * (i + 0.5) / desiredCount
+      const targetTime = stableTrimStart + timeOffset
+      const sourceIndex = Math.floor(targetTime / timePerSourceBar)
+      const clampedIndex = Math.max(0, Math.min(sourceIndex, waveform.length - 1))
+      result.push(waveform[clampedIndex])
+    }
+
+    // During resize, calculate offset to keep bars visually stable
+    let stripStyle = {}
+    if (isResizing) {
+      const currentTrimStart = trimStart
+      const trimDelta = currentTrimStart - stableTrimStart
+      const offsetPercent = (trimDelta / stableDuration) * 100
+      
+      stripStyle = {
+        transform: `translateX(${-offsetPercent}%)`,
+        width: `${(stableDuration / duration) * 100}%`,
+      }
+    }
+
+    return { visibleBars: result, barStripStyle: stripStyle }
+  }, [waveformData, trimStart, duration, originalDuration, isResizing])
+
+  // Use same calculation for loading placeholder
+  const loadingBarCount = Math.max(5, Math.round(duration * DISPLAY_BARS_PER_SECOND))
+
+  if (isLoading) {
     return (
-        <div className={`${className} flex items-center gap-px`}>
-            {waveformData.map((height, index) => (
-                <div
-                    key={index}
-                    className={`${color} w-full transition-all duration-100`}
-                    style={{
-                        height: `${Math.max(20, height * 100)}%`,
-                        opacity: 0.7
-                    }}
-                />
-            ))}
-        </div>
+      <div className={`${className} flex items-center gap-px overflow-hidden`}>
+        {Array.from({ length: Math.min(loadingBarCount, 50) }).map((_, index) => (
+          <div
+            key={index}
+            className={`${color} flex-1 opacity-30 animate-pulse rounded-sm`}
+            style={{
+              height: `${30 + Math.random() * 40}%`,
+              animationDelay: `${index * 0.05}s`,
+            }}
+          />
+        ))}
+      </div>
     )
+  }
+
+  return (
+    <div className={`${className} overflow-hidden`}>
+      <div 
+        className="flex items-center gap-px h-full"
+        style={barStripStyle}
+      >
+        {visibleBars.map((height, index) => (
+          <div
+            key={index}
+            className={`${color} flex-1 rounded-sm transition-all duration-75`}
+            style={{
+              height: `${Math.max(15, height * 100)}%`,
+              opacity: 0.6 + height * 0.4,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  )
 } 
+
+// Utility to clear waveform cache
+export function clearWaveformCache() {
+  waveformCache.clear()
+  loadingPromises.clear()
+}

@@ -803,7 +803,7 @@ export default function Home() {
     });
   };
 
-  console.log("Component rendered");
+  // console.log("Component rendered");
 
   const steps = [
     {
@@ -1039,14 +1039,14 @@ export default function Home() {
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-2">
           <Image
-            src="/logo5.png"
+            src="/logo6.png"
             alt="Storycraft"
             width={32}
             height={32}
             className="h-8"
           />
           <h1 className="text-3xl font-bold text-primary ml-[-10px]">
-            toryCraft
+            StoryCraft
           </h1>
         </div>
         <UserProfile isCollapsed={false} />

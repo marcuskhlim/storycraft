@@ -18,7 +18,13 @@ export async function tts(text: string, language: string, voiceName?: string): P
   };
   const [response] = await client.listVoices(listVoicesRequest);
 
-  logger.debug(response)
+  //logger.debug(response)
+  // log every voices containing the selected voice name
+  response?.voices?.forEach((voice) => {
+    if (voice.name?.includes(voiceName!)) {
+      logger.debug(voice);
+    }
+  });
   
   let selectedVoiceName: string | null | undefined;
   if (voiceName) {
@@ -27,32 +33,32 @@ export async function tts(text: string, language: string, voiceName?: string): P
     selectedVoiceName = 'Algenib'
   }
   // If no voice is specified, use the default selection logic
-  if (selectedVoiceName && response.voices) {
-    // choose the voice with the name that contains the selected voice
-    const voice = response.voices.find((voice) => voice.name?.includes('Chirp3-HD-'+selectedVoiceName!));
-    if (voice) {
-      selectedVoiceName = voice.name;
-    } else {
-      const charonVoice = response.voices.find((voice) => voice.name?.includes('Chirp3-HD-Charon'));
-      if (charonVoice) {
-        selectedVoiceName = charonVoice.name;
-      } else {
-        logger.error('No voices found for language:', language);
-        throw new Error('No voices found for language');
-      }
-    }
-  }
+  // if (selectedVoiceName && response.voices) {
+  //   // choose the voice with the name that contains the selected voice
+  //   const voice = response.voices.find((voice) => voice.name?.includes('Chirp3-HD-'+selectedVoiceName!));
+  //   if (voice) {
+  //     selectedVoiceName = voice.name;
+  //   } else {
+  //     const charonVoice = response.voices.find((voice) => voice.name?.includes('Chirp3-HD-Charon'));
+  //     if (charonVoice) {
+  //       selectedVoiceName = charonVoice.name;
+  //     } else {
+  //       logger.error('No voices found for language:', language);
+  //       throw new Error('No voices found for language');
+  //     }
+  //   }
+  // }
 
   logger.debug(`Using voice: ${selectedVoiceName}`);
   const request = {
     input: { 
       text: text,
-      //prompt: "Voiceover for a short movie:",
+      prompt: "Voiceover for a short movie. Fast paced and engaging.",
     },
     voice: {
       languageCode: language,
       name: selectedVoiceName,
-      //modelName: "gemini-2.5-pro-preview-tts",
+      modelName: "gemini-2.5-flash-tts",
     },
     audioConfig: {
       audioEncoding: protos.google.cloud.texttospeech.v1.AudioEncoding.MP3
