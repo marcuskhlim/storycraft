@@ -26,6 +26,7 @@ interface EditorTabProps {
     onLogoRemove: () => void
     onExportMovie: (layers: TimelineLayer[]) => Promise<void>
     isExporting?: boolean
+    exportProgress?: number
 }
 
 const TIMELINE_DURATION = 65 // Total timeline duration in seconds
@@ -50,20 +51,21 @@ export function EditorTab({
     onLogoRemove,
     onExportMovie,
     isExporting = false,
+    exportProgress = 0,
 }: EditorTabProps) {
 
     const SCENE_DURATION = scenario.durationSeconds || 8
     const timelineRef = useRef<HTMLDivElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
-    
+
     // Timeline persistence
     const { saveTimelineDebounced, loadTimeline, isAuthenticated } = useTimeline()
     const [isTimelineLoaded, setIsTimelineLoaded] = useState(false)
     const isInitializingRef = useRef(false)
-    
+
     // Simplified state management
     const [selectedItem, setSelectedItem] = useState<{ layerId: string, itemId: string } | null>(null)
-    
+
     // Resize state
     const [isResizing, setIsResizing] = useState(false)
     const [resizeStartX, setResizeStartX] = useState(0)
@@ -84,15 +86,15 @@ export function EditorTab({
 
     // Playback state - driven by MediabunnyPlayer
     const [isPlaying, setIsPlaying] = useState(false)
-    
+
     // Dialog states
     const [isVoiceDialogOpen, setIsVoiceDialogOpen] = useState(false)
     const [isMusicDialogOpen, setIsMusicDialogOpen] = useState(false)
-    
+
     // Internal generation loading states
     const [isGeneratingVoiceover, setIsGeneratingVoiceover] = useState(false)
     const [isGeneratingMusic, setIsGeneratingMusic] = useState(false)
-    
+
     // Timeline layers
     const [layers, setLayers] = useState<TimelineLayer[]>([
         {
@@ -143,7 +145,7 @@ export function EditorTab({
         setIsMusicDialogOpen(false)
         await handleGenerateMusicInternal(params)
     }
-    
+
     // Get audio duration helper
     const getAudioDuration = useCallback(async (url: string): Promise<number> => {
         return new Promise((resolve) => {
@@ -164,7 +166,7 @@ export function EditorTab({
             video.src = url
         })
     }, [SCENE_DURATION])
-    
+
     // Internal handler: Remove voiceover from timeline (not scenario)
     const handleRemoveVoiceoverFromTimeline = useCallback((itemId: string) => {
         setLayers(prevLayers => prevLayers.map(layer => {
@@ -172,7 +174,7 @@ export function EditorTab({
             return { ...layer, items: layer.items.filter(i => i.id !== itemId) }
         }))
     }, [])
-    
+
     // Internal handler: Remove music from timeline (not scenario)
     const handleRemoveMusicFromTimeline = useCallback(() => {
         setLayers(prevLayers => prevLayers.map(layer => {
@@ -180,11 +182,11 @@ export function EditorTab({
             return { ...layer, items: [] }
         }))
     }, [])
-    
+
     // Internal handler: Generate voiceover and add to timeline
     const handleGenerateVoiceoverInternal = useCallback(async (voice?: Voice) => {
         if (!scenario.scenes || scenario.scenes.length === 0) return
-        
+
         setIsGeneratingVoiceover(true)
         try {
             const voiceoverUrls = await generateVoiceover(
@@ -192,19 +194,19 @@ export function EditorTab({
                 scenario.language,
                 voice?.name // Voice interface uses 'name' not 'voiceName'
             )
-            
+
             // Convert URLs and calculate durations
             const voiceoverItems: TimelineItem[] = await Promise.all(
                 voiceoverUrls.map(async (url, index) => {
                     const result = await getDynamicImageUrl(url)
                     const dynamicUrl = result.url || url
                     const duration = await getAudioDuration(dynamicUrl)
-                    
+
                     // Find the video item at this index to align start time
                     const videoLayer = layers.find(l => l.id === 'videos')
                     const videoItem = videoLayer?.items[index]
                     const startTime = videoItem?.startTime ?? (index * SCENE_DURATION)
-                    
+
                     return {
                         id: `voiceover-${index}`,
                         startTime,
@@ -218,7 +220,7 @@ export function EditorTab({
                     }
                 })
             )
-            
+
             // Update voiceovers layer
             setLayers(prevLayers => prevLayers.map(layer => {
                 if (layer.id !== 'voiceovers') return layer
@@ -230,7 +232,7 @@ export function EditorTab({
             setIsGeneratingVoiceover(false)
         }
     }, [scenario.scenes, scenario.language, layers, SCENE_DURATION, getAudioDuration])
-    
+
     // Internal handler: Generate music and add to timeline
     const handleGenerateMusicInternal = useCallback(async (params?: MusicParams) => {
         setIsGeneratingMusic(true)
@@ -240,13 +242,13 @@ export function EditorTab({
             const result = await getDynamicImageUrl(musicUrl)
             const dynamicUrl = result.url || musicUrl
             const duration = await getAudioDuration(dynamicUrl)
-            
+
             // Calculate total timeline duration from video items
             const videoLayer = layers.find(l => l.id === 'videos')
-            const totalVideoDuration = videoLayer?.items.reduce((max, item) => 
+            const totalVideoDuration = videoLayer?.items.reduce((max, item) =>
                 Math.max(max, item.startTime + item.duration), 0
             ) ?? (scenario.scenes.length * SCENE_DURATION)
-            
+
             const musicItem: TimelineItem = {
                 id: 'music-0',
                 startTime: 0,
@@ -258,7 +260,7 @@ export function EditorTab({
                     trimStart: 0
                 }
             }
-            
+
             // Update music layer
             setLayers(prevLayers => prevLayers.map(layer => {
                 if (layer.id !== 'music') return layer
@@ -276,7 +278,7 @@ export function EditorTab({
         const initializeTimeline = async () => {
             if (isInitializingRef.current) return
             isInitializingRef.current = true
-            
+
             try {
                 // Try to load saved timeline if we have a scenarioId
                 if (scenarioId && isAuthenticated) {
@@ -291,7 +293,7 @@ export function EditorTab({
                         return
                     }
                 }
-                
+
                 // No saved timeline - initialize from scenario
                 console.log('Initializing timeline from scenario')
                 const initialLayers = await initializeLayersFromScenario()
@@ -311,11 +313,11 @@ export function EditorTab({
         // Helper to resolve URLs for layers (saved layers may have expired signed URLs)
         const resolveLayerUrls = async (savedLayers: TimelineLayer[]): Promise<TimelineLayer[]> => {
             const resolvedLayers = JSON.parse(JSON.stringify(savedLayers)) as TimelineLayer[]
-            
+
             const videoLayer = resolvedLayers.find(layer => layer.id === 'videos')
             const voiceoverLayer = resolvedLayers.find(layer => layer.id === 'voiceovers')
             const musicLayer = resolvedLayers.find(layer => layer.id === 'music')
-            
+
             // Resolve video URLs
             if (videoLayer) {
                 for (let i = 0; i < videoLayer.items.length; i++) {
@@ -339,7 +341,7 @@ export function EditorTab({
                     }
                 }
             }
-            
+
             // Resolve voiceover URLs
             if (voiceoverLayer) {
                 for (const item of voiceoverLayer.items) {
@@ -357,7 +359,7 @@ export function EditorTab({
                     }
                 }
             }
-            
+
             // Resolve music URL
             if (musicLayer && musicLayer.items.length > 0 && scenario.musicUrl) {
                 try {
@@ -369,7 +371,7 @@ export function EditorTab({
                     console.error('Error resolving music URL:', error)
                 }
             }
-            
+
             return resolvedLayers
         }
 
@@ -404,11 +406,11 @@ export function EditorTab({
                     items: []
                 }
             ]
-            
+
             const videoLayer = initialLayers.find(layer => layer.id === 'videos')!
             const voiceoverLayer = initialLayers.find(layer => layer.id === 'voiceovers')!
             const musicLayer = initialLayers.find(layer => layer.id === 'music')!
-            
+
             // Resolve video URLs and get original durations
             for (let i = 0; i < scenario.scenes.length; i++) {
                 const scene = scenario.scenes[i]
@@ -480,20 +482,20 @@ export function EditorTab({
                     console.error('Error resolving music:', error)
                 }
             }
-            
+
             return initialLayers
         }
 
         initializeTimeline()
     }, [scenario, scenarioId, SCENE_DURATION, isAuthenticated, loadTimeline])
-    
+
     // Auto-save timeline on changes (debounced)
     useEffect(() => {
         if (!isTimelineLoaded || !scenarioId || !isAuthenticated) return
-        
+
         // Don't save during initialization
         if (isInitializingRef.current) return
-        
+
         console.log('Auto-saving timeline to Firestore...')
         saveTimelineDebounced(scenarioId, layers)
     }, [layers, scenarioId, isAuthenticated, isTimelineLoaded, saveTimelineDebounced])
@@ -564,11 +566,11 @@ export function EditorTab({
                         // Dragging start handle
                         const potentialNewStart = resizeStartTime + deltaTime
                         const minStart = prevItem ? prevItem.startTime + prevItem.duration : 0
-                        
+
                         // Try snapping the start edge
                         const snapResult = findResizeSnapPoint(potentialNewStart, resizingItem.layerId, resizingItem.itemId)
                         const snappedStart = snapResult.snappedPosition
-                        
+
                         if (deltaTime > 0) {
                             // Dragging RIGHT - shrink clip, increase trimStart (skip more of content start)
                             // Can't shrink below 0.5s duration
@@ -577,12 +579,12 @@ export function EditorTab({
                             const clampedDelta = Math.min(Math.max(0, actualDelta), maxDelta)
                             newStartTime = resizeStartTime + clampedDelta
                             newDuration = resizeStartDuration - clampedDelta
-                            
+
                             if (hasTrimmableContent) {
                                 // Increase trimStart - we're skipping more of the beginning
                                 newTrimStart = resizeStartTrimStart + clampedDelta
                             }
-                            
+
                             // Show snap line if we snapped
                             if (snapResult.snapLineAt !== null && Math.abs(newStartTime - snappedStart) < 0.01) {
                                 currentSnapLine = snapResult.snapLineAt
@@ -597,7 +599,7 @@ export function EditorTab({
                                 newStartTime = resizeStartTime - expandAmount
                                 newDuration = resizeStartDuration + expandAmount
                                 newTrimStart = resizeStartTrimStart - expandAmount
-                                
+
                                 // Show snap line if we snapped
                                 if (snapResult.snapLineAt !== null && Math.abs(newStartTime - snappedStart) < 0.01) {
                                     currentSnapLine = snapResult.snapLineAt
@@ -606,7 +608,7 @@ export function EditorTab({
                                 // Non-trimmable clips: just move start, respecting min boundary
                                 newStartTime = Math.max(minStart, snappedStart)
                                 newDuration = resizeStartDuration - (newStartTime - resizeStartTime)
-                                
+
                                 // Show snap line if we snapped
                                 if (snapResult.snapLineAt !== null && Math.abs(newStartTime - snappedStart) < 0.01) {
                                     currentSnapLine = snapResult.snapLineAt
@@ -617,18 +619,18 @@ export function EditorTab({
                         // Dragging end handle
                         const maxEnd = nextItem ? nextItem.startTime : TIMELINE_DURATION
                         const potentialNewEnd = resizeStartTime + resizeStartDuration + deltaTime
-                        
+
                         // Try snapping the end edge
                         const snapResult = findResizeSnapPoint(potentialNewEnd, resizingItem.layerId, resizingItem.itemId)
                         const snappedEnd = snapResult.snappedPosition
-                        
+
                         if (deltaTime < 0) {
                             // Dragging LEFT - shrink clip (cut end of content)
                             // Can't shrink below 0.5s duration
                             const newEndFromSnap = Math.max(resizeStartTime + 0.5, snappedEnd)
                             newDuration = newEndFromSnap - resizeStartTime
                             // trimStart stays the same - we're just showing less of the end
-                            
+
                             // Show snap line if we snapped
                             if (snapResult.snapLineAt !== null && Math.abs(resizeStartTime + newDuration - snappedEnd) < 0.01) {
                                 currentSnapLine = snapResult.snapLineAt
@@ -644,7 +646,7 @@ export function EditorTab({
                                 const actualExpand = Math.min(snappedEnd, maxEnd) - (resizeStartTime + resizeStartDuration)
                                 const expandAmount = Math.min(Math.max(0, actualExpand), maxExpand)
                                 newDuration = resizeStartDuration + expandAmount
-                                
+
                                 // Show snap line if we snapped
                                 if (snapResult.snapLineAt !== null && Math.abs(resizeStartTime + newDuration - snappedEnd) < 0.01) {
                                     currentSnapLine = snapResult.snapLineAt
@@ -654,7 +656,7 @@ export function EditorTab({
                                 const maxDuration = maxEnd - resizeStartTime
                                 newDuration = Math.min(snappedEnd - resizeStartTime, maxDuration)
                                 newDuration = Math.max(0.5, newDuration) // Minimum duration
-                                
+
                                 // Show snap line if we snapped
                                 if (snapResult.snapLineAt !== null && Math.abs(resizeStartTime + newDuration - snappedEnd) < 0.01) {
                                     currentSnapLine = snapResult.snapLineAt
@@ -663,9 +665,9 @@ export function EditorTab({
                         }
                     }
 
-                    return { 
-                        ...item, 
-                        startTime: newStartTime, 
+                    return {
+                        ...item,
+                        startTime: newStartTime,
                         duration: newDuration,
                         metadata: {
                             ...item.metadata,
@@ -691,41 +693,41 @@ export function EditorTab({
     // Find snap point for resize operations - snaps an edge position to other clip edges
     const findResizeSnapPoint = (edgePosition: number, layerId: string, excludeItemId: string): { snappedPosition: number, snapLineAt: number | null } => {
         const RESIZE_SNAP_THRESHOLD = 0.5 // seconds
-        
+
         const layer = layers.find(l => l.id === layerId)
         if (!layer) return { snappedPosition: edgePosition, snapLineAt: null }
-        
+
         const otherClips = layer.items.filter(i => i.id !== excludeItemId)
-        
+
         let bestSnap = edgePosition
         let snapLineAt: number | null = null
         let minDistance = RESIZE_SNAP_THRESHOLD
-        
+
         // Snap to timeline start
         if (Math.abs(edgePosition) < minDistance) {
             minDistance = Math.abs(edgePosition)
             bestSnap = 0
             snapLineAt = 0
         }
-        
+
         // Snap to timeline end
         if (Math.abs(edgePosition - TIMELINE_DURATION) < minDistance) {
             minDistance = Math.abs(edgePosition - TIMELINE_DURATION)
             bestSnap = TIMELINE_DURATION
             snapLineAt = TIMELINE_DURATION
         }
-        
+
         // Snap to other clips in the same layer
         for (const clip of otherClips) {
             const clipEnd = clip.startTime + clip.duration
-            
+
             // Snap to clip's start
             if (Math.abs(edgePosition - clip.startTime) < minDistance) {
                 minDistance = Math.abs(edgePosition - clip.startTime)
                 bestSnap = clip.startTime
                 snapLineAt = clip.startTime
             }
-            
+
             // Snap to clip's end
             if (Math.abs(edgePosition - clipEnd) < minDistance) {
                 minDistance = Math.abs(edgePosition - clipEnd)
@@ -733,7 +735,7 @@ export function EditorTab({
                 snapLineAt = clipEnd
             }
         }
-        
+
         // Cross-layer snapping: audio clips snap to video clip edges
         const isAudioLayer = layerId === 'voiceovers' || layerId === 'music'
         if (isAudioLayer) {
@@ -741,14 +743,14 @@ export function EditorTab({
             if (videoLayer) {
                 for (const videoClip of videoLayer.items) {
                     const videoClipEnd = videoClip.startTime + videoClip.duration
-                    
+
                     // Snap to video clip's start
                     if (Math.abs(edgePosition - videoClip.startTime) < minDistance) {
                         minDistance = Math.abs(edgePosition - videoClip.startTime)
                         bestSnap = videoClip.startTime
                         snapLineAt = videoClip.startTime
                     }
-                    
+
                     // Snap to video clip's end
                     if (Math.abs(edgePosition - videoClipEnd) < minDistance) {
                         minDistance = Math.abs(edgePosition - videoClipEnd)
@@ -758,7 +760,7 @@ export function EditorTab({
                 }
             }
         }
-        
+
         return { snappedPosition: bestSnap, snapLineAt }
     }
 
@@ -805,7 +807,7 @@ export function EditorTab({
     const findSnapPoint = (proposedStart: number, clipDuration: number, excludeItemId: string): number => {
         const proposedEnd = proposedStart + clipDuration
         const otherClips = originalLayerItemsRef.current.filter(i => i.id !== excludeItemId)
-        
+
         let bestSnap = proposedStart
         let closestDistance = SNAP_THRESHOLD
 
@@ -865,10 +867,10 @@ export function EditorTab({
 
         // Calculate proposed position (clamped to timeline bounds)
         const proposedStart = Math.max(0, Math.min(dragStartTime + deltaTime, TIMELINE_DURATION - originalItem.duration))
-        
+
         // Try snapping to edges of other clips (using ORIGINAL positions)
         const snapResult = findSnapPointForInsert(proposedStart, originalItem.duration, draggingItem.itemId)
-        
+
         // Use snapped position if a snap was found, otherwise use proposed
         let finalPosition: number
         if (snapResult.snapLineAt !== null) {
@@ -886,56 +888,56 @@ export function EditorTab({
 
         // Calculate cascade positions (same logic as handleDragEnd) for live preview
         const draggedDuration = originalItem.duration
-        
+
         // Get all other clips using ORIGINAL positions
         const otherClips = originalLayerItemsRef.current
             .filter(i => i.id !== draggingItem.itemId)
             .map(i => ({ ...i }))
             .sort((a, b) => a.startTime - b.startTime)
-        
+
         // Find clips that would overlap with the proposed position
         const overlappingClips = otherClips.filter(clip => {
             const clipEnd = clip.startTime + clip.duration
             const draggedEndTime = finalPosition + draggedDuration
             return finalPosition < clipEnd && draggedEndTime > clip.startTime
         })
-        
+
         // Build a map of preview positions for all clips
         const previewPositions = new Map<string, number>()
-        
+
         let draggedPreviewPosition = finalPosition
-        
+
         if (overlappingClips.length > 0) {
             // Find the leftmost overlapping clip
             const leftmostOverlap = overlappingClips.sort((a, b) => a.startTime - b.startTime)[0]
-            
+
             // Position the dragged clip at the leftmost overlapping clip's start
             draggedPreviewPosition = leftmostOverlap.startTime
         }
-        
+
         previewPositions.set(draggingItem.itemId, draggedPreviewPosition)
-        
+
         // Cascade push: start from where the dragged clip ends
         let currentEndTime = draggedPreviewPosition + draggedDuration
-        
+
         // Get clips that might need to be pushed
         const clipsToProcess = otherClips
             .filter(clip => {
                 const clipEnd = clip.startTime + clip.duration
-                return clip.startTime >= draggedPreviewPosition || 
-                       (draggedPreviewPosition < clipEnd && currentEndTime > clip.startTime)
+                return clip.startTime >= draggedPreviewPosition ||
+                    (draggedPreviewPosition < clipEnd && currentEndTime > clip.startTime)
             })
             .sort((a, b) => a.startTime - b.startTime)
-        
+
         // Cascade push
         for (const clip of clipsToProcess) {
             const clipOriginalStart = clip.startTime
             const clipEnd = clipOriginalStart + clip.duration
-            
+
             if (clipOriginalStart < currentEndTime && clipEnd > draggedPreviewPosition) {
                 // This clip needs to be pushed
                 const newStart = currentEndTime
-                
+
                 if (newStart + clip.duration <= TIMELINE_DURATION) {
                     previewPositions.set(clip.id, newStart)
                     currentEndTime = newStart + clip.duration
@@ -944,7 +946,7 @@ export function EditorTab({
                 }
             }
         }
-        
+
         // Clips not affected keep their original positions
         for (const clip of otherClips) {
             if (!previewPositions.has(clip.id)) {
@@ -970,27 +972,27 @@ export function EditorTab({
 
         setLayers(updatedLayers)
     }
-    
+
     // Find snap point for insert mode - snaps to edges of other clips
     // Returns both the new clip start position and where the snap line should appear
     const findSnapPointForInsert = (proposedStart: number, duration: number, excludeItemId: string): { clipStart: number, snapLineAt: number | null } => {
         const SNAP_THRESHOLD = 0.5 // seconds
-        
+
         const otherClips = originalLayerItemsRef.current
             .filter(i => i.id !== excludeItemId)
             .sort((a, b) => a.startTime - b.startTime)
-        
+
         let bestSnap = proposedStart
         let snapLineAt: number | null = null
         let minDistance = SNAP_THRESHOLD
-        
+
         // Snap to timeline start
         if (Math.abs(proposedStart) < minDistance) {
             minDistance = Math.abs(proposedStart)
             bestSnap = 0
             snapLineAt = 0
         }
-        
+
         // Snap to timeline end (clip END snaps to timeline end)
         const endPos = TIMELINE_DURATION - duration
         if (Math.abs(proposedStart - endPos) < minDistance) {
@@ -998,17 +1000,17 @@ export function EditorTab({
             bestSnap = endPos
             snapLineAt = TIMELINE_DURATION // Line at clip's END position
         }
-        
+
         for (const clip of otherClips) {
             const clipEnd = clip.startTime + clip.duration
-            
+
             // Snap dragged clip's START to this clip's END
             if (Math.abs(proposedStart - clipEnd) < minDistance) {
                 minDistance = Math.abs(proposedStart - clipEnd)
                 bestSnap = clipEnd
                 snapLineAt = clipEnd // Line at clip's START position
             }
-            
+
             // Snap dragged clip's END to this clip's START
             const alignedStart = clip.startTime - duration
             if (alignedStart >= 0 && Math.abs(proposedStart - alignedStart) < minDistance) {
@@ -1016,7 +1018,7 @@ export function EditorTab({
                 bestSnap = alignedStart
                 snapLineAt = clip.startTime // Line at clip's END position
             }
-            
+
             // Snap dragged clip's START to this clip's START
             if (Math.abs(proposedStart - clip.startTime) < minDistance) {
                 minDistance = Math.abs(proposedStart - clip.startTime)
@@ -1024,7 +1026,7 @@ export function EditorTab({
                 snapLineAt = clip.startTime // Line at clip's START position
             }
         }
-        
+
         // Cross-layer snapping: audio clips snap to video clip edges
         const isAudioLayer = draggingItem?.layerId === 'voiceovers' || draggingItem?.layerId === 'music'
         if (isAudioLayer) {
@@ -1032,21 +1034,21 @@ export function EditorTab({
             if (videoLayer) {
                 for (const videoClip of videoLayer.items) {
                     const videoClipEnd = videoClip.startTime + videoClip.duration
-                    
+
                     // Snap audio clip's START to video clip's START
                     if (Math.abs(proposedStart - videoClip.startTime) < minDistance) {
                         minDistance = Math.abs(proposedStart - videoClip.startTime)
                         bestSnap = videoClip.startTime
                         snapLineAt = videoClip.startTime
                     }
-                    
+
                     // Snap audio clip's START to video clip's END
                     if (Math.abs(proposedStart - videoClipEnd) < minDistance) {
                         minDistance = Math.abs(proposedStart - videoClipEnd)
                         bestSnap = videoClipEnd
                         snapLineAt = videoClipEnd
                     }
-                    
+
                     // Snap audio clip's END to video clip's START
                     const alignedToVideoStart = videoClip.startTime - duration
                     if (alignedToVideoStart >= 0 && Math.abs(proposedStart - alignedToVideoStart) < minDistance) {
@@ -1054,7 +1056,7 @@ export function EditorTab({
                         bestSnap = alignedToVideoStart
                         snapLineAt = videoClip.startTime // Line at audio's END position
                     }
-                    
+
                     // Snap audio clip's END to video clip's END
                     const alignedToVideoEnd = videoClipEnd - duration
                     if (alignedToVideoEnd >= 0 && Math.abs(proposedStart - alignedToVideoEnd) < minDistance) {
@@ -1065,7 +1067,7 @@ export function EditorTab({
                 }
             }
         }
-        
+
         return { clipStart: bestSnap, snapLineAt }
     }
 
@@ -1132,44 +1134,44 @@ export function EditorTab({
     const handleDragEnd = () => {
         if (isDragging && draggingItem && dropIndicator) {
             const originalDraggedItem = originalLayerItemsRef.current.find(i => i.id === draggingItem.itemId)
-            
+
             if (originalDraggedItem) {
                 // Get the proposed position (already snapped during drag)
                 const proposedStartTime = dropIndicator.position
                 const draggedDuration = originalDraggedItem.duration
-                
+
                 // Get all other clips in the same layer (excluding the dragged one), using ORIGINAL positions
                 const otherClips = originalLayerItemsRef.current
                     .filter(i => i.id !== draggingItem.itemId)
                     .map(i => ({ ...i })) // Clone to avoid mutation
                     .sort((a, b) => a.startTime - b.startTime)
-                
+
                 // Find clips that would overlap with the proposed position
                 const overlappingClips = otherClips.filter(clip => {
                     const clipEnd = clip.startTime + clip.duration
                     const draggedEndTime = proposedStartTime + draggedDuration
                     return proposedStartTime < clipEnd && draggedEndTime > clip.startTime
                 })
-                
+
                 // Build a map of new positions for all clips
                 const newPositions = new Map<string, number>()
-                
+
                 let finalDraggedPosition = proposedStartTime
-                
+
                 if (overlappingClips.length > 0) {
                     // Find the leftmost overlapping clip
                     const leftmostOverlap = overlappingClips.sort((a, b) => a.startTime - b.startTime)[0]
-                    
+
                     // Position the dragged clip at the leftmost overlapping clip's start
                     finalDraggedPosition = leftmostOverlap.startTime
                 }
-                
+
                 // Set the dragged clip's new position
                 newPositions.set(draggingItem.itemId, finalDraggedPosition)
-                
+
                 // Now cascade push: start from where the dragged clip ends and push everything to the right
                 let currentEndTime = finalDraggedPosition + draggedDuration
-                
+
                 // Get all clips sorted by their original start time
                 // We need to process clips that might need to be pushed
                 const clipsToProcess = otherClips
@@ -1177,21 +1179,21 @@ export function EditorTab({
                         // Only process clips that are at or after the dragged clip's new position
                         // OR clips that overlap with where the dragged clip will be
                         const clipEnd = clip.startTime + clip.duration
-                        return clip.startTime >= finalDraggedPosition || 
-                               (finalDraggedPosition < clipEnd && currentEndTime > clip.startTime)
+                        return clip.startTime >= finalDraggedPosition ||
+                            (finalDraggedPosition < clipEnd && currentEndTime > clip.startTime)
                     })
                     .sort((a, b) => a.startTime - b.startTime)
-                
+
                 // Cascade push: for each clip in order, if it overlaps with currentEndTime, push it
                 for (const clip of clipsToProcess) {
                     const clipOriginalStart = clip.startTime
                     const clipEnd = clipOriginalStart + clip.duration
-                    
+
                     // Check if this clip overlaps with the current end time (where the previous clip ends)
                     if (clipOriginalStart < currentEndTime && clipEnd > finalDraggedPosition) {
                         // This clip needs to be pushed - snap it right after the current end
                         const newStart = currentEndTime
-                        
+
                         // Make sure we don't exceed timeline
                         if (newStart + clip.duration <= TIMELINE_DURATION) {
                             newPositions.set(clip.id, newStart)
@@ -1209,18 +1211,18 @@ export function EditorTab({
                         }
                     }
                 }
-                
+
                 // Clips that weren't processed keep their original positions
                 for (const clip of otherClips) {
                     if (!newPositions.has(clip.id)) {
                         newPositions.set(clip.id, clip.startTime)
                     }
                 }
-                
+
                 // Apply all positions
                 let updatedLayers = layers.map(l => {
                     if (l.id !== draggingItem.layerId) return l
-                    
+
                     return {
                         ...l,
                         items: l.items.map(item => {
@@ -1232,14 +1234,14 @@ export function EditorTab({
                         })
                     }
                 })
-                
+
                 // Sort items by start time
                 updatedLayers = updatedLayers.map(l => {
                     if (l.id !== draggingItem.layerId) return l
                     const sortedItems = [...l.items].sort((a, b) => a.startTime - b.startTime)
                     return { ...l, items: sortedItems }
                 })
-                
+
                 setLayers(updatedLayers)
                 // Layers state is updated, auto-save will persist changes
             }
@@ -1266,7 +1268,7 @@ export function EditorTab({
         if (isResizing || isDragging) {
             document.addEventListener('mousemove', handleGlobalMouseMove)
             document.addEventListener('mouseup', handleGlobalMouseUp)
-        return () => {
+            return () => {
                 document.removeEventListener('mousemove', handleGlobalMouseMove)
                 document.removeEventListener('mouseup', handleGlobalMouseUp)
             }
@@ -1279,8 +1281,8 @@ export function EditorTab({
     }, [])
 
     const handlePlaybackEnded = useCallback(() => {
-            setIsPlaying(false)
-            onTimeUpdate(0)
+        setIsPlaying(false)
+        onTimeUpdate(0)
     }, [onTimeUpdate])
 
     // Keyboard controls
@@ -1312,8 +1314,19 @@ export function EditorTab({
     return (
         <div className="space-y-8">
             {/* Header with Export Movie button */}
-            <div className="flex justify-end">
-                                <Button
+            <div className="flex justify-end items-center gap-4">
+                {isExporting && (
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-primary transition-all duration-300"
+                                style={{ width: `${exportProgress}%` }}
+                            />
+                        </div>
+                        <span>{exportProgress}%</span>
+                    </div>
+                )}
+                <Button
                     onClick={() => onExportMovie(layers)}
                     disabled={isExporting}
                     className="bg-primary text-primary-foreground hover:bg-primary/90"
@@ -1329,8 +1342,8 @@ export function EditorTab({
                             Export Movie
                         </>
                     )}
-                            </Button>
-                        </div>
+                </Button>
+            </div>
 
             {/* Video Preview - Using MediabunnyPlayer */}
             <div className="w-full max-w-3xl mx-auto">
@@ -1350,9 +1363,8 @@ export function EditorTab({
             <div className="space-y-2">
                 <div
                     ref={timelineRef}
-                    className={`relative w-full bg-gray-100 rounded-lg ${
-                        isDragging || isResizing ? 'cursor-grabbing' : 'cursor-pointer'
-                    }`}
+                    className={`relative w-full bg-gray-100 rounded-lg ${isDragging || isResizing ? 'cursor-grabbing' : 'cursor-pointer'
+                        }`}
                     onClick={!isDragging && !isResizing ? handleTimelineClick : undefined}
                 >
                     <div className="relative pt-4 pb-4">
@@ -1401,22 +1413,22 @@ export function EditorTab({
                                     <div className="relative h-full">
                                         {layer.items.length > 0 ? (
                                             layer.items.map((item) => {
-                                            const isSelected = selectedItem?.layerId === layer.id && selectedItem?.itemId === item.id
-                                            const timelineWidth = timelineRef.current?.clientWidth || 0
-                                            const paddingTime = (CLIP_PADDING * 2 * TIMELINE_DURATION) / timelineWidth
+                                                const isSelected = selectedItem?.layerId === layer.id && selectedItem?.itemId === item.id
+                                                const timelineWidth = timelineRef.current?.clientWidth || 0
+                                                const paddingTime = (CLIP_PADDING * 2 * TIMELINE_DURATION) / timelineWidth
                                                 const hasContent = !!item.content
 
                                                 const isBeingDragged = draggingItem?.layerId === layer.id && draggingItem?.itemId === item.id
                                                 const isBeingResized = resizingItem?.layerId === layer.id && resizingItem?.itemId === item.id
-                                                
+
                                                 // Check if this clip is being pushed (position changed from original)
                                                 const originalItem = originalLayerItemsRef.current.find(i => i.id === item.id)
-                                                const isBeingPushed = isDragging && !isBeingDragged && originalItem && 
+                                                const isBeingPushed = isDragging && !isBeingDragged && originalItem &&
                                                     Math.abs(item.startTime - originalItem.startTime) > 0.01
 
-                                            return (
-                                                <div
-                                                    key={item.id}
+                                                return (
+                                                    <div
+                                                        key={item.id}
                                                         className={`absolute top-1 bottom-1 rounded overflow-hidden group
                                                             ${isDragging || isBeingPushed ? '' : 'transition-shadow'}
                                                             ${isSelected ? 'ring-2 ring-blue-500 ring-offset-1' : ''}
@@ -1424,74 +1436,73 @@ export function EditorTab({
                                                             ${isBeingPushed ? 'ring-2 ring-amber-400 ring-offset-1 z-10' : ''}
                                                             ${isBeingResized ? 'z-20' : ''}
                                                             ${!isDragging && !isResizing ? 'cursor-grab hover:shadow-md' : ''}`}
-                                                    style={{
-                                                        left: `${((item.startTime + paddingTime / 2) / TIMELINE_DURATION) * 100}%`,
-                                                        width: `calc(${(item.duration / TIMELINE_DURATION) * 100}% - ${CLIP_PADDING * 2}px)`,
-                                                    }}
+                                                        style={{
+                                                            left: `${((item.startTime + paddingTime / 2) / TIMELINE_DURATION) * 100}%`,
+                                                            width: `calc(${(item.duration / TIMELINE_DURATION) * 100}% - ${CLIP_PADDING * 2}px)`,
+                                                        }}
                                                         onClick={(e) => !isDragging && handleItemClick(e, layer.id, item.id)}
                                                         onMouseDown={(e) => handleDragStart(e, layer.id, item.id)}
-                                                >
-                                                    {layer.type === 'video' && hasContent ? (
-                                                        <VideoThumbnail
-                                                            src={item.content!}
-                                                            duration={item.duration}
-                                                            trimStart={(item.metadata?.trimStart as number) || 0}
-                                                            originalDuration={(item.metadata?.originalDuration as number) || undefined}
-                                                            isResizing={isBeingResized}
-                                                            className="w-full h-full"
-                                                        />
-                                                    ) : layer.type === 'voiceover' && hasContent ? (
-                                                        <div className="w-full h-full bg-green-500/10 border border-green-500/30 rounded p-1 relative">
-                                                            <AudioWaveform
+                                                    >
+                                                        {layer.type === 'video' && hasContent ? (
+                                                            <VideoThumbnail
                                                                 src={item.content!}
-                                                                className="w-full h-full"
-                                                                color="bg-green-500"
                                                                 duration={item.duration}
                                                                 trimStart={(item.metadata?.trimStart as number) || 0}
                                                                 originalDuration={(item.metadata?.originalDuration as number) || undefined}
                                                                 isResizing={isBeingResized}
+                                                                className="w-full h-full"
                                                             />
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={(e) => {
+                                                        ) : layer.type === 'voiceover' && hasContent ? (
+                                                            <div className="w-full h-full bg-green-500/10 border border-green-500/30 rounded p-1 relative">
+                                                                <AudioWaveform
+                                                                    src={item.content!}
+                                                                    className="w-full h-full"
+                                                                    color="bg-green-500"
+                                                                    duration={item.duration}
+                                                                    trimStart={(item.metadata?.trimStart as number) || 0}
+                                                                    originalDuration={(item.metadata?.originalDuration as number) || undefined}
+                                                                    isResizing={isBeingResized}
+                                                                />
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={(e) => {
                                                                         e.stopPropagation()
                                                                         handleRemoveVoiceoverFromTimeline(item.id)
-                                                                }}
-                                                                className="absolute top-0 right-0 w-6 h-6 p-0 bg-red-500 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                title="Remove voiceover"
-                                                            >
-                                                                <X className="h-3 w-3" />
-                                                            </Button>
-                                                        </div>
-                                                    ) : layer.type === 'music' && hasContent ? (
+                                                                    }}
+                                                                    className="absolute top-0 right-0 w-6 h-6 p-0 bg-red-500 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                    title="Remove voiceover"
+                                                                >
+                                                                    <X className="h-3 w-3" />
+                                                                </Button>
+                                                            </div>
+                                                        ) : layer.type === 'music' && hasContent ? (
                                                             <div className="w-full h-full bg-purple-500/10 border border-purple-500/30 rounded p-1 relative">
-                                                            <AudioWaveform
-                                                                src={item.content!}
-                                                                className="w-full h-full"
-                                                                color="bg-purple-500"
-                                                                duration={item.duration}
-                                                                trimStart={(item.metadata?.trimStart as number) || 0}
-                                                                originalDuration={(item.metadata?.originalDuration as number) || undefined}
-                                                                isResizing={isBeingResized}
-                                                            />
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                onClick={(e) => {
+                                                                <AudioWaveform
+                                                                    src={item.content!}
+                                                                    className="w-full h-full"
+                                                                    color="bg-purple-500"
+                                                                    duration={item.duration}
+                                                                    trimStart={(item.metadata?.trimStart as number) || 0}
+                                                                    originalDuration={(item.metadata?.originalDuration as number) || undefined}
+                                                                    isResizing={isBeingResized}
+                                                                />
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={(e) => {
                                                                         e.stopPropagation()
                                                                         handleRemoveMusicFromTimeline()
-                                                                }}
-                                                                className="absolute top-0 right-0 w-6 h-6 p-0 bg-red-500 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                title="Remove music"
-                                                            >
-                                                                <X className="h-3 w-3" />
-                                                            </Button>
-                                                        </div>
+                                                                    }}
+                                                                    className="absolute top-0 right-0 w-6 h-6 p-0 bg-red-500 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                    title="Remove music"
+                                                                >
+                                                                    <X className="h-3 w-3" />
+                                                                </Button>
+                                                            </div>
                                                         ) : (
-                                                            <div className={`w-full h-full rounded ${
-                                                                layer.type === 'video' ? 'bg-blue-500/20 border border-blue-500' : 'bg-gray-300/20 border border-gray-400'
-                                                            }`} />
+                                                            <div className={`w-full h-full rounded ${layer.type === 'video' ? 'bg-blue-500/20 border border-blue-500' : 'bg-gray-300/20 border border-gray-400'
+                                                                }`} />
                                                         )}
 
                                                         {/* Resize handles - always visible on hover */}
@@ -1500,21 +1511,21 @@ export function EditorTab({
                                                                 bg-gradient-to-r from-blue-500/60 to-transparent
                                                                 opacity-0 group-hover:opacity-100 hover:!opacity-100 hover:from-blue-500
                                                                 transition-opacity z-10"
-                                                                onMouseDown={(e) => handleResizeStart(e, layer.id, item.id, 'start')}
+                                                            onMouseDown={(e) => handleResizeStart(e, layer.id, item.id, 'start')}
                                                         >
                                                             <div className="absolute left-0.5 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-white rounded-full shadow" />
                                                         </div>
-                                                            <div
+                                                        <div
                                                             className="resize-handle absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize 
                                                                 bg-gradient-to-l from-blue-500/60 to-transparent
                                                                 opacity-0 group-hover:opacity-100 hover:!opacity-100 hover:from-blue-500
                                                                 transition-opacity z-10"
-                                                                onMouseDown={(e) => handleResizeStart(e, layer.id, item.id, 'end')}
+                                                            onMouseDown={(e) => handleResizeStart(e, layer.id, item.id, 'end')}
                                                         >
                                                             <div className="absolute right-0.5 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-white rounded-full shadow" />
                                                         </div>
-                                                </div>
-                                            )
+                                                    </div>
+                                                )
                                             })
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center bg-gray-100 border border-gray-200 rounded p-1">
@@ -1572,7 +1583,7 @@ export function EditorTab({
                     </div>
                 </div>
             </div>
-            
+
             {/* Voice Selection Dialog */}
             <VoiceSelectionDialog
                 isOpen={isVoiceDialogOpen}

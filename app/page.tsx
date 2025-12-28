@@ -8,6 +8,7 @@ import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { generateScenario, generateStoryboard } from './actions/generate-scenes'
 import { exportMovieAction } from './actions/generate-video'
+import { exportVideoClient } from '@/lib/client-export'
 
 import { resizeImage } from './actions/resize-image'
 import { saveImageToPublic } from './actions/upload-image'
@@ -54,6 +55,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [withVoiceOver, setWithVoiceOver] = useState(false)
   const [isVideoLoading, setIsVideoLoading] = useState(false)
+  const [exportProgress, setExportProgress] = useState(0)
   const [scenario, setScenario] = useState<Scenario>()
   const [generatingScenes, setGeneratingScenes] = useState<Set<number>>(new Set());
   const [generatingCharacterImages, setGeneratingCharacterImages] = useState<Set<number>>(new Set());
@@ -69,7 +71,7 @@ export default function Home() {
 
   // Scenario auto-save functionality
   const { saveScenarioDebounced, getCurrentScenarioId, setCurrentScenarioId, isAuthenticated } = useScenario()
-  
+
   // Timeline persistence
   const { resetTimeline } = useTimeline()
 
@@ -276,19 +278,25 @@ export default function Home() {
     setIsVideoLoading(true)
     setErrorMessage(null)
     try {
-      console.log('Export Movie');
+      console.log('Export Movie Client Side');
       console.log(layers)
-      const result = await exportMovieAction(
-        layers
-      );
-      if (result.success) {
-        setVideoUri(result.videoUrl)
-        setVttUri(result.vttUrl || null)
-        setActiveTab("video")
-      } else {
-        setVideoUri(null)
-        setVttUri(null)
-      }
+
+      const blob = await exportVideoClient(layers, (progress) => {
+        setExportProgress(progress);
+      });
+      const videoUrl = URL.createObjectURL(blob);
+
+      // Download immediately
+      const a = document.createElement('a');
+      a.href = videoUrl;
+      a.download = `storycraft-${new Date().toISOString()}.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      setVideoUri(videoUrl)
+      setVttUri(null)
+      // setActiveTab("video") // Don't switch (removed per request)
     } catch (error) {
       console.error("Error generating video:", error)
       setErrorMessage(error instanceof Error ? error.message : "An unknown error occurred while generating video")
@@ -782,12 +790,6 @@ export default function Home() {
       label: "Editor",
       icon: Scissors,
       disabled: !scenario || !scenario.scenes || !scenario.scenes.every(scene => scene.videoUri)
-    },
-    {
-      id: "video",
-      label: "Video",
-      icon: Film,
-      disabled: !scenario || !scenario.scenes || !scenario.scenes.every(scene => scene.videoUri)
     }
   ]
 
@@ -1053,17 +1055,11 @@ export default function Home() {
             onLogoRemove={handleLogoRemove}
             onExportMovie={handleExportMovie}
             isExporting={isVideoLoading}
+            exportProgress={exportProgress}
           />
         )}
 
-        {activeTab === "video" && (
-          <VideoTab
-            videoGcsUri={videoUri}
-            vttUri={vttUri}
-            isVideoLoading={isVideoLoading}
-            language={scenario?.language || DEFAULT_LANGUAGE}
-          />
-        )}
+
       </div>
       <footer className="mt-auto pt-8">
         <div className="flex items-center justify-center gap-2">
