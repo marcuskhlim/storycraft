@@ -40,3 +40,29 @@ export interface FirestoreScenario {
     createdAt: FirebaseFirestore.Timestamp | Date | any
     updatedAt: FirebaseFirestore.Timestamp | Date | any
   }
+
+export interface FirestoreTimelineState {
+  id: string
+  scenarioId: string
+  userId: string
+  layers: Array<{
+    id: string
+    name: string
+    type: 'video' | 'voiceover' | 'music'
+    items: Array<{
+      id: string
+      startTime: number
+      duration: number
+      content: string
+      type: 'video' | 'voiceover' | 'music'
+      metadata?: {
+        originalDuration?: number
+        trimStart?: number
+        logoOverlay?: string
+        [key: string]: any
+      }
+    }>
+  }>
+  createdAt: FirebaseFirestore.Timestamp | Date | any
+  updatedAt: FirebaseFirestore.Timestamp | Date | any
+}

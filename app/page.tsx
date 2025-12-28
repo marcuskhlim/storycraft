@@ -2,20 +2,18 @@
 
 import { Stepper } from "@/components/ui/stepper"
 import { useScenario } from '@/hooks/use-scenario'
+import { useTimeline } from '@/hooks/use-timeline'
 import { BookOpen, Film, LayoutGrid, Library, PenLine, Scissors } from 'lucide-react'
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
-import { generateMusic } from "./actions/generate-music"
 import { generateScenario, generateStoryboard } from './actions/generate-scenes'
 import { exportMovieAction } from './actions/generate-video'
-import { generateVoiceover } from "./actions/generate-voiceover"
 
 import { resizeImage } from './actions/resize-image'
 import { saveImageToPublic } from './actions/upload-image'
 import { CreateTab } from './components/create/create-tab'
 import { type Style } from "./components/create/style-selector"
 import { EditorTab } from './components/editor/editor-tab'
-import { Voice } from './components/editor/voice-selection-dialog'
 import { ScenarioTab } from "./components/scenario/scenario-tab"
 import { StoriesTab } from './components/stories/stories-tab'
 import { StoryboardTab } from './components/storyboard/storyboard-tab'
@@ -66,14 +64,14 @@ export default function Home() {
   const [vttUri, setVttUri] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<string>("stories")
   const [currentTime, setCurrentTime] = useState(0)
-  const [isGeneratingMusic, setIsGeneratingMusic] = useState(false)
-  const [isGeneratingVoiceover, setIsGeneratingVoiceover] = useState(false)
-  const [selectedVoice, setSelectedVoice] = useState<Voice | null>(null)
 
   const GCS_VIDEOS_STORAGE_URI = process.env.GCS_VIDEOS_STORAGE_URI;
 
   // Scenario auto-save functionality
   const { saveScenarioDebounced, getCurrentScenarioId, setCurrentScenarioId, isAuthenticated } = useScenario()
+  
+  // Timeline persistence
+  const { resetTimeline } = useTimeline()
 
   useEffect(() => {
     console.log("generatingScenes (in useEffect):", generatingScenes);
@@ -306,6 +304,17 @@ export default function Home() {
     console.log("[Client] Generating videos for all scenes - START");
     setGeneratingScenes(new Set(scenario?.scenes.map((_, i) => i)));
 
+    // Reset timeline when regenerating videos so EditorTab reinitializes from fresh scenario
+    const scenarioId = getCurrentScenarioId()
+    if (scenarioId) {
+      try {
+        await resetTimeline(scenarioId)
+        console.log('Timeline reset for video regeneration')
+      } catch (error) {
+        console.error('Failed to reset timeline:', error)
+      }
+    }
+
     const regeneratedScenes = await Promise.all(
       scenario.scenes.map(async (scene) => {
         try {
@@ -340,66 +349,6 @@ export default function Home() {
     setGeneratingScenes(new Set());
     setActiveTab("editor")
   };
-
-  const handleGenerateVoiceover = async (voice?: Voice) => {
-    if (!scenario) return
-    setIsGeneratingVoiceover(true)
-    setErrorMessage(null)
-    try {
-      // Set the selected voice for future video generation
-      if (voice) {
-        setSelectedVoice(voice)
-      }
-
-      const scenesVoiceovers = scenario.scenes.map((scene) => ({
-        voiceover: scene.voiceover
-      }))
-      const voiceoverAudioUrls = await generateVoiceover(scenesVoiceovers, scenario.language, voice?.name)
-      const updatedScenes = scenario.scenes.map((scene, index) => ({
-        ...scene,
-        voiceoverAudioUri: voiceoverAudioUrls[index]
-      }))
-      setScenario({
-        ...scenario,
-        scenes: updatedScenes // Update scenario with the new scenes that include voiceover URLs
-      })
-    } catch (error) {
-      console.error('Error generating voiceover:', error)
-      setErrorMessage(error instanceof Error ? error.message : 'An unknown error occurred while generating voiceover')
-    } finally {
-      setIsGeneratingVoiceover(false)
-    }
-  }
-
-  const handleGenerateMusic = async (musicParams?: { description: string }) => {
-    if (!scenario) return
-    setIsGeneratingMusic(true)
-    setErrorMessage(null)
-    try {
-      // Update scenario with new music description if provided
-      let updatedScenario = scenario
-      if (musicParams) {
-        updatedScenario = {
-          ...scenario,
-          music: musicParams.description
-        }
-        setScenario(updatedScenario)
-      }
-
-      const musicUrl = await generateMusic(updatedScenario.music)
-      const finalScenario = {
-        ...updatedScenario,
-        musicUrl: musicUrl
-      }
-      setScenario(finalScenario)
-      console.log(musicUrl)
-    } catch (error) {
-      console.error('Error generating music:', error)
-      setErrorMessage(error instanceof Error ? error.message : 'An unknown error occurred while generating music')
-    } finally {
-      setIsGeneratingMusic(false)
-    }
-  }
 
   const handleGenerateStoryBoard = async () => {
     console.log("Generating storyboard");
@@ -893,44 +842,12 @@ export default function Home() {
     setVideoUri(null);
     setVttUri(null);
     setCurrentTime(0);
-    setSelectedVoice(null);
 
     // Clear the current scenario ID so a new one will be generated
     setCurrentScenarioId(null);
 
     // Navigate to the create tab
     setActiveTab("create");
-  };
-
-  const handleRemoveVoiceover = (sceneIndex: number) => {
-    if (!scenario) return;
-
-    // Create updated scenes with voiceover removed from the specific scene
-    const updatedScenes = scenario.scenes.map((scene, index) => {
-      if (index === sceneIndex) {
-        return {
-          ...scene,
-          voiceoverAudioUri: undefined
-        };
-      }
-      return scene;
-    });
-
-    // Update scenario with updated scenes
-    setScenario({
-      ...scenario,
-      scenes: updatedScenes
-    });
-  };
-
-  const handleRemoveMusic = () => {
-    if (!scenario) return;
-
-    // Remove music from scenario
-    setScenario({
-      ...scenario,
-      musicUrl: undefined
-    });
   };
 
   const createEmptyScene = (): Scene => {
@@ -1127,24 +1044,15 @@ export default function Home() {
         {activeTab === "editor" && scenario && (
           <EditorTab
             scenario={scenario}
+            scenarioId={getCurrentScenarioId()}
             currentTime={currentTime}
             onTimeUpdate={setCurrentTime}
-            onTimelineItemUpdate={(layerId, itemId, updates) => {
-              // TODO: Implement timeline item updates
-              console.log('Timeline item update:', { layerId, itemId, updates })
-            }}
             logoOverlay={logoOverlay}
             setLogoOverlay={setLogoOverlay}
             onLogoUpload={handleLogoUpload}
             onLogoRemove={handleLogoRemove}
-            onGenerateMusic={handleGenerateMusic}
-            isGeneratingMusic={isGeneratingMusic}
-            onGenerateVoiceover={handleGenerateVoiceover}
-            isGeneratingVoiceover={isGeneratingVoiceover}
             onExportMovie={handleExportMovie}
             isExporting={isVideoLoading}
-            onRemoveVoiceover={handleRemoveVoiceover}
-            onRemoveMusic={handleRemoveMusic}
           />
         )}
 

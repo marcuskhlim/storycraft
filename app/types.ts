@@ -76,3 +76,9 @@ export interface TimelineItem {
     [key: string]: any // Allow for additional metadata fields
   }
 }
+
+export interface TimelineState {
+  id: string
+  scenarioId: string
+  layers: TimelineLayer[]
+}

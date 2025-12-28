@@ -11,24 +11,21 @@ import { MusicParams, MusicSelectionDialog } from './music-selection-dialog'
 import { VideoThumbnail } from './video-thumbnail'
 import { Voice, VoiceSelectionDialog } from './voice-selection-dialog'
 import { getDynamicImageUrl } from '@/app/actions/storageActions'
+import { useTimeline } from '@/hooks/use-timeline'
+import { generateVoiceover } from '@/app/actions/generate-voiceover'
+import { generateMusic } from '@/app/actions/generate-music'
 
 interface EditorTabProps {
     scenario: Scenario
+    scenarioId: string | null
     currentTime: number
     onTimeUpdate: (time: number) => void
-    onTimelineItemUpdate: (layerId: string, itemId: string, updates: Partial<TimelineItem>) => void
     logoOverlay: string | null
     setLogoOverlay: (logo: string | null) => void
     onLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>
     onLogoRemove: () => void
-    onGenerateMusic: (params?: MusicParams) => Promise<void>
-    isGeneratingMusic?: boolean
-    onGenerateVoiceover: (voice?: Voice) => Promise<void>
-    isGeneratingVoiceover?: boolean
     onExportMovie: (layers: TimelineLayer[]) => Promise<void>
     isExporting?: boolean
-    onRemoveVoiceover?: (sceneIndex: number) => void
-    onRemoveMusic?: () => void
 }
 
 const TIMELINE_DURATION = 65 // Total timeline duration in seconds
@@ -44,26 +41,25 @@ const formatTime = (seconds: number): string => {
 
 export function EditorTab({
     scenario,
+    scenarioId,
     currentTime,
     onTimeUpdate,
-    onTimelineItemUpdate,
     logoOverlay,
     setLogoOverlay,
     onLogoUpload,
     onLogoRemove,
-    onGenerateMusic,
-    isGeneratingMusic = false,
-    onGenerateVoiceover,
-    isGeneratingVoiceover = false,
     onExportMovie,
     isExporting = false,
-    onRemoveVoiceover,
-    onRemoveMusic,
 }: EditorTabProps) {
 
     const SCENE_DURATION = scenario.durationSeconds || 8
     const timelineRef = useRef<HTMLDivElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
+    
+    // Timeline persistence
+    const { saveTimelineDebounced, loadTimeline, isAuthenticated } = useTimeline()
+    const [isTimelineLoaded, setIsTimelineLoaded] = useState(false)
+    const isInitializingRef = useRef(false)
     
     // Simplified state management
     const [selectedItem, setSelectedItem] = useState<{ layerId: string, itemId: string } | null>(null)
@@ -92,6 +88,10 @@ export function EditorTab({
     // Dialog states
     const [isVoiceDialogOpen, setIsVoiceDialogOpen] = useState(false)
     const [isMusicDialogOpen, setIsMusicDialogOpen] = useState(false)
+    
+    // Internal generation loading states
+    const [isGeneratingVoiceover, setIsGeneratingVoiceover] = useState(false)
+    const [isGeneratingMusic, setIsGeneratingMusic] = useState(false)
     
     // Timeline layers
     const [layers, setLayers] = useState<TimelineLayer[]>([
@@ -133,7 +133,7 @@ export function EditorTab({
     const handleCloseVoiceDialog = () => setIsVoiceDialogOpen(false)
     const handleVoiceSelect = async (voice: Voice) => {
         setIsVoiceDialogOpen(false)
-        await onGenerateVoiceover(voice)
+        await handleGenerateVoiceoverInternal(voice)
     }
 
     // Music selection handlers
@@ -141,20 +141,21 @@ export function EditorTab({
     const handleCloseMusicDialog = () => setIsMusicDialogOpen(false)
     const handleMusicGenerate = async (params: MusicParams) => {
         setIsMusicDialogOpen(false)
-        await onGenerateMusic(params)
+        await handleGenerateMusicInternal(params)
     }
-
+    
     // Get audio duration helper
-    const getAudioDuration = async (url: string): Promise<number> => {
+    const getAudioDuration = useCallback(async (url: string): Promise<number> => {
         return new Promise((resolve) => {
             const audio = new Audio(url)
             audio.addEventListener('loadedmetadata', () => resolve(audio.duration))
             audio.addEventListener('error', () => resolve(SCENE_DURATION))
+            audio.src = url
         })
-    }
+    }, [SCENE_DURATION])
 
     // Get video duration helper
-    const getVideoDuration = async (url: string): Promise<number> => {
+    const getVideoDuration = useCallback(async (url: string): Promise<number> => {
         return new Promise((resolve) => {
             const video = document.createElement('video')
             video.preload = 'metadata'
@@ -162,104 +163,340 @@ export function EditorTab({
             video.addEventListener('error', () => resolve(SCENE_DURATION))
             video.src = url
         })
-    }
-
-    // Resolve URLs and update layers
-    useEffect(() => {
-        const resolveUrlsAndUpdateLayers = async () => {
-            if (layers.length === 0) return
-
-            const updatedLayers = JSON.parse(JSON.stringify(layers)) as TimelineLayer[]
-            const videoLayer = updatedLayers.find(layer => layer.id === 'videos')
-            const voiceoverLayer = updatedLayers.find(layer => layer.id === 'voiceovers')
-            const musicLayer = updatedLayers.find(layer => layer.id === 'music')
+    }, [SCENE_DURATION])
+    
+    // Internal handler: Remove voiceover from timeline (not scenario)
+    const handleRemoveVoiceoverFromTimeline = useCallback((itemId: string) => {
+        setLayers(prevLayers => prevLayers.map(layer => {
+            if (layer.id !== 'voiceovers') return layer
+            return { ...layer, items: layer.items.filter(i => i.id !== itemId) }
+        }))
+    }, [])
+    
+    // Internal handler: Remove music from timeline (not scenario)
+    const handleRemoveMusicFromTimeline = useCallback(() => {
+        setLayers(prevLayers => prevLayers.map(layer => {
+            if (layer.id !== 'music') return layer
+            return { ...layer, items: [] }
+        }))
+    }, [])
+    
+    // Internal handler: Generate voiceover and add to timeline
+    const handleGenerateVoiceoverInternal = useCallback(async (voice?: Voice) => {
+        if (!scenario.scenes || scenario.scenes.length === 0) return
+        
+        setIsGeneratingVoiceover(true)
+        try {
+            const voiceoverUrls = await generateVoiceover(
+                scenario.scenes,
+                scenario.language,
+                voice?.name // Voice interface uses 'name' not 'voiceName'
+            )
             
-            // Resolve video URLs and get original durations
+            // Convert URLs and calculate durations
+            const voiceoverItems: TimelineItem[] = await Promise.all(
+                voiceoverUrls.map(async (url, index) => {
+                    const result = await getDynamicImageUrl(url)
+                    const dynamicUrl = result.url || url
+                    const duration = await getAudioDuration(dynamicUrl)
+                    
+                    // Find the video item at this index to align start time
+                    const videoLayer = layers.find(l => l.id === 'videos')
+                    const videoItem = videoLayer?.items[index]
+                    const startTime = videoItem?.startTime ?? (index * SCENE_DURATION)
+                    
+                    return {
+                        id: `voiceover-${index}`,
+                        startTime,
+                        duration,
+                        content: dynamicUrl,
+                        type: 'voiceover' as const,
+                        metadata: {
+                            originalDuration: duration,
+                            trimStart: 0
+                        }
+                    }
+                })
+            )
+            
+            // Update voiceovers layer
+            setLayers(prevLayers => prevLayers.map(layer => {
+                if (layer.id !== 'voiceovers') return layer
+                return { ...layer, items: voiceoverItems }
+            }))
+        } catch (error) {
+            console.error('Error generating voiceover:', error)
+        } finally {
+            setIsGeneratingVoiceover(false)
+        }
+    }, [scenario.scenes, scenario.language, layers, SCENE_DURATION, getAudioDuration])
+    
+    // Internal handler: Generate music and add to timeline
+    const handleGenerateMusicInternal = useCallback(async (params?: MusicParams) => {
+        setIsGeneratingMusic(true)
+        try {
+            const prompt = params?.description || `Create background music for a video advertisement`
+            const musicUrl = await generateMusic(prompt)
+            const result = await getDynamicImageUrl(musicUrl)
+            const dynamicUrl = result.url || musicUrl
+            const duration = await getAudioDuration(dynamicUrl)
+            
+            // Calculate total timeline duration from video items
+            const videoLayer = layers.find(l => l.id === 'videos')
+            const totalVideoDuration = videoLayer?.items.reduce((max, item) => 
+                Math.max(max, item.startTime + item.duration), 0
+            ) ?? (scenario.scenes.length * SCENE_DURATION)
+            
+            const musicItem: TimelineItem = {
+                id: 'music-0',
+                startTime: 0,
+                duration: Math.min(duration, totalVideoDuration), // Trim to video length
+                content: dynamicUrl,
+                type: 'music' as const,
+                metadata: {
+                    originalDuration: duration,
+                    trimStart: 0
+                }
+            }
+            
+            // Update music layer
+            setLayers(prevLayers => prevLayers.map(layer => {
+                if (layer.id !== 'music') return layer
+                return { ...layer, items: [musicItem] }
+            }))
+        } catch (error) {
+            console.error('Error generating music:', error)
+        } finally {
+            setIsGeneratingMusic(false)
+        }
+    }, [layers, scenario.scenes.length, SCENE_DURATION, getAudioDuration])
+
+    // Initialize timeline - try to load saved state first, otherwise initialize from scenario
+    useEffect(() => {
+        const initializeTimeline = async () => {
+            if (isInitializingRef.current) return
+            isInitializingRef.current = true
+            
+            try {
+                // Try to load saved timeline if we have a scenarioId
+                if (scenarioId && isAuthenticated) {
+                    const savedLayers = await loadTimeline(scenarioId)
+                    if (savedLayers && savedLayers.length > 0) {
+                        console.log('Loaded saved timeline from Firestore')
+                        // Resolve URLs for saved timeline (URLs may have expired)
+                        const resolvedLayers = await resolveLayerUrls(savedLayers)
+                        setLayers(resolvedLayers)
+                        setIsTimelineLoaded(true)
+                        isInitializingRef.current = false
+                        return
+                    }
+                }
+                
+                // No saved timeline - initialize from scenario
+                console.log('Initializing timeline from scenario')
+                const initialLayers = await initializeLayersFromScenario()
+                setLayers(initialLayers)
+                setIsTimelineLoaded(true)
+            } catch (error) {
+                console.error('Error initializing timeline:', error)
+                // Fall back to scenario initialization
+                const initialLayers = await initializeLayersFromScenario()
+                setLayers(initialLayers)
+                setIsTimelineLoaded(true)
+            } finally {
+                isInitializingRef.current = false
+            }
+        }
+
+        // Helper to resolve URLs for layers (saved layers may have expired signed URLs)
+        const resolveLayerUrls = async (savedLayers: TimelineLayer[]): Promise<TimelineLayer[]> => {
+            const resolvedLayers = JSON.parse(JSON.stringify(savedLayers)) as TimelineLayer[]
+            
+            const videoLayer = resolvedLayers.find(layer => layer.id === 'videos')
+            const voiceoverLayer = resolvedLayers.find(layer => layer.id === 'voiceovers')
+            const musicLayer = resolvedLayers.find(layer => layer.id === 'music')
+            
+            // Resolve video URLs
             if (videoLayer) {
-                for (let i = 0; i < scenario.scenes.length; i++) {
-                    const scene = scenario.scenes[i]
-                    if (scene.videoUri) {
+                for (let i = 0; i < videoLayer.items.length; i++) {
+                    const item = videoLayer.items[i]
+                    const sceneIndex = parseInt(item.id.replace('video-', ''))
+                    const scene = scenario.scenes[sceneIndex]
+                    if (scene?.videoUri) {
                         try {
                             const result = await getDynamicImageUrl(scene.videoUri)
-                            if (result?.url && videoLayer.items[i]) {
-                                videoLayer.items[i].content = result.url
-                                // Get and store the original video duration and initialize trim
-                                const originalDuration = await getVideoDuration(result.url)
-                                videoLayer.items[i].metadata = {
-                                    ...videoLayer.items[i].metadata,
-                                    originalDuration,
-                                    trimStart: 0  // Start from beginning of source video
+                            if (result?.url) {
+                                item.content = result.url
+                                // Update originalDuration if not set
+                                if (!item.metadata?.originalDuration) {
+                                    const originalDuration = await getVideoDuration(result.url)
+                                    item.metadata = { ...item.metadata, originalDuration }
                                 }
                             }
                         } catch (error) {
-                            console.error(`Error resolving video URL for scene ${i}:`, error)
+                            console.error(`Error resolving video URL for item ${item.id}:`, error)
                         }
+                    }
+                }
+            }
+            
+            // Resolve voiceover URLs
+            if (voiceoverLayer) {
+                for (const item of voiceoverLayer.items) {
+                    const sceneIndex = parseInt(item.id.replace('voiceover-', ''))
+                    const scene = scenario.scenes[sceneIndex]
+                    if (scene?.voiceoverAudioUri) {
+                        try {
+                            const result = await getDynamicImageUrl(scene.voiceoverAudioUri)
+                            if (result?.url) {
+                                item.content = result.url
+                            }
+                        } catch (error) {
+                            console.error(`Error resolving voiceover URL for item ${item.id}:`, error)
+                        }
+                    }
+                }
+            }
+            
+            // Resolve music URL
+            if (musicLayer && musicLayer.items.length > 0 && scenario.musicUrl) {
+                try {
+                    const result = await getDynamicImageUrl(scenario.musicUrl)
+                    if (result?.url) {
+                        musicLayer.items[0].content = result.url
+                    }
+                } catch (error) {
+                    console.error('Error resolving music URL:', error)
+                }
+            }
+            
+            return resolvedLayers
+        }
+
+        // Helper to initialize layers from scenario (existing logic)
+        const initializeLayersFromScenario = async (): Promise<TimelineLayer[]> => {
+            const initialLayers: TimelineLayer[] = [
+                {
+                    id: 'videos',
+                    name: 'Videos',
+                    type: 'video',
+                    items: scenario.scenes.map((scene, index) => ({
+                        id: `video-${index}`,
+                        startTime: index * SCENE_DURATION,
+                        duration: SCENE_DURATION,
+                        content: '',
+                        type: 'video' as const,
+                        metadata: {
+                            logoOverlay: scenario.logoOverlay || undefined
+                        }
+                    }))
+                },
+                {
+                    id: 'voiceovers',
+                    name: 'Voiceovers',
+                    type: 'voiceover',
+                    items: []
+                },
+                {
+                    id: 'music',
+                    name: 'Music',
+                    type: 'music',
+                    items: []
+                }
+            ]
+            
+            const videoLayer = initialLayers.find(layer => layer.id === 'videos')!
+            const voiceoverLayer = initialLayers.find(layer => layer.id === 'voiceovers')!
+            const musicLayer = initialLayers.find(layer => layer.id === 'music')!
+            
+            // Resolve video URLs and get original durations
+            for (let i = 0; i < scenario.scenes.length; i++) {
+                const scene = scenario.scenes[i]
+                if (scene.videoUri) {
+                    try {
+                        const result = await getDynamicImageUrl(scene.videoUri)
+                        if (result?.url && videoLayer.items[i]) {
+                            videoLayer.items[i].content = result.url
+                            const originalDuration = await getVideoDuration(result.url)
+                            videoLayer.items[i].metadata = {
+                                ...videoLayer.items[i].metadata,
+                                originalDuration,
+                                trimStart: 0
+                            }
+                        }
+                    } catch (error) {
+                        console.error(`Error resolving video URL for scene ${i}:`, error)
                     }
                 }
             }
 
             // Resolve voiceover URLs
-            if (voiceoverLayer) {
-                const voiceoverItems: TimelineItem[] = []
-                for (let i = 0; i < scenario.scenes.length; i++) {
-                    const scene = scenario.scenes[i]
-                    if (scene.voiceoverAudioUri) {
-                        try {
-                            const result = await getDynamicImageUrl(scene.voiceoverAudioUri)
-                            if (result?.url) {
-                                const duration = await getAudioDuration(result.url)
-                                voiceoverItems.push({
-                                    id: `voiceover-${i}`,
-                                    startTime: i * SCENE_DURATION,
-                                    duration,
-                                    content: result.url,
-                                    type: 'voiceover',
-                                    metadata: {
-                                        originalDuration: duration,
-                                        trimStart: 0
-                                    }
-                                })
-                            }
-                        } catch (error) {
-                            console.error(`Error resolving voiceover for scene ${i}:`, error)
-                        }
-                    }
-                }
-                voiceoverLayer.items = voiceoverItems
-            }
-
-            // Resolve music URL
-            if (musicLayer) {
-                if (scenario.musicUrl) {
+            const voiceoverItems: TimelineItem[] = []
+            for (let i = 0; i < scenario.scenes.length; i++) {
+                const scene = scenario.scenes[i]
+                if (scene.voiceoverAudioUri) {
                     try {
-                        const result = await getDynamicImageUrl(scenario.musicUrl)
+                        const result = await getDynamicImageUrl(scene.voiceoverAudioUri)
                         if (result?.url) {
                             const duration = await getAudioDuration(result.url)
-                            musicLayer.items = [{
-                                id: 'background-music',
-                                startTime: 0,
+                            voiceoverItems.push({
+                                id: `voiceover-${i}`,
+                                startTime: i * SCENE_DURATION,
                                 duration,
                                 content: result.url,
-                                type: 'music',
+                                type: 'voiceover',
                                 metadata: {
                                     originalDuration: duration,
                                     trimStart: 0
                                 }
-                            }]
+                            })
                         }
                     } catch (error) {
-                        console.error('Error resolving music:', error)
+                        console.error(`Error resolving voiceover for scene ${i}:`, error)
                     }
-                } else {
-                    musicLayer.items = []
                 }
             }
+            voiceoverLayer.items = voiceoverItems
 
-            setLayers(updatedLayers)
+            // Resolve music URL
+            if (scenario.musicUrl) {
+                try {
+                    const result = await getDynamicImageUrl(scenario.musicUrl)
+                    if (result?.url) {
+                        const duration = await getAudioDuration(result.url)
+                        musicLayer.items = [{
+                            id: 'background-music',
+                            startTime: 0,
+                            duration,
+                            content: result.url,
+                            type: 'music',
+                            metadata: {
+                                originalDuration: duration,
+                                trimStart: 0
+                            }
+                        }]
+                    }
+                } catch (error) {
+                    console.error('Error resolving music:', error)
+                }
+            }
+            
+            return initialLayers
         }
 
-        resolveUrlsAndUpdateLayers()
-    }, [scenario, SCENE_DURATION])
+        initializeTimeline()
+    }, [scenario, scenarioId, SCENE_DURATION, isAuthenticated, loadTimeline])
+    
+    // Auto-save timeline on changes (debounced)
+    useEffect(() => {
+        if (!isTimelineLoaded || !scenarioId || !isAuthenticated) return
+        
+        // Don't save during initialization
+        if (isInitializingRef.current) return
+        
+        console.log('Auto-saving timeline to Firestore...')
+        saveTimelineDebounced(scenarioId, layers)
+    }, [layers, scenarioId, isAuthenticated, isTimelineLoaded, saveTimelineDebounced])
 
     // Item selection handler
     const handleItemClick = (e: React.MouseEvent, layerId: string, itemId: string) => {
@@ -444,18 +681,7 @@ export function EditorTab({
     }
 
     const handleResizeEnd = () => {
-        if (isResizing && resizingItem) {
-            // Notify parent of the update
-            const layer = layers.find(l => l.id === resizingItem.layerId)
-            const item = layer?.items.find(i => i.id === resizingItem.itemId)
-            if (item) {
-                onTimelineItemUpdate(resizingItem.layerId, resizingItem.itemId, {
-                    startTime: item.startTime,
-                    duration: item.duration,
-                    metadata: item.metadata
-                })
-            }
-        }
+        // Layers state is already updated, auto-save will persist changes
         setIsResizing(false)
         setResizeHandle(null)
         setResizingItem(null)
@@ -1015,14 +1241,7 @@ export function EditorTab({
                 })
                 
                 setLayers(updatedLayers)
-                
-                // Notify parent of all position changes
-                newPositions.forEach((newStart, itemId) => {
-                    const originalItem = originalLayerItemsRef.current.find(i => i.id === itemId)
-                    if (originalItem && originalItem.startTime !== newStart) {
-                        onTimelineItemUpdate(draggingItem.layerId, itemId, { startTime: newStart })
-                    }
-                })
+                // Layers state is updated, auto-save will persist changes
             }
         }
         setIsDragging(false)
@@ -1237,10 +1456,7 @@ export function EditorTab({
                                                                 size="sm"
                                                                 onClick={(e) => {
                                                                         e.stopPropagation()
-                                                                        const sceneIndex = parseInt(item.id.replace('voiceover-', ''))
-                                                                    if (!isNaN(sceneIndex) && onRemoveVoiceover) {
-                                                                            onRemoveVoiceover(sceneIndex)
-                                                                    }
+                                                                        handleRemoveVoiceoverFromTimeline(item.id)
                                                                 }}
                                                                 className="absolute top-0 right-0 w-6 h-6 p-0 bg-red-500 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
                                                                 title="Remove voiceover"
@@ -1264,7 +1480,7 @@ export function EditorTab({
                                                                 size="sm"
                                                                 onClick={(e) => {
                                                                         e.stopPropagation()
-                                                                        if (onRemoveMusic) onRemoveMusic()
+                                                                        handleRemoveMusicFromTimeline()
                                                                 }}
                                                                 className="absolute top-0 right-0 w-6 h-6 p-0 bg-red-500 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
                                                                 title="Remove music"

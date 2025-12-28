@@ -22,7 +22,7 @@ export async function generateContent(
 ): Promise<string | undefined> {
 
     logger.debug("Generate content : " + model)
-    if (model === 'gemini-3-pro-preview') {
+    if (model === 'gemini-3-pro-preview' || model === 'gemini-3-flash-preview') {
         config = {
             thinkingConfig: {
                 // includeThoughts: true,
