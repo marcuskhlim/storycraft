@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Plus, BookOpen, Film, MoreVertical, Trash2, PanelLeft } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { Plus, BookOpen, PanelLeft } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { useScenario } from '@/hooks/use-scenario'
 import { useAuth } from '@/hooks/use-auth'
@@ -18,25 +18,12 @@ interface SidebarProps {
 }
 
 export function Sidebar({ currentScenarioId, onSelectScenario, onCreateNewStory, isCollapsed, onToggle, refreshTrigger }: SidebarProps) {
-    const [scenarios, setScenarios] = useState<Array<any>>([])
+    const [scenarios, setScenarios] = useState<(Scenario & { id: string })[]>([])
     const { loadUserScenarios, loadScenario, setCurrentScenarioId } = useScenario()
     const { session } = useAuth()
     const [isLoading, setIsLoading] = useState(true)
 
-    useEffect(() => {
-        if (session?.user?.id) {
-            loadScenarios()
-        }
-    }, [session?.user?.id])
-
-    // Refresh scenarios when refreshTrigger changes
-    useEffect(() => {
-        if (session?.user?.id && refreshTrigger !== undefined && refreshTrigger > 0) {
-            loadScenarios()
-        }
-    }, [refreshTrigger])
-
-    const loadScenarios = async () => {
+    const loadScenarios = useCallback(async () => {
         try {
             setIsLoading(true)
             const userScenarios = await loadUserScenarios()
@@ -46,9 +33,22 @@ export function Sidebar({ currentScenarioId, onSelectScenario, onCreateNewStory,
         } finally {
             setIsLoading(false)
         }
-    }
+    }, [loadUserScenarios])
 
-    const handleSelect = async (scenario: any) => {
+    useEffect(() => {
+        if (session?.user?.id) {
+            loadScenarios()
+        }
+    }, [session?.user?.id, loadScenarios])
+
+    // Refresh scenarios when refreshTrigger changes
+    useEffect(() => {
+        if (session?.user?.id && refreshTrigger !== undefined && refreshTrigger > 0) {
+            loadScenarios()
+        }
+    }, [refreshTrigger, session?.user?.id, loadScenarios])
+
+    const handleSelect = async (scenario: Scenario & { id: string }) => {
         setCurrentScenarioId(scenario.id)
 
         try {

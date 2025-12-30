@@ -372,7 +372,7 @@ Return both the updated scenario (maintaining all characters) and the updated de
             }
         );
 
-        const characterScenarioUpdate = JSON.parse(text!)
+        const characterScenarioUpdate = CharacterScenarioUpdateSchema.parse(JSON.parse(text!))
         const newImageGcsUri = await styleImage(imageGcsUri, characterScenarioUpdate.updatedCharacter.description, style)
 
         return {
@@ -510,7 +510,7 @@ Return both the updated scenario (maintaining all settings) and the updated desc
             }
         );
 
-        const settingScenarioUpdate = JSON.parse(text!)
+        const settingScenarioUpdate = SettingScenarioUpdateSchema.parse(JSON.parse(text!))
         const newImageGcsUri = await styleImage(imageGcsUri, settingScenarioUpdate.updatedSetting.description, style)
 
         return {
@@ -575,7 +575,7 @@ Return both the updated scenario (maintaining all props) and the updated descrip
             }
         );
 
-        const propScenarioUpdate = JSON.parse(text!)
+        const propScenarioUpdate = PropScenarioUpdateSchema.parse(JSON.parse(text!))
         const newImageGcsUri = await styleImage(imageGcsUri, propScenarioUpdate.updatedProp.description, style)
 
         return {

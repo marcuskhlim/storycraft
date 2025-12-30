@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import Image from 'next/image'
 
 interface VideoThumbnailProps {
   src: string
@@ -36,10 +37,10 @@ export function VideoThumbnail({
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
   const mountedRef = useRef(true)
-  
+
   // Store committed values that only update when NOT resizing
   const committedValuesRef = useRef({ duration, trimStart })
-  
+
   // Only update committed values when resize ends
   useEffect(() => {
     if (!isResizing) {
@@ -92,7 +93,7 @@ export function VideoThumbnail({
         const height = video.videoHeight || 180
         canvas.width = width
         canvas.height = height
-        
+
         ctx.drawImage(video, 0, 0, width, height)
 
         try {
@@ -159,7 +160,7 @@ export function VideoThumbnail({
   // Load thumbnails once when src changes (NOT when trim/duration changes)
   useEffect(() => {
     mountedRef.current = true
-    
+
     if (!src) {
       setIsLoading(false)
       setHasError(true)
@@ -206,7 +207,7 @@ export function VideoThumbnail({
 
     const { thumbnails, videoDuration } = thumbnailData
     const actualVideoDuration = originalDuration || videoDuration
-    
+
     if (actualVideoDuration <= 0) {
       return { visibleThumbnails: thumbnails, thumbnailStripStyle: {} }
     }
@@ -224,7 +225,7 @@ export function VideoThumbnail({
 
     // Select thumbnails from the STABLE visible range
     const result: string[] = []
-    
+
     for (let i = 0; i < desiredCount; i++) {
       const timeOffset = stableDuration * (i + 0.5) / desiredCount
       const targetTime = stableTrimStart + timeOffset
@@ -240,11 +241,11 @@ export function VideoThumbnail({
       const currentTrimStart = trimStart
       const stableTrimStart = committedValuesRef.current.trimStart
       const trimDelta = currentTrimStart - stableTrimStart
-      
+
       // Calculate the pixel offset based on how much time shifted
       // The strip needs to move in the opposite direction of the trim change
       const offsetPercent = (trimDelta / stableDuration) * 100
-      
+
       stripStyle = {
         transform: `translateX(${-offsetPercent}%)`,
         width: `${(stableDuration / duration) * 100}%`,
@@ -280,16 +281,18 @@ export function VideoThumbnail({
 
   return (
     <div className={`${className} overflow-hidden rounded bg-black/20`}>
-      <div 
+      <div
         className="grid grid-flow-col auto-cols-fr gap-px h-full"
         style={thumbnailStripStyle}
       >
         {visibleThumbnails.map((thumbnail, index) => (
           <div key={index} className="relative w-full h-full overflow-hidden">
-            <img
+            <Image
               src={thumbnail}
               alt={`Frame ${index + 1}`}
-              className="w-full h-full object-cover"
+              fill
+              unoptimized
+              className="object-cover"
             />
           </div>
         ))}

@@ -1,15 +1,10 @@
 import { GoogleAuth } from 'google-auth-library';
-import { GoogleGenAI, Part } from '@google/genai';
 import logger from '@/app/logger';
 import { getRAIUserMessage } from './rai';
 
 const LOCATION = process.env.LOCATION
 const PROJECT_ID = process.env.PROJECT_ID
-const MODEL = "veo-3.0-generate-001" //process.env.MODEL
 const GCS_VIDEOS_STORAGE_URI = process.env.GCS_VIDEOS_STORAGE_URI
-
-
-const ai = new GoogleGenAI({ vertexai: true, project: PROJECT_ID, location: LOCATION });
 
 
 interface GenerateVideoResponse {

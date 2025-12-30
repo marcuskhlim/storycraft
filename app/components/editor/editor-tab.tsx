@@ -46,9 +46,6 @@ export function EditorTab({
     currentTime,
     onTimeUpdate,
     logoOverlay,
-    setLogoOverlay,
-    onLogoUpload,
-    onLogoRemove,
     onExportMovie,
     isExporting = false,
     exportProgress = 0,
@@ -56,7 +53,6 @@ export function EditorTab({
 
     const SCENE_DURATION = scenario.durationSeconds || 8
     const timelineRef = useRef<HTMLDivElement>(null)
-    const fileInputRef = useRef<HTMLInputElement>(null)
 
     // Timeline persistence
     const { saveTimelineDebounced, loadTimeline, isAuthenticated } = useTimeline()
@@ -126,9 +122,7 @@ export function EditorTab({
         }
     ])
 
-    const handleLogoClick = () => {
-        fileInputRef.current?.click()
-    }
+
 
     // Voice selection handlers
     const handleOpenVoiceDialog = () => setIsVoiceDialogOpen(true)
@@ -145,6 +139,182 @@ export function EditorTab({
         setIsMusicDialogOpen(false)
         await handleGenerateMusicInternal(params)
     }
+
+
+
+
+
+    // Find snap point for resize operations - snaps an edge position to other clip edges
+    const findResizeSnapPoint = useCallback((edgePosition: number, layerId: string, excludeItemId: string): { snappedPosition: number, snapLineAt: number | null } => {
+        const RESIZE_SNAP_THRESHOLD = 0.5 // seconds
+
+        const layer = layers.find(l => l.id === layerId)
+        if (!layer) return { snappedPosition: edgePosition, snapLineAt: null }
+
+        const otherClips = layer.items.filter(i => i.id !== excludeItemId)
+
+        let bestSnap = edgePosition
+        let snapLineAt: number | null = null
+        let minDistance = RESIZE_SNAP_THRESHOLD
+
+        // Snap to timeline start
+        if (Math.abs(edgePosition) < minDistance) {
+            minDistance = Math.abs(edgePosition)
+            bestSnap = 0
+            snapLineAt = 0
+        }
+
+        // Snap to timeline end
+        if (Math.abs(edgePosition - TIMELINE_DURATION) < minDistance) {
+            minDistance = Math.abs(edgePosition - TIMELINE_DURATION)
+            bestSnap = TIMELINE_DURATION
+            snapLineAt = TIMELINE_DURATION
+        }
+
+        // Snap to other clips in the same layer
+        for (const clip of otherClips) {
+            const clipEnd = clip.startTime + clip.duration
+
+            // Snap to clip's start
+            if (Math.abs(edgePosition - clip.startTime) < minDistance) {
+                minDistance = Math.abs(edgePosition - clip.startTime)
+                bestSnap = clip.startTime
+                snapLineAt = clip.startTime
+            }
+
+            // Snap to clip's end
+            if (Math.abs(edgePosition - clipEnd) < minDistance) {
+                minDistance = Math.abs(edgePosition - clipEnd)
+                bestSnap = clipEnd
+                snapLineAt = clipEnd
+            }
+        }
+
+        // Cross-layer snapping: audio clips snap to video clip edges
+        const isAudioLayer = layerId === 'voiceovers' || layerId === 'music'
+        if (isAudioLayer) {
+            const videoLayer = layers.find(l => l.id === 'videos')
+            if (videoLayer) {
+                for (const videoClip of videoLayer.items) {
+                    const videoClipEnd = videoClip.startTime + videoClip.duration
+
+                    // Snap to video clip's start
+                    if (Math.abs(edgePosition - videoClip.startTime) < minDistance) {
+                        minDistance = Math.abs(edgePosition - videoClip.startTime)
+                        bestSnap = videoClip.startTime
+                        snapLineAt = videoClip.startTime
+                    }
+
+                    // Snap to video clip's end
+                    if (Math.abs(edgePosition - videoClipEnd) < minDistance) {
+                        minDistance = Math.abs(edgePosition - videoClipEnd)
+                        bestSnap = videoClipEnd
+                        snapLineAt = videoClipEnd
+                    }
+                }
+            }
+        }
+
+        return { snappedPosition: bestSnap, snapLineAt }
+    }, [layers])
+
+    // Find snap point for insert mode - snaps to edges of other clips
+    // Returns both the new clip start position and where the snap line should appear
+    const findSnapPointForInsert = useCallback((proposedStart: number, duration: number, excludeItemId: string): { clipStart: number, snapLineAt: number | null } => {
+        const SNAP_THRESHOLD = 0.5 // seconds
+
+        const otherClips = originalLayerItemsRef.current
+            .filter(i => i.id !== excludeItemId)
+            .sort((a, b) => a.startTime - b.startTime)
+
+        let bestSnap = proposedStart
+        let snapLineAt: number | null = null
+        let minDistance = SNAP_THRESHOLD
+
+        // Snap to timeline start
+        if (Math.abs(proposedStart) < minDistance) {
+            minDistance = Math.abs(proposedStart)
+            bestSnap = 0
+            snapLineAt = 0
+        }
+
+        // Snap to timeline end (clip END snaps to timeline end)
+        const endPos = TIMELINE_DURATION - duration
+        if (Math.abs(proposedStart - endPos) < minDistance) {
+            minDistance = Math.abs(proposedStart - endPos)
+            bestSnap = endPos
+            snapLineAt = TIMELINE_DURATION // Line at clip's END position
+        }
+
+        for (const clip of otherClips) {
+            const clipEnd = clip.startTime + clip.duration
+
+            // Snap dragged clip's START to this clip's END
+            if (Math.abs(proposedStart - clipEnd) < minDistance) {
+                minDistance = Math.abs(proposedStart - clipEnd)
+                bestSnap = clipEnd
+                snapLineAt = clipEnd // Line at clip's START position
+            }
+
+            // Snap dragged clip's END to this clip's START
+            const alignedStart = clip.startTime - duration
+            if (alignedStart >= 0 && Math.abs(proposedStart - alignedStart) < minDistance) {
+                minDistance = Math.abs(proposedStart - alignedStart)
+                bestSnap = alignedStart
+                snapLineAt = clip.startTime // Line at clip's END position
+            }
+
+            // Snap dragged clip's START to this clip's START
+            if (Math.abs(proposedStart - clip.startTime) < minDistance) {
+                minDistance = Math.abs(proposedStart - clip.startTime)
+                bestSnap = clip.startTime
+                snapLineAt = clip.startTime // Line at clip's START position
+            }
+        }
+
+        // Cross-layer snapping: audio clips snap to video clip edges
+        const isAudioLayer = draggingItem?.layerId === 'voiceovers' || draggingItem?.layerId === 'music'
+        if (isAudioLayer) {
+            const videoLayer = layers.find(l => l.id === 'videos')
+            if (videoLayer) {
+                for (const videoClip of videoLayer.items) {
+                    const videoClipEnd = videoClip.startTime + videoClip.duration
+
+                    // Snap audio clip's START to video clip's START
+                    if (Math.abs(proposedStart - videoClip.startTime) < minDistance) {
+                        minDistance = Math.abs(proposedStart - videoClip.startTime)
+                        bestSnap = videoClip.startTime
+                        snapLineAt = videoClip.startTime
+                    }
+
+                    // Snap audio clip's START to video clip's END
+                    if (Math.abs(proposedStart - videoClipEnd) < minDistance) {
+                        minDistance = Math.abs(proposedStart - videoClipEnd)
+                        bestSnap = videoClipEnd
+                        snapLineAt = videoClipEnd
+                    }
+
+                    // Snap audio clip's END to video clip's START
+                    const alignedToVideoStart = videoClip.startTime - duration
+                    if (alignedToVideoStart >= 0 && Math.abs(proposedStart - alignedToVideoStart) < minDistance) {
+                        minDistance = Math.abs(proposedStart - alignedToVideoStart)
+                        bestSnap = alignedToVideoStart
+                        snapLineAt = videoClip.startTime // Line at audio's END position
+                    }
+
+                    // Snap audio clip's END to video clip's END
+                    const alignedToVideoEnd = videoClipEnd - duration
+                    if (alignedToVideoEnd >= 0 && Math.abs(proposedStart - alignedToVideoEnd) < minDistance) {
+                        minDistance = Math.abs(proposedStart - alignedToVideoEnd)
+                        bestSnap = alignedToVideoEnd
+                        snapLineAt = videoClipEnd // Line at audio's END position
+                    }
+                }
+            }
+        }
+
+        return { clipStart: bestSnap, snapLineAt }
+    }, [draggingItem?.layerId, layers])
 
     // Get audio duration helper
     const getAudioDuration = useCallback(async (url: string): Promise<number> => {
@@ -487,7 +657,7 @@ export function EditorTab({
         }
 
         initializeTimeline()
-    }, [scenario, scenarioId, SCENE_DURATION, isAuthenticated, loadTimeline])
+    }, [scenario, scenarioId, SCENE_DURATION, isAuthenticated, loadTimeline, getAudioDuration, getVideoDuration])
 
     // Auto-save timeline on changes (debounced)
     useEffect(() => {
@@ -525,7 +695,7 @@ export function EditorTab({
         }
     }
 
-    const handleResizeMove = (e: MouseEvent | React.MouseEvent) => {
+    const handleResizeMove = useCallback((e: MouseEvent | React.MouseEvent) => {
         if (!isResizing || !timelineRef.current || !resizingItem || !resizeHandle) return
 
         const rect = timelineRef.current.getBoundingClientRect()
@@ -680,94 +850,17 @@ export function EditorTab({
 
         setSnapLinePosition(currentSnapLine)
         setLayers(updatedLayers)
-    }
+    }, [isResizing, resizingItem, resizeHandle, resizeStartX, layers, resizeStartTime, resizeStartDuration, resizeStartTrimStart, findResizeSnapPoint])
 
-    const handleResizeEnd = () => {
+    const handleResizeEnd = useCallback(() => {
         // Layers state is already updated, auto-save will persist changes
         setIsResizing(false)
         setResizeHandle(null)
         setResizingItem(null)
         setSnapLinePosition(null)
-    }
+    }, [])
 
-    // Find snap point for resize operations - snaps an edge position to other clip edges
-    const findResizeSnapPoint = (edgePosition: number, layerId: string, excludeItemId: string): { snappedPosition: number, snapLineAt: number | null } => {
-        const RESIZE_SNAP_THRESHOLD = 0.5 // seconds
 
-        const layer = layers.find(l => l.id === layerId)
-        if (!layer) return { snappedPosition: edgePosition, snapLineAt: null }
-
-        const otherClips = layer.items.filter(i => i.id !== excludeItemId)
-
-        let bestSnap = edgePosition
-        let snapLineAt: number | null = null
-        let minDistance = RESIZE_SNAP_THRESHOLD
-
-        // Snap to timeline start
-        if (Math.abs(edgePosition) < minDistance) {
-            minDistance = Math.abs(edgePosition)
-            bestSnap = 0
-            snapLineAt = 0
-        }
-
-        // Snap to timeline end
-        if (Math.abs(edgePosition - TIMELINE_DURATION) < minDistance) {
-            minDistance = Math.abs(edgePosition - TIMELINE_DURATION)
-            bestSnap = TIMELINE_DURATION
-            snapLineAt = TIMELINE_DURATION
-        }
-
-        // Snap to other clips in the same layer
-        for (const clip of otherClips) {
-            const clipEnd = clip.startTime + clip.duration
-
-            // Snap to clip's start
-            if (Math.abs(edgePosition - clip.startTime) < minDistance) {
-                minDistance = Math.abs(edgePosition - clip.startTime)
-                bestSnap = clip.startTime
-                snapLineAt = clip.startTime
-            }
-
-            // Snap to clip's end
-            if (Math.abs(edgePosition - clipEnd) < minDistance) {
-                minDistance = Math.abs(edgePosition - clipEnd)
-                bestSnap = clipEnd
-                snapLineAt = clipEnd
-            }
-        }
-
-        // Cross-layer snapping: audio clips snap to video clip edges
-        const isAudioLayer = layerId === 'voiceovers' || layerId === 'music'
-        if (isAudioLayer) {
-            const videoLayer = layers.find(l => l.id === 'videos')
-            if (videoLayer) {
-                for (const videoClip of videoLayer.items) {
-                    const videoClipEnd = videoClip.startTime + videoClip.duration
-
-                    // Snap to video clip's start
-                    if (Math.abs(edgePosition - videoClip.startTime) < minDistance) {
-                        minDistance = Math.abs(edgePosition - videoClip.startTime)
-                        bestSnap = videoClip.startTime
-                        snapLineAt = videoClip.startTime
-                    }
-
-                    // Snap to video clip's end
-                    if (Math.abs(edgePosition - videoClipEnd) < minDistance) {
-                        minDistance = Math.abs(edgePosition - videoClipEnd)
-                        bestSnap = videoClipEnd
-                        snapLineAt = videoClipEnd
-                    }
-                }
-            }
-        }
-
-        return { snappedPosition: bestSnap, snapLineAt }
-    }
-
-    // Snap threshold in seconds
-    const SNAP_THRESHOLD = 0.3
-    // Small epsilon for floating-point comparisons
-    const OVERLAP_EPSILON = 0.001
 
     // Drag handlers for moving clips
     const handleDragStart = (e: React.MouseEvent, layerId: string, itemId: string) => {
@@ -791,70 +884,11 @@ export function EditorTab({
         }
     }
 
-    // Check if a position would overlap during drag (uses original positions)
-    // Uses epsilon to allow edge-to-edge placement
-    const checkOverlapDuringDrag = (startTime: number, duration: number, excludeItemId: string): boolean => {
-        const endTime = startTime + duration
-        return originalLayerItemsRef.current.some(clip => {
-            if (clip.id === excludeItemId) return false
-            const clipEnd = clip.startTime + clip.duration
-            // Use epsilon to allow clips to touch at edges
-            return startTime < clipEnd - OVERLAP_EPSILON && endTime > clip.startTime + OVERLAP_EPSILON
-        })
-    }
 
-    // Find snap points for a clip being dragged (only non-overlapping positions)
-    const findSnapPoint = (proposedStart: number, clipDuration: number, excludeItemId: string): number => {
-        const proposedEnd = proposedStart + clipDuration
-        const otherClips = originalLayerItemsRef.current.filter(i => i.id !== excludeItemId)
 
-        let bestSnap = proposedStart
-        let closestDistance = SNAP_THRESHOLD
 
-        // Check snap to start of timeline
-        if (Math.abs(proposedStart) < closestDistance) {
-            const snapPos = 0
-            if (!checkOverlapDuringDrag(snapPos, clipDuration, excludeItemId)) {
-                bestSnap = snapPos
-                closestDistance = Math.abs(proposedStart)
-            }
-        }
 
-        // Check snap to end of timeline
-        if (Math.abs(proposedEnd - TIMELINE_DURATION) < closestDistance) {
-            const snapPos = TIMELINE_DURATION - clipDuration
-            if (!checkOverlapDuringDrag(snapPos, clipDuration, excludeItemId)) {
-                bestSnap = snapPos
-                closestDistance = Math.abs(proposedEnd - TIMELINE_DURATION)
-            }
-        }
-
-        for (const clip of otherClips) {
-            const clipEnd = clip.startTime + clip.duration
-
-            // Snap our start to their end (place after this clip)
-            if (Math.abs(proposedStart - clipEnd) < closestDistance) {
-                const snapPos = clipEnd
-                if (!checkOverlapDuringDrag(snapPos, clipDuration, excludeItemId)) {
-                    bestSnap = snapPos
-                    closestDistance = Math.abs(proposedStart - clipEnd)
-                }
-            }
-
-            // Snap our end to their start (place before this clip)
-            if (Math.abs(proposedEnd - clip.startTime) < closestDistance) {
-                const snapPos = clip.startTime - clipDuration
-                if (snapPos >= 0 && !checkOverlapDuringDrag(snapPos, clipDuration, excludeItemId)) {
-                    bestSnap = snapPos
-                    closestDistance = Math.abs(proposedEnd - clip.startTime)
-                }
-            }
-        }
-
-        return bestSnap
-    }
-
-    const handleDragMove = (e: MouseEvent | React.MouseEvent) => {
+    const handleDragMove = useCallback((e: MouseEvent | React.MouseEvent) => {
         if (!isDragging || !timelineRef.current || !draggingItem) return
 
         const rect = timelineRef.current.getBoundingClientRect()
@@ -971,167 +1005,15 @@ export function EditorTab({
         })
 
         setLayers(updatedLayers)
-    }
+    }, [isDragging, draggingItem, dragStartX, dragStartTime, layers, findSnapPointForInsert])
 
-    // Find snap point for insert mode - snaps to edges of other clips
-    // Returns both the new clip start position and where the snap line should appear
-    const findSnapPointForInsert = (proposedStart: number, duration: number, excludeItemId: string): { clipStart: number, snapLineAt: number | null } => {
-        const SNAP_THRESHOLD = 0.5 // seconds
 
-        const otherClips = originalLayerItemsRef.current
-            .filter(i => i.id !== excludeItemId)
-            .sort((a, b) => a.startTime - b.startTime)
 
-        let bestSnap = proposedStart
-        let snapLineAt: number | null = null
-        let minDistance = SNAP_THRESHOLD
 
-        // Snap to timeline start
-        if (Math.abs(proposedStart) < minDistance) {
-            minDistance = Math.abs(proposedStart)
-            bestSnap = 0
-            snapLineAt = 0
-        }
 
-        // Snap to timeline end (clip END snaps to timeline end)
-        const endPos = TIMELINE_DURATION - duration
-        if (Math.abs(proposedStart - endPos) < minDistance) {
-            minDistance = Math.abs(proposedStart - endPos)
-            bestSnap = endPos
-            snapLineAt = TIMELINE_DURATION // Line at clip's END position
-        }
 
-        for (const clip of otherClips) {
-            const clipEnd = clip.startTime + clip.duration
 
-            // Snap dragged clip's START to this clip's END
-            if (Math.abs(proposedStart - clipEnd) < minDistance) {
-                minDistance = Math.abs(proposedStart - clipEnd)
-                bestSnap = clipEnd
-                snapLineAt = clipEnd // Line at clip's START position
-            }
-
-            // Snap dragged clip's END to this clip's START
-            const alignedStart = clip.startTime - duration
-            if (alignedStart >= 0 && Math.abs(proposedStart - alignedStart) < minDistance) {
-                minDistance = Math.abs(proposedStart - alignedStart)
-                bestSnap = alignedStart
-                snapLineAt = clip.startTime // Line at clip's END position
-            }
-
-            // Snap dragged clip's START to this clip's START
-            if (Math.abs(proposedStart - clip.startTime) < minDistance) {
-                minDistance = Math.abs(proposedStart - clip.startTime)
-                bestSnap = clip.startTime
-                snapLineAt = clip.startTime // Line at clip's START position
-            }
-        }
-
-        // Cross-layer snapping: audio clips snap to video clip edges
-        const isAudioLayer = draggingItem?.layerId === 'voiceovers' || draggingItem?.layerId === 'music'
-        if (isAudioLayer) {
-            const videoLayer = layers.find(l => l.id === 'videos')
-            if (videoLayer) {
-                for (const videoClip of videoLayer.items) {
-                    const videoClipEnd = videoClip.startTime + videoClip.duration
-
-                    // Snap audio clip's START to video clip's START
-                    if (Math.abs(proposedStart - videoClip.startTime) < minDistance) {
-                        minDistance = Math.abs(proposedStart - videoClip.startTime)
-                        bestSnap = videoClip.startTime
-                        snapLineAt = videoClip.startTime
-                    }
-
-                    // Snap audio clip's START to video clip's END
-                    if (Math.abs(proposedStart - videoClipEnd) < minDistance) {
-                        minDistance = Math.abs(proposedStart - videoClipEnd)
-                        bestSnap = videoClipEnd
-                        snapLineAt = videoClipEnd
-                    }
-
-                    // Snap audio clip's END to video clip's START
-                    const alignedToVideoStart = videoClip.startTime - duration
-                    if (alignedToVideoStart >= 0 && Math.abs(proposedStart - alignedToVideoStart) < minDistance) {
-                        minDistance = Math.abs(proposedStart - alignedToVideoStart)
-                        bestSnap = alignedToVideoStart
-                        snapLineAt = videoClip.startTime // Line at audio's END position
-                    }
-
-                    // Snap audio clip's END to video clip's END
-                    const alignedToVideoEnd = videoClipEnd - duration
-                    if (alignedToVideoEnd >= 0 && Math.abs(proposedStart - alignedToVideoEnd) < minDistance) {
-                        minDistance = Math.abs(proposedStart - alignedToVideoEnd)
-                        bestSnap = alignedToVideoEnd
-                        snapLineAt = videoClipEnd // Line at audio's END position
-                    }
-                }
-            }
-        }
-
-        return { clipStart: bestSnap, snapLineAt }
-    }
-
-    // Check if a position would overlap with any other clip
-    const wouldOverlap = (startTime: number, duration: number, excludeItemId: string): boolean => {
-        const endTime = startTime + duration
-        return originalLayerItemsRef.current.some(clip => {
-            if (clip.id === excludeItemId) return false
-            const clipEnd = clip.startTime + clip.duration
-            // Check for any overlap
-            return startTime < clipEnd && endTime > clip.startTime
-        })
-    }
-
-    // Find the nearest valid position that doesn't overlap
-    const findNearestValidPosition = (proposedStart: number, duration: number, excludeItemId: string): number => {
-        if (!wouldOverlap(proposedStart, duration, excludeItemId)) {
-            return proposedStart
-        }
-
-        const proposedEnd = proposedStart + duration
-        const otherClips = originalLayerItemsRef.current
-            .filter(i => i.id !== excludeItemId)
-            .sort((a, b) => a.startTime - b.startTime)
-
-        // Find the best alternative position
-        let bestPosition = proposedStart
-        let minDistance = Infinity
-
-        // Try placing before each clip
-        for (const clip of otherClips) {
-            const beforePos = clip.startTime - duration
-            if (beforePos >= 0 && !wouldOverlap(beforePos, duration, excludeItemId)) {
-                const distance = Math.abs(proposedStart - beforePos)
-                if (distance < minDistance) {
-                    minDistance = distance
-                    bestPosition = beforePos
-                }
-            }
-
-            // Try placing after each clip
-            const afterPos = clip.startTime + clip.duration
-            if (afterPos + duration <= TIMELINE_DURATION && !wouldOverlap(afterPos, duration, excludeItemId)) {
-                const distance = Math.abs(proposedStart - afterPos)
-                if (distance < minDistance) {
-                    minDistance = distance
-                    bestPosition = afterPos
-                }
-            }
-        }
-
-        // Try start of timeline
-        if (!wouldOverlap(0, duration, excludeItemId)) {
-            const distance = Math.abs(proposedStart - 0)
-            if (distance < minDistance) {
-                minDistance = distance
-                bestPosition = 0
-            }
-        }
-
-        return bestPosition
-    }
-
-    const handleDragEnd = () => {
+    const handleDragEnd = useCallback(() => {
         if (isDragging && draggingItem && dropIndicator) {
             const originalDraggedItem = originalLayerItemsRef.current.find(i => i.id === draggingItem.itemId)
 
@@ -1251,7 +1133,7 @@ export function EditorTab({
         setDropIndicator(null)
         setSnapLinePosition(null)
         originalLayerItemsRef.current = []
-    }
+    }, [isDragging, draggingItem, dropIndicator, layers])
 
     // Global mouse event handlers for drag/resize outside timeline
     useEffect(() => {
@@ -1273,7 +1155,7 @@ export function EditorTab({
                 document.removeEventListener('mouseup', handleGlobalMouseUp)
             }
         }
-    }, [isResizing, isDragging, resizingItem, draggingItem, resizeHandle, layers])
+    }, [isResizing, isDragging, handleDragEnd, handleDragMove, handleResizeEnd, handleResizeMove])
 
     // Playback controls
     const togglePlay = useCallback(() => {

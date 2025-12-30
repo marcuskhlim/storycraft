@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from "@/lib/utils"
 
 const MESSAGES = [
     "Convincing the lead actor to come out of their trailer...",
     "Editing out the boom mic from the opening shot...",
-    "Negotiating back-end points with the AI’s agent...",
+    "Negotiating back-end points with the AI's agent...",
     "Adding more lens flares because J.J. Abrams called...",
     "Fixing it in post...",
     "Practicing our Oscar acceptance speech in the mirror...",
@@ -28,8 +28,8 @@ const MESSAGES = [
     "Casting the pixels...",
     "Cueing the dramatic music...",
     "Calming down the director after a creative tantrum...",
-    "Waiting for the golden hour (it’s taking forever)...",
-    "Ensuring the AI cat doesn’t look 'uncanny'...",
+    "Waiting for the golden hour (it's taking forever)...",
+    "Ensuring the AI cat doesn't look 'uncanny'...",
     "Scouting for a location that isn't a warehouse...",
     "Re-aligning the stars for better dramatic timing...",
     "Teaching the AI that 'action' doesn't always mean 'explosions'...",
@@ -50,25 +50,41 @@ interface LoadingMessagesProps {
     className?: string;
 }
 
+// Helper to get a random starting index
+const getRandomIndex = () => Math.floor(Math.random() * MESSAGES.length)
+
 export function LoadingMessages({ isLoading, className }: LoadingMessagesProps) {
-    const [currentMessageIndex, setCurrentMessageIndex] = useState(0)
+    // Initialize with a random index using a function to avoid the lint warning
+    const [currentMessageIndex, setCurrentMessageIndex] = useState(getRandomIndex)
+    const wasLoadingRef = useRef(isLoading)
+
+    // Memoized function to advance to the next message
+    const advanceMessage = useCallback(() => {
+        setCurrentMessageIndex((prev) => (prev + 1) % MESSAGES.length)
+    }, [])
 
     useEffect(() => {
-        if (!isLoading) {
-            setCurrentMessageIndex(0)
-            return
+        // When transitioning from not loading to loading, reset to random index
+        if (isLoading && !wasLoadingRef.current) {
+            // Use setTimeout to avoid synchronous setState warning if needed
+            const timer = setTimeout(() => {
+                setCurrentMessageIndex(getRandomIndex())
+            }, 0)
+            wasLoadingRef.current = true
+            return () => clearTimeout(timer)
         }
 
-        // Pick a random start index
-        console.log(MESSAGES.length)
-        setCurrentMessageIndex(Math.floor(Math.random() * MESSAGES.length))
-
-        const interval = setInterval(() => {
-            setCurrentMessageIndex((prev) => (prev + 1) % MESSAGES.length)
-        }, 5000)
-
-        return () => clearInterval(interval)
+        if (!isLoading && wasLoadingRef.current) {
+            wasLoadingRef.current = false
+        }
     }, [isLoading])
+
+    useEffect(() => {
+        if (!isLoading) return
+
+        const interval = setInterval(advanceMessage, 5000)
+        return () => clearInterval(interval)
+    }, [isLoading, advanceMessage])
 
     return (
         <div className={cn("h-6 flex items-center justify-end overflow-hidden", className)}>

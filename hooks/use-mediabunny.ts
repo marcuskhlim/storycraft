@@ -42,11 +42,11 @@ interface UseMediabunnyReturn {
   // Media sources
   videoSources: Map<string, MediaSource>
   audioSources: Map<string, MediaSource>
-  
+
   // Thumbnail extraction
   extractThumbnails: (url: string, count: number, duration: number) => Promise<ImageBitmap[]>
   getThumbnailsForClip: (clipId: string) => ThumbnailData | undefined
-  
+
   // Playback control
   play: () => void
   pause: () => void
@@ -54,13 +54,13 @@ interface UseMediabunnyReturn {
   isPlaying: boolean
   currentTime: number
   totalDuration: number
-  
+
   // Frame extraction for preview
   getFrameAtTime: (time: number) => Promise<HTMLCanvasElement | OffscreenCanvas | null>
-  
+
   // Audio mixing
   getAudioBufferAtTime: (time: number) => Promise<AudioBuffer | null>
-  
+
   // Loading states
   isInitializing: boolean
   isReady: boolean
@@ -76,7 +76,7 @@ export function useMediabunny({
 }: UseMediabunnyOptions): UseMediabunnyReturn {
   const [videoSources, setVideoSources] = useState<Map<string, MediaSource>>(new Map())
   const [audioSources, setAudioSources] = useState<Map<string, MediaSource>>(new Map())
-  const [thumbnails, setThumbnails] = useState<Map<string, ThumbnailData>>(new Map())
+  const [thumbnails] = useState<Map<string, ThumbnailData>>(new Map())
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [totalDuration, setTotalDuration] = useState(0)
@@ -118,7 +118,7 @@ export function useMediabunny({
         source: new UrlSource(url),
         formats: ALL_FORMATS,
       })
-      
+
       inputCache.set(url, input)
       return input
     } catch (error) {
@@ -161,7 +161,7 @@ export function useMediabunny({
           try {
             const bitmap = await createImageBitmap(wrapped.canvas)
             frames.push(bitmap)
-          } catch (e) {
+          } catch {
             console.warn('Failed to create bitmap')
           }
         }
@@ -201,7 +201,7 @@ export function useMediabunny({
       const canvasSink = new CanvasSink(videoTrack)
       const clipTime = time - clip.startTime
       const wrapped = await canvasSink.getCanvas(clipTime)
-      
+
       if (wrapped && wrapped.canvas) {
         return wrapped.canvas
       }
@@ -216,7 +216,7 @@ export function useMediabunny({
   const getAudioBufferAtTime = useCallback(async (time: number): Promise<AudioBuffer | null> => {
     // Find all active audio clips at this time
     const activeClips: { item: TimelineItem; layer: TimelineLayer }[] = []
-    
+
     layers.forEach(layer => {
       if (layer.type === 'voiceover' || layer.type === 'music') {
         layer.items.forEach(item => {
@@ -241,7 +241,7 @@ export function useMediabunny({
       const sink = new AudioBufferSink(audioTrack)
       const clipTime = time - item.startTime
       const wrapped = await sink.getBuffer(clipTime)
-      
+
       return wrapped?.buffer || null
     } catch (error) {
       console.error('Failed to get audio buffer:', error)
@@ -401,12 +401,12 @@ export function clearMediabunnyCache() {
   inputCache.forEach(input => {
     try {
       input.dispose()
-    } catch (e) {
+    } catch {
       // Ignore cleanup errors
     }
   })
   inputCache.clear()
-  
+
   thumbnailCache.forEach(frames => {
     frames.forEach(bitmap => bitmap.close())
   })

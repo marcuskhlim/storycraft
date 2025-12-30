@@ -81,7 +81,6 @@ export async function generateMusicRest(prompt: string): Promise<string> {
       const fileName = `music-${uuid}.mp3`;
 
       // Return the relative file path (for serving the file)
-      let musicUrl: string;
       // Upload to GCS
       logger.debug(`Upload result to GCS`);
       const bucketName = GCS_VIDEOS_STORAGE_URI.replace("gs://", "").split("/")[0];

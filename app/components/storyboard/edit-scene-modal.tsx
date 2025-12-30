@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
@@ -26,7 +26,12 @@ export function EditSceneModal({ isOpen, onClose, scene, sceneNumber, scenario, 
   const [editedScene, setEditedScene] = useState(scene)
   const [activeTab, setActiveTab] = useState('general'); // 'general', 'image' or 'video'
 
-  useEffect(() => {
+  // Derived state pattern for scene prop updates
+  const [prevScene, setPrevScene] = useState(scene)
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen)
+
+  // Sync state when props change (allowed pattern for derived state)
+  if (scene !== prevScene) {
     // Ensure the scene has proper structure for Subject array
     const normalizedScene = {
       ...scene,
@@ -35,16 +40,19 @@ export function EditSceneModal({ isOpen, onClose, scene, sceneNumber, scenario, 
         Subject: scene.imagePrompt.Subject || []
       }
     }
+    setPrevScene(scene)
     setEditedScene(normalizedScene)
-  }, [scene])
+  }
 
-  useEffect(() => {
-    if (isOpen) {
-      setActiveTab('general') // Reset to general tab when modal opens
-    }
-  }, [isOpen])
+  // Sync tab when modal opens
+  if (isOpen && !prevIsOpen) {
+    setPrevIsOpen(true)
+    setActiveTab('general')
+  } else if (!isOpen && prevIsOpen) {
+    setPrevIsOpen(false)
+  }
 
-  const updateImagePrompt = (field: keyof ImagePrompt, value: any) => {
+  const updateImagePrompt = <K extends keyof ImagePrompt>(field: K, value: ImagePrompt[K]) => {
     setEditedScene(prev => ({
       ...prev,
       imagePrompt: {
@@ -77,7 +85,7 @@ export function EditSceneModal({ isOpen, onClose, scene, sceneNumber, scenario, 
         description: character?.description || ''
       }
     })
-    
+
     setEditedScene(prev => ({
       ...prev,
       imagePrompt: {
@@ -97,7 +105,7 @@ export function EditSceneModal({ isOpen, onClose, scene, sceneNumber, scenario, 
         description: prop?.description || ''
       }
     })
-    
+
     setEditedScene(prev => ({
       ...prev,
       imagePrompt: {
@@ -130,7 +138,7 @@ export function EditSceneModal({ isOpen, onClose, scene, sceneNumber, scenario, 
       name: selectedSettingName,
       description: setting?.description || ''
     }] : []
-    
+
     setEditedScene(prev => ({
       ...prev,
       imagePrompt: {
@@ -148,7 +156,7 @@ export function EditSceneModal({ isOpen, onClose, scene, sceneNumber, scenario, 
     updateImagePromptContext(selectedSettingName)
   }
 
-  const updateVideoPrompt = (field: keyof VideoPrompt, value: any) => {
+  const updateVideoPrompt = <K extends keyof VideoPrompt>(field: K, value: VideoPrompt[K]) => {
     setEditedScene(prev => ({
       ...prev,
       videoPrompt: {
@@ -163,7 +171,7 @@ export function EditSceneModal({ isOpen, onClose, scene, sceneNumber, scenario, 
       ...prev,
       videoPrompt: {
         ...prev.videoPrompt,
-        Dialogue: prev.videoPrompt.Dialogue.map((dialogue, i) => 
+        Dialogue: prev.videoPrompt.Dialogue.map((dialogue, i) =>
           i === index ? { ...dialogue, [field]: value } : dialogue
         )
       }
@@ -233,11 +241,10 @@ export function EditSceneModal({ isOpen, onClose, scene, sceneNumber, scenario, 
                     setActiveTab('general')
                   }
                 }}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer select-none ${
-                  activeTab === 'general'
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-                }`}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer select-none ${activeTab === 'general'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                  }`}
               >
                 General
               </div>
@@ -251,11 +258,10 @@ export function EditSceneModal({ isOpen, onClose, scene, sceneNumber, scenario, 
                     setActiveTab('image')
                   }
                 }}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer select-none ${
-                  activeTab === 'image'
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-                }`}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer select-none ${activeTab === 'image'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                  }`}
               >
                 Image Prompt
               </div>
@@ -269,16 +275,15 @@ export function EditSceneModal({ isOpen, onClose, scene, sceneNumber, scenario, 
                     setActiveTab('video')
                   }
                 }}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer select-none ${
-                  activeTab === 'video'
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-                }`}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer select-none ${activeTab === 'video'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                  }`}
               >
                 Video Prompt
               </div>
             </div>
-            
+
             {/* Tab Content */}
             {activeTab === 'general' && (
               <div className="space-y-6">

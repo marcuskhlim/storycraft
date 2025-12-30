@@ -87,8 +87,8 @@ export async function exportVideoClient(
             // We need a temp audio context to decode if we weren't in OfflineContext? 
             // OfflineAudioContext can decode too via decodeAudioData
             return await audioContext.decodeAudioData(arrayBuffer);
-        } catch (e) {
-            console.error('Failed to load audio:', url, e);
+        } catch {
+            console.error('Failed to load audio:', url);
             return null;
         }
     };
@@ -108,7 +108,7 @@ export async function exportVideoClient(
                     // Handle trimming if metadata exists
                     const startTime = item.startTime;
                     // Trim Logic:
-                    const offset = item.metadata?.trimStart || 0;
+                    const offset = typeof item.metadata?.trimStart === 'number' ? item.metadata.trimStart : 0;
                     const playDuration = item.duration;
 
                     source.connect(gainNode);
@@ -156,8 +156,8 @@ export async function exportVideoClient(
                         const sink = new CanvasSink(track);
                         videoInputs.set(item.id, { input, sink });
                     }
-                } catch (e) {
-                    console.error('Failed to load video input:', item.content, e);
+                } catch {
+                    console.error('Failed to load video input:', item.content);
                 }
             }
         }
@@ -192,7 +192,7 @@ export async function exportVideoClient(
 
             // Calculate time within clip
             // Account for trimStart
-            const offset = activeClip.metadata?.trimStart || 0;
+            const offset = typeof activeClip.metadata?.trimStart === 'number' ? activeClip.metadata.trimStart : 0;
             const clipTime = (time - activeClip.startTime) + offset;
 
             try {
@@ -203,8 +203,8 @@ export async function exportVideoClient(
                     // drawImage(image, dx, dy, dWidth, dHeight)
                     ctx.drawImage(wrapped.canvas, 0, 0, WIDTH, HEIGHT);
                 }
-            } catch (e) {
-                // console.warn('Frame fetch failed', e);
+            } catch {
+                // console.warn('Frame fetch failed');
             }
         }
 

@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
-import { Grid, List, Loader2, Presentation, Video, ChevronLeft, ChevronRight, Plus, Minus, Image, ChevronDown } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { Grid, List, Loader2, Presentation, Video, ChevronLeft, ChevronRight, Plus, Image as ImageIcon, ChevronDown } from 'lucide-react'
+import { useState } from 'react'
 import { Scene, Scenario, ImagePrompt, VideoPrompt } from "../../types"
 import { SceneData } from './scene-data'
 import { SceneCard } from './scene-card'
@@ -121,7 +121,7 @@ function VideoPromptDisplay({ videoPrompt }: { videoPrompt: VideoPrompt }) {
           <span className="font-medium text-xs">Dialogue:</span>
           {videoPrompt.Dialogue.map((dialogue, index) => (
             <p key={index} className="text-sm text-card-foreground/80 ml-2">
-              • {dialogue.speaker}: "{dialogue.line}"
+              • {dialogue.speaker}: &quot;{dialogue.line}&quot;
             </p>
           ))}
         </div>
@@ -179,23 +179,14 @@ export function StoryboardTab({
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [activeTabs, setActiveTabs] = useState<{ [key: number]: string }>({})
 
-  // Handle current slide index when scenes change
-  useEffect(() => {
-    if (currentSlide >= scenes.length && scenes.length > 0) {
-      setCurrentSlide(scenes.length - 1)
-    }
-  }, [scenes.length, currentSlide])
+  // No need for effects to sync these states - handle clamping at usage time and defaulting at usage time
 
-  // Initialize active tabs for new scenes
-  useEffect(() => {
-    const newActiveTabs = { ...activeTabs }
-    scenes.forEach((_, index) => {
-      if (!newActiveTabs[index]) {
-        newActiveTabs[index] = 'general'
-      }
-    })
-    setActiveTabs(newActiveTabs)
-  }, [scenes.length])
+  // Clamp current slide to valid range on render
+  const effectiveCurrentSlide = Math.min(currentSlide, Math.max(0, scenes.length - 1))
+
+  // If the clamped value is different and we're not just initializing, we could update state, but usually derived is enough for render
+  // However, controls like "Next" need to know the true current index.
+  // We'll update the interaction handlers to use 'effectiveCurrentSlide'
 
   console.log(JSON.stringify(scenario, null, 2))
 
@@ -204,6 +195,10 @@ export function StoryboardTab({
       ...prev,
       [sceneIndex]: tab
     }))
+  }
+
+  const getActiveTab = (sceneIndex: number) => {
+    return activeTabs[sceneIndex] || 'general'
   }
 
   const handleDragStart = (index: number) => (e: React.DragEvent) => {
@@ -316,7 +311,7 @@ export function StoryboardTab({
                             setActiveTab(index, 'general')
                           }
                         }}
-                        className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer select-none ${activeTabs[index] === 'general'
+                        className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer select-none ${getActiveTab(index) === 'general'
                           ? 'border-primary text-primary'
                           : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                           }`}
@@ -333,7 +328,7 @@ export function StoryboardTab({
                             setActiveTab(index, 'image')
                           }
                         }}
-                        className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer select-none ${activeTabs[index] === 'image'
+                        className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer select-none ${getActiveTab(index) === 'image'
                           ? 'border-primary text-primary'
                           : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                           }`}
@@ -350,7 +345,7 @@ export function StoryboardTab({
                             setActiveTab(index, 'video')
                           }
                         }}
-                        className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer select-none ${activeTabs[index] === 'video'
+                        className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer select-none ${getActiveTab(index) === 'video'
                           ? 'border-primary text-primary'
                           : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                           }`}
@@ -360,7 +355,7 @@ export function StoryboardTab({
                     </div>
 
                     {/* Tab Content */}
-                    {activeTabs[index] === 'general' && (
+                    {getActiveTab(index) === 'general' && (
                       <div className="space-y-4">
                         <div>
                           <h4 className="text-sm font-medium text-card-foreground mb-1">Description</h4>
@@ -373,13 +368,13 @@ export function StoryboardTab({
                       </div>
                     )}
 
-                    {activeTabs[index] === 'image' && (
+                    {getActiveTab(index) === 'image' && (
                       <div className="space-y-4">
                         <ImagePromptDisplay imagePrompt={scene.imagePrompt} />
                       </div>
                     )}
 
-                    {activeTabs[index] === 'video' && (
+                    {getActiveTab(index) === 'video' && (
                       <div className="space-y-4">
                         <VideoPromptDisplay videoPrompt={scene.videoPrompt} />
                       </div>
@@ -424,14 +419,14 @@ export function StoryboardTab({
         return (
           <div className="relative max-w-4xl mx-auto">
             <div className="aspect-video relative bg-black rounded-lg overflow-hidden max-h-[60vh] group">
-              {displayMode === 'video' && scenes[currentSlide].videoUri ? (
+              {displayMode === 'video' && scenes[effectiveCurrentSlide].videoUri ? (
                 <div className="absolute inset-0">
-                  <VideoPlayer videoGcsUri={scenes[currentSlide].videoUri} aspectRatio={scenario.aspectRatio} />
+                  <VideoPlayer videoGcsUri={scenes[effectiveCurrentSlide].videoUri} aspectRatio={scenario.aspectRatio} />
                 </div>
               ) : (
                 <GcsImage
-                  gcsUri={scenes[currentSlide].imageGcsUri || null}
-                  alt={`Scene ${currentSlide + 1}`}
+                  gcsUri={scenes[effectiveCurrentSlide].imageGcsUri || null}
+                  alt={`Scene ${effectiveCurrentSlide + 1}`}
                   className="w-full h-full object-contain"
                 />
               )}
@@ -460,7 +455,7 @@ export function StoryboardTab({
                     onClick={() => setCurrentSlide(index)}
                     className={cn(
                       "w-3 h-3 rounded-full transition-colors",
-                      currentSlide === index ? "bg-white" : "bg-white/50 hover:bg-white/75"
+                      effectiveCurrentSlide === index ? "bg-white" : "bg-white/50 hover:bg-white/75"
                     )}
                     aria-label={`Go to scene ${index + 1}`}
                   />
@@ -469,15 +464,15 @@ export function StoryboardTab({
             </div>
             <div className="mt-4 space-y-4">
               <div className="p-4 bg-card rounded-lg border">
-                <h3 className="font-semibold mb-2 text-card-foreground">Scene {currentSlide + 1}</h3>
+                <h3 className="font-semibold mb-2 text-card-foreground">Scene {effectiveCurrentSlide + 1}</h3>
                 <div className="space-y-4">
                   <div>
                     <h4 className="text-sm font-medium text-card-foreground mb-1">Image Prompt</h4>
-                    <ImagePromptDisplay imagePrompt={scenes[currentSlide].imagePrompt} />
+                    <ImagePromptDisplay imagePrompt={scenes[effectiveCurrentSlide].imagePrompt} />
                   </div>
                   <div>
                     <h4 className="text-sm font-medium text-card-foreground mb-1">Voiceover</h4>
-                    <p className="text-sm text-card-foreground/80">{scenes[currentSlide].voiceover}</p>
+                    <p className="text-sm text-card-foreground/80">{scenes[effectiveCurrentSlide].voiceover}</p>
                   </div>
                 </div>
               </div>
@@ -542,7 +537,7 @@ export function StoryboardTab({
 
           {/* Display Mode Slider */}
           <div className="flex items-center gap-2 ml-4">
-            <Image className="h-4 w-4 text-muted-foreground" />
+            <ImageIcon className="h-4 w-4 text-muted-foreground" />
             <div className="relative w-8 h-6 bg-muted rounded-full cursor-pointer" onClick={() => setDisplayMode(displayMode === 'image' ? 'video' : 'image')}>
               <div className={cn(
                 "absolute top-1 w-4 h-4 bg-primary rounded-full transition-transform duration-200",

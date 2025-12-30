@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { firestore } from '@/lib/firestore'
 import { auth } from '@/auth'
 import { Timestamp } from '@google-cloud/firestore'
+import { Scene } from '@/app/types'
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,8 +39,8 @@ export async function POST(request: NextRequest) {
       characters: scenario.characters || [],
       props: scenario.props || [],
       settings: scenario.settings || [],
-      scenes: (scenario.scenes || []).map((scene: any) => {
-        const sceneData: any = {
+      scenes: (scenario.scenes || []).map((scene: Scene) => {
+        const sceneData: Record<string, unknown> = {
           imagePrompt: scene.imagePrompt,
           videoPrompt: scene.videoPrompt,
           description: scene.description || '',
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Add optional fields only if they have values
-    const firestoreScenario: any = { ...baseScenario }
+    const firestoreScenario: Record<string, unknown> = { ...baseScenario }
     if (scenario.musicUrl) firestoreScenario.musicUrl = scenario.musicUrl
     if (scenario.logoOverlay) firestoreScenario.logoOverlay = scenario.logoOverlay
 

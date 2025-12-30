@@ -15,7 +15,7 @@ interface VideoPlayerProps {
 export function VideoPlayer({ videoGcsUri, vttSrc, language, aspectRatio = '16:9' }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
 
-  const { data: videoData, isLoading, error } = useQuery({
+  const { data: videoData, isLoading } = useQuery({
     queryKey: ['video', videoGcsUri],
     queryFn: async () => {
       if (!videoGcsUri) {
@@ -47,9 +47,8 @@ export function VideoPlayer({ videoGcsUri, vttSrc, language, aspectRatio = '16:9
   if (isLoading) {
     return (
       <div className="w-full max-w-3xl mx-auto">
-        <div className={`relative w-full bg-black rounded-lg shadow-lg flex items-center justify-center ${
-          aspectRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-video'
-        }`}>
+        <div className={`relative w-full bg-black rounded-lg shadow-lg flex items-center justify-center ${aspectRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-video'
+          }`}>
           <Loader2 className="h-12 w-12 text-white animate-spin" />
         </div>
       </div>
@@ -59,9 +58,8 @@ export function VideoPlayer({ videoGcsUri, vttSrc, language, aspectRatio = '16:9
   if (!videoUrl) {
     return (
       <div className="w-full max-w-3xl mx-auto">
-        <div className={`relative w-full bg-black rounded-lg shadow-lg flex items-center justify-center ${
-          aspectRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-video'
-        }`}>
+        <div className={`relative w-full bg-black rounded-lg shadow-lg flex items-center justify-center ${aspectRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-video'
+          }`}>
           <p className="text-gray-300">Video not available</p>
         </div>
       </div>
@@ -70,12 +68,11 @@ export function VideoPlayer({ videoGcsUri, vttSrc, language, aspectRatio = '16:9
 
   return (
     <div className="w-full max-w-3xl mx-auto">
-      <video 
-        ref={videoRef} 
-        controls 
-        className={`w-full rounded-lg shadow-lg object-contain bg-black ${
-          aspectRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-video'
-        }`}
+      <video
+        ref={videoRef}
+        controls
+        className={`w-full rounded-lg shadow-lg object-contain bg-black ${aspectRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-video'
+          }`}
       >
         <source src={videoUrl} type="video/mp4" />
         {vttSrc && (

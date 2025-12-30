@@ -16,7 +16,6 @@ interface VideoTabProps {
 export function VideoTab({
   videoGcsUri,
   vttUri,
-  isVideoLoading,
   language
 }: VideoTabProps) {
   const [isDownloading, setIsDownloading] = useState(false)
@@ -28,15 +27,15 @@ export function VideoTab({
 
     try {
       setIsDownloading(true)
-      
+
       const result = await getDynamicImageUrl(videoGcsUri, true)
       const link = document.createElement('a')
       link.href = result.url!
-      
+
       // Extract filename from URI or use a default name
       const filename = videoGcsUri.split('/').pop() || 'video.mp4'
       link.download = filename
-      
+
       // Append to body, click, and remove
       document.body.appendChild(link)
       link.click()

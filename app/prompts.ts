@@ -1,4 +1,4 @@
-import { Scene, Scenario, Language } from "./types"
+import { Scenario, Language } from "./types"
 import { Type } from '@google/genai';
 
 export function getScenarioPrompt(pitch: string, numScenes: number, style: string, language: Language): string {
@@ -114,7 +114,7 @@ export const scenarioSchema = {
       type: Type.STRING,
       nullable: false,
     },
-      'language': {
+    'language': {
       type: Type.OBJECT,
       nullable: false,
       properties: {
@@ -173,7 +173,7 @@ export const scenarioSchema = {
       type: Type.ARRAY,
       nullable: false,
       items: {
-        type: Type.OBJECT,  
+        type: Type.OBJECT,
         properties: {
           'name': {
             type: Type.STRING,

@@ -68,7 +68,7 @@ const DURATION_OPTIONS = [
 const VALID_DURATIONS = [4, 6, 8] as const;
 
 const validateDuration = (duration: number): number => {
-  return VALID_DURATIONS.includes(duration as any) ? duration : 8;
+  return VALID_DURATIONS.includes(duration as typeof VALID_DURATIONS[number]) ? duration : 8;
 };
 
 const MODEL_OPTIONS = [

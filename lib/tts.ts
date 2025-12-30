@@ -25,7 +25,7 @@ export async function tts(text: string, language: string, voiceName?: string): P
       logger.debug(voice);
     }
   });
-  
+
   let selectedVoiceName: string | null | undefined;
   if (voiceName) {
     selectedVoiceName = voiceName;
@@ -51,7 +51,7 @@ export async function tts(text: string, language: string, voiceName?: string): P
 
   logger.debug(`Using voice: ${selectedVoiceName}`);
   const request = {
-    input: { 
+    input: {
       text: text,
       prompt: "Voiceover for a short movie. Fast paced and engaging.",
     },
@@ -86,7 +86,6 @@ export async function tts(text: string, language: string, voiceName?: string): P
     const fileName = `audio-${uuid}.mp3`;
 
     // Return the relative file path (for serving the file)
-    let voiceoverUrl: string;
     // Upload video to GCS
     logger.debug(`Upload result to GCS`);
     const bucketName = GCS_VIDEOS_STORAGE_URI.replace("gs://", "").split("/")[0];

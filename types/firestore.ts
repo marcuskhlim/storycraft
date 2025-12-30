@@ -1,45 +1,48 @@
 import { ImagePrompt, VideoPrompt } from '@/app/types'
 
+// Type for Firestore timestamps that can be various forms
+type FirestoreTimestamp = FirebaseFirestore.Timestamp | Date | { seconds: number; nanoseconds: number } | unknown
+
 export interface FirestoreUser {
-    email: string
-    displayName: string
-    createdAt: FirebaseFirestore.Timestamp | Date | any
-    photoURL: string
-  }
+  email: string
+  displayName: string
+  createdAt: FirestoreTimestamp
+  photoURL: string
+}
 
 export interface FirestoreScenario {
-    id: string
-    userId: string
+  id: string
+  userId: string
+  name: string
+  pitch: string
+  scenario: string
+  style: string
+  genre: string
+  mood: string
+  music: string
+  musicUrl?: string
+  language: {
     name: string
-    pitch: string
-    scenario: string
-    style: string
-    genre: string
-    mood: string
-    music: string
-    musicUrl?: string
-    language: {
-      name: string
-      code: string
-    }
-    characters: Array<{ name: string, description: string, imageGcsUri?: string }>
-    props: Array<{ name: string, description: string, imageGcsUri?: string }>
-    settings: Array<{ name: string, description: string, imageGcsUri?: string }>
-    logoOverlay?: string
-    scenes: Array<{
-      imagePrompt: ImagePrompt
-      videoPrompt: VideoPrompt
-      description: string
-      voiceover: string
-      charactersPresent: string[]
-      imageGcsUri?: string
-      videoUri?: string
-      voiceoverAudioUri?: string
-      errorMessage?: string
-    }>
-    createdAt: FirebaseFirestore.Timestamp | Date | any
-    updatedAt: FirebaseFirestore.Timestamp | Date | any
+    code: string
   }
+  characters: Array<{ name: string, description: string, imageGcsUri?: string }>
+  props: Array<{ name: string, description: string, imageGcsUri?: string }>
+  settings: Array<{ name: string, description: string, imageGcsUri?: string }>
+  logoOverlay?: string
+  scenes: Array<{
+    imagePrompt: ImagePrompt
+    videoPrompt: VideoPrompt
+    description: string
+    voiceover: string
+    charactersPresent: string[]
+    imageGcsUri?: string
+    videoUri?: string
+    voiceoverAudioUri?: string
+    errorMessage?: string
+  }>
+  createdAt: FirestoreTimestamp
+  updatedAt: FirestoreTimestamp
+}
 
 export interface FirestoreTimelineState {
   id: string
@@ -59,10 +62,10 @@ export interface FirestoreTimelineState {
         originalDuration?: number
         trimStart?: number
         logoOverlay?: string
-        [key: string]: any
+        [key: string]: string | number | boolean | undefined
       }
     }>
   }>
-  createdAt: FirebaseFirestore.Timestamp | Date | any
-  updatedAt: FirebaseFirestore.Timestamp | Date | any
+  createdAt: FirestoreTimestamp
+  updatedAt: FirestoreTimestamp
 }

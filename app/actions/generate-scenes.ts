@@ -3,7 +3,7 @@
 import { generateImageRest } from '@/lib/imagen';
 import { getScenarioPrompt, getScenesPrompt, scenarioSchema, storyboardSchema } from '@/app/prompts';
 import { generateContent, generateImage } from '@/lib/gemini'
-import { Type } from '@google/genai';
+
 import { imagePromptToString } from '@/lib/prompt-utils';
 import yaml from 'js-yaml'
 import { createPartFromUri, createPartFromText } from '@google/genai';
@@ -88,7 +88,7 @@ export async function generateScenario(name: string, pitch: string, numScenes: n
               }
             }
           )
-          result.imageGcsUri!
+
           // if (resultJson.predictions[0].raiFilteredReason) {
           //   throw new Error(getRAIUserMessage(getRAIUserMessage(resultJson.predictions[0].raiFilteredReason)))
           // } else {

@@ -1,12 +1,10 @@
 import { TimelineLayer } from '@/app/types';
-import { GetSignedUrlConfig, Storage } from '@google-cloud/storage';
+import { Storage } from '@google-cloud/storage';
 import ffmpeg from 'fluent-ffmpeg';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { Readable, Writable } from 'stream';
-import { spawn } from 'child_process'; // For running ffprobe against a buffer
 import logger from '@/app/logger';
 
 const GCS_VIDEOS_STORAGE_URI = process.env.GCS_VIDEOS_STORAGE_URI || '';
@@ -129,96 +127,7 @@ async function addAudioToVideoWithFadeOut(
   });
 }
 
-async function addOverlayTopRight(
-  videoInputPath: string,
-  imageInputPath: string,
-  outputPath: string,
-  margin: number = 10,
-  overlayScale: number = 0.15 // Default to 15% of video width
-): Promise<void> {
-  logger.debug('Starting video processing...');
-  logger.debug(`  Input Video: ${videoInputPath}`);
-  logger.debug(`  Overlay Image: ${imageInputPath}`);
-  logger.debug(`  Output Video: ${outputPath}`);
-  logger.debug(`  Margin: ${margin}px`);
-  logger.debug(`  Overlay Scale: ${overlayScale * 100}% of video width`);
 
-  return new Promise((resolve, reject) => {
-    ffmpeg.ffprobe(videoInputPath, (err, metadata) => {
-      if (err) {
-        logger.error('Error getting video metadata:', err);
-        return reject(err);
-      }
-
-      const videoStream = metadata.streams.find(stream => stream.codec_type === 'video');
-      if (!videoStream || !videoStream.width || !videoStream.height) {
-        return reject(new Error('Could not determine video dimensions or stream not found'));
-      }
-
-      const videoWidth = videoStream.width;
-      const overlayWidth = Math.round(videoWidth * overlayScale);
-
-      logger.debug(`  Video dimensions: ${videoWidth}x${videoStream.height}`);
-      logger.debug(`  Overlay width: ${overlayWidth}px (scaled)`);
-
-      ffmpeg()
-        .input(videoInputPath)
-        .input(imageInputPath)
-        .complexFilter(
-          [
-            {
-              filter: 'scale',
-              options: { w: overlayWidth, h: -1 },
-              inputs: '1:v', // Use '1:v' for the second input's video stream
-              outputs: 'scaled_overlay' // Output label for the scaled image
-            },
-            {
-              filter: 'overlay',
-              options: { x: `W-w-${margin}`, y: margin },
-              inputs: ['0:v', 'scaled_overlay'], // Main video and scaled image
-              outputs: 'final_v' // Output label for video with overlay
-            },
-            {
-              filter: 'acopy',
-              inputs: '0:a', // Main audio stream
-              outputs: 'final_a' // Output label for audio
-            }
-          ],
-          ['final_v', 'final_a'] // Streams from the filter graph to map to output
-        )
-        .outputOptions([
-          '-c:v libx264',
-          '-crf 23',
-          '-preset veryfast',
-          '-c:a aac',
-          '-b:a 192k',
-          '-pix_fmt yuv420p'
-        ])
-        .on('start', (commandLine) => {
-          logger.debug('Spawned FFmpeg command: ' + commandLine);
-        })
-        .on('progress', (progress) => {
-          if (progress.percent) {
-            logger.debug(`Processing: ${Math.floor(progress.percent)}% done`);
-          } else if (progress.timemark) {
-            logger.debug(`Processing: Time mark ${progress.timemark}`);
-          }
-        })
-        .on('error', (err, stdout, stderr) => {
-          logger.error(`Error processing video: ${err.message}`);
-          logger.error(`ffmpeg stdout: ${stdout}`);
-          logger.error(`ffmpeg stderr: ${stderr}`);
-          reject(err);
-        })
-        .on('end', (stdout, stderr) => {
-          logger.debug(`Video processing finished successfully!`);
-          logger.debug(`Output saved to: ${outputPath}`);
-          resolve();
-        })
-        .save(outputPath);
-    });
-  });
-}
 
 function getAudioDuration(filePath: string): Promise<number> {
   return new Promise<number>((resolve, reject) => {
@@ -388,39 +297,9 @@ export async function mixAudioWithVoiceovers(
   }
 }
 
-async function generateVttSubtitleFile(
-  speechAudioFiles: string[],
-  voiceoverTexts: string[],
-  outputPath: string
-): Promise<void> {
-  const vttHeader = 'WEBVTT\n\n';
-  let vttContent = vttHeader;
-  let currentTime = 0;
-  const intervalSeconds = 8; // Same as voiceoverIntervalSeconds in mixAudioWithVoiceovers
 
-  for (let i = 0; i < speechAudioFiles.length; i++) {
-    const duration = await getAudioDuration(speechAudioFiles[i]);
-    const startTime = formatVttTime(currentTime);
-    const endTime = formatVttTime(currentTime + duration);
-    const text = voiceoverTexts[i] || `Voiceover ${i + 1}`;
 
-    vttContent += `${startTime} --> ${endTime}\n`;
-    vttContent += `${text}\n\n`;
 
-    currentTime += intervalSeconds;
-  }
-
-  fs.writeFileSync(outputPath, vttContent);
-}
-
-function formatVttTime(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-  const ms = Math.floor((seconds % 1) * 1000);
-
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
-}
 
 async function concatenateVideos(
   inputPaths: string[],
@@ -539,8 +418,6 @@ export async function exportMovie(
   const outputFileName = `${id}.mp4`;
   const outputFileNameWithAudio = `${id}_with_audio.mp4`;
   const outputFileNameWithVoiceover = `${id}_with_voiceover.mp4`;
-  const outputFileNameWithOverlay = `${id}_with_overlay.mp4`;
-  const vttFileName = `${id}.vtt`;
   let finalOutputPath;
   const storage = new Storage();
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'video-concat-'));
@@ -562,7 +439,6 @@ export async function exportMovie(
     logger.debug(gcsVideoUris);
     const localPaths = await Promise.all(
       gcsVideoUris.map(async (signedUri, index) => {
-        let localPath: string;
         const uri = signedUrlToGcsUri(signedUri);
         const match = uri.match(/gs:\/\/([^\/]+)\/(.+)/);
         if (!match) {
@@ -570,7 +446,7 @@ export async function exportMovie(
         }
 
         const [, bucket, filePath] = match;
-        localPath = path.join(tempDir, `video-${index}${path.extname(filePath)}`);
+        const localPath = path.join(tempDir, `video-${index}${path.extname(filePath)}`);
 
         await storage
           .bucket(bucket)
@@ -617,7 +493,6 @@ export async function exportMovie(
       logger.debug(`Download all voiceovers`);
       const speachAudioFiles = await Promise.all(
         voiceoverLayer.items.map(async (item, index) => {
-          let localPath: string;
           const uri = signedUrlToGcsUri(item.content);
           const match = uri.match(/gs:\/\/([^\/]+)\/(.+)/);
           if (!match) {
@@ -625,7 +500,7 @@ export async function exportMovie(
           }
 
           const [, bucket, filePath] = match;
-          localPath = path.join(tempDir, `voiceover-${index}${path.extname(filePath)}`);
+          const localPath = path.join(tempDir, `voiceover-${index}${path.extname(filePath)}`);
 
           await storage
             .bucket(bucket)
@@ -642,7 +517,6 @@ export async function exportMovie(
     logger.debug(`Adding music`);
     await addAudioToVideoWithFadeOut(outputPath, musicAudioFile, outputPathWithAudio)
     finalOutputPath = outputPathWithAudio;
-    let videoUrl: string;
     let vttUrl: string | undefined;
 
     // Upload video to GCS
@@ -660,7 +534,7 @@ export async function exportMovie(
       });
 
     const file = bucket.file(destinationPath);
-    videoUrl = file.cloudStorageURI.href;
+    const videoUrl = file.cloudStorageURI.href;
 
     // if (voiceoverLayer) {
     //   // Upload VTT file to GCS

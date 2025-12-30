@@ -3,7 +3,6 @@ import { v4 as uuidv4 } from 'uuid'
 import { uploadImage } from '@/lib/storage'
 import logger from '@/app/logger';
 
-const LOCATION = process.env.LOCATION
 const PROJECT_ID = process.env.PROJECT_ID
 
 const ai = new GoogleGenAI({ vertexai: true, project: PROJECT_ID, location: 'global' });
@@ -24,11 +23,12 @@ export async function generateContent(
     logger.debug("Generate content : " + model)
     if (model === 'gemini-3-pro-preview' || model === 'gemini-3-flash-preview') {
         config = {
+            ...config,
             thinkingConfig: {
                 // includeThoughts: true,
                 thinkingLevel: ThinkingLevel.LOW,
             },
-            responseMimeType: 'application/json',
+            responseMimeType: config.responseMimeType,
         }
     }
 
@@ -63,7 +63,7 @@ export async function generateImage(
         candidateCount: 1,
     }): Promise<GenerateNanoBananaImageResponse> {
 
-    
+
     logger.debug(JSON.stringify(prompt, null, 2))
 
     const maxRetries = 5; // Maximum number of retries
@@ -97,8 +97,6 @@ export async function generateImage(
             for (const part of firstCandidate.content!.parts!) {
                 if (part.inlineData) {
                     const imageBuffer = Buffer.from(part.inlineData!.data!, "base64");
-                    const mimeType = part.inlineData!.mimeType!;
-                    const extension = mimeType.split("/")[1] || "png";
                     const uuid = uuidv4()
                     imageGcsUri = await uploadImage(imageBuffer.toString('base64'), `gemini-${uuid}.png`)
                     return { success: true, imageGcsUri: imageGcsUri! };

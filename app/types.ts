@@ -56,7 +56,7 @@ export interface Scenario {
 export interface Language {
   name: string;
   code: string;
-} 
+}
 
 export interface TimelineLayer {
   id: string
@@ -73,7 +73,7 @@ export interface TimelineItem {
   type: 'video' | 'voiceover' | 'music'
   metadata?: {
     logoOverlay?: string
-    [key: string]: any // Allow for additional metadata fields
+    [key: string]: string | number | boolean | undefined // Allow for additional metadata fields
   }
 }
 

@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { LayoutGrid, Loader2, Pencil, Upload, Plus, X, RefreshCw } from "lucide-react";
 import { Scenario } from "../../types";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { GcsImage } from "../ui/gcs-image";
@@ -114,6 +114,95 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
         }
     }, [scenario?.scenario, scenario?.characters, scenario?.settings, scenario?.props, scenario?.music]);
 
+    const handleSave = useCallback(async () => {
+        if (scenario && onScenarioUpdate) {
+            const updatedScenario = {
+                ...scenario,
+                scenario: editedScenario
+            };
+            onScenarioUpdate(updatedScenario);
+            setEditedScenario(updatedScenario.scenario);
+        }
+        setIsEditing(false);
+    }, [scenario, onScenarioUpdate, editedScenario]);
+
+    const handleSaveCharacter = useCallback(async (index: number) => {
+        if (scenario && onScenarioUpdate) {
+            const updatedDescription = editedCharacterDescriptions[index];
+            const updatedName = editedCharacterNames[index];
+            const updatedVoice = editedCharacterVoices[index];
+
+            // Update the scenario with the new description and name
+            const updatedCharacters = [...scenario.characters];
+            updatedCharacters[index] = {
+                ...updatedCharacters[index],
+                name: updatedName,
+                description: updatedDescription,
+                voice: updatedVoice
+            };
+            const updatedScenario = {
+                ...scenario,
+                characters: updatedCharacters
+            };
+            onScenarioUpdate(updatedScenario);
+        }
+        setEditingCharacterIndex(null);
+    }, [scenario, onScenarioUpdate, editedCharacterDescriptions, editedCharacterNames, editedCharacterVoices]);
+
+    const handleSaveSetting = useCallback(async (index: number) => {
+        if (scenario && onScenarioUpdate) {
+            const updatedDescription = editedSettingDescriptions[index];
+            const updatedName = editedSettingNames[index];
+
+            // Update the scenario with the new description and name
+            const updatedSettings = [...scenario.settings];
+            updatedSettings[index] = {
+                ...updatedSettings[index],
+                name: updatedName,
+                description: updatedDescription
+            };
+            const updatedScenario = {
+                ...scenario,
+                settings: updatedSettings
+            };
+            onScenarioUpdate(updatedScenario);
+        }
+        setEditingSettingIndex(null);
+    }, [scenario, onScenarioUpdate, editedSettingDescriptions, editedSettingNames]);
+
+    const handleSaveProp = useCallback(async (index: number) => {
+        if (scenario && onScenarioUpdate) {
+            const updatedDescription = editedPropDescriptions[index];
+            const updatedName = editedPropNames[index];
+
+            // Update the scenario with the new description and name
+            const updatedProps = [...scenario.props];
+            updatedProps[index] = {
+                ...updatedProps[index],
+                name: updatedName,
+                description: updatedDescription
+            };
+            const updatedScenario = {
+                ...scenario,
+                props: updatedProps
+            };
+            onScenarioUpdate(updatedScenario);
+        }
+        setEditingPropIndex(null);
+    }, [scenario, onScenarioUpdate, editedPropDescriptions, editedPropNames]);
+
+    const handleSaveMusic = useCallback(async () => {
+        if (scenario && onScenarioUpdate) {
+            // Update only the music property without regenerating scenario
+            const updatedScenario = {
+                ...scenario,
+                music: editedMusic
+            };
+            onScenarioUpdate(updatedScenario);
+        }
+        setIsEditingMusic(false);
+    }, [scenario, onScenarioUpdate, editedMusic]);
+
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             const target = event.target as Node;
@@ -161,7 +250,7 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, [isEditing, editedScenario, editingCharacterIndex, editedCharacterDescriptions, editedCharacterNames, editedCharacterVoices, editingSettingIndex, editedSettingDescriptions, editedSettingNames, editingPropIndex, editedPropDescriptions, editedPropNames, isEditingMusic, editedMusic]);
+    }, [isEditing, editingCharacterIndex, editingSettingIndex, editingPropIndex, isEditingMusic, handleSave, handleSaveCharacter, handleSaveSetting, handleSaveProp, handleSaveMusic]);
 
     const handleScenarioChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setEditedScenario(e.target.value);
@@ -266,96 +355,7 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
         }
     };
 
-    const handleSave = async () => {
-        if (scenario && onScenarioUpdate) {
-            const updatedScenario = {
-                ...scenario,
-                scenario: editedScenario
-            };
-            onScenarioUpdate(updatedScenario);
-            setEditedScenario(updatedScenario.scenario);
-        }
-        setIsEditing(false);
-    };
 
-    const handleSaveCharacter = async (index: number) => {
-        if (scenario && onScenarioUpdate) {
-            const updatedDescription = editedCharacterDescriptions[index];
-            const updatedName = editedCharacterNames[index];
-            const updatedVoice = editedCharacterVoices[index];
-            console.log('handleSaveCharacter');
-            console.log(updatedVoice);
-
-            // Update the scenario with the new description and name
-            const updatedCharacters = [...scenario.characters];
-            updatedCharacters[index] = {
-                ...updatedCharacters[index],
-                name: updatedName,
-                description: updatedDescription,
-                voice: updatedVoice
-            };
-            const updatedScenario = {
-                ...scenario,
-                characters: updatedCharacters
-            };
-            onScenarioUpdate(updatedScenario);
-        }
-        setEditingCharacterIndex(null);
-    };
-
-    const handleSaveSetting = async (index: number) => {
-        if (scenario && onScenarioUpdate) {
-            const updatedDescription = editedSettingDescriptions[index];
-            const updatedName = editedSettingNames[index];
-
-            // Update the scenario with the new description and name
-            const updatedSettings = [...scenario.settings];
-            updatedSettings[index] = {
-                ...updatedSettings[index],
-                name: updatedName,
-                description: updatedDescription
-            };
-            const updatedScenario = {
-                ...scenario,
-                settings: updatedSettings
-            };
-            onScenarioUpdate(updatedScenario);
-        }
-        setEditingSettingIndex(null);
-    };
-
-    const handleSaveProp = async (index: number) => {
-        if (scenario && onScenarioUpdate) {
-            const updatedDescription = editedPropDescriptions[index];
-            const updatedName = editedPropNames[index];
-
-            // Update the scenario with the new description and name
-            const updatedProps = [...scenario.props];
-            updatedProps[index] = {
-                ...updatedProps[index],
-                name: updatedName,
-                description: updatedDescription
-            };
-            const updatedScenario = {
-                ...scenario,
-                props: updatedProps
-            };
-            onScenarioUpdate(updatedScenario);
-        }
-        setEditingPropIndex(null);
-    };
-
-    const handleSaveMusic = async () => {
-        if (scenario && onScenarioUpdate) {
-            // Update only the music property without regenerating scenario
-            const updatedScenario = {
-                ...scenario,
-                music: editedMusic
-            };
-            onScenarioUpdate(updatedScenario);
-        }
-        setIsEditingMusic(false);
-    };
 
     const handleAddCharacter = () => {
         if (scenario && onScenarioUpdate) {

@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Loader2, Pencil, RefreshCw, Upload, Video, Trash2, GripVertical, MessageCircle } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Scene, Scenario } from '../../types'
 import { EditSceneModal } from './edit-scene-modal'
 import { ConversationalEditModal } from './conversational-edit-modal'
@@ -66,7 +66,7 @@ export function SceneData({
   }
 
   return (
-    <Card 
+    <Card
       className={cn(
         "overflow-hidden transition-all duration-200",
         isDragOver && "ring-2 ring-blue-500 bg-blue-50",
@@ -185,7 +185,7 @@ export function SceneData({
             </Button>
           </div>
           {scene.errorMessage && (
-              <p className="text-sm text-red-600">{scene.errorMessage}</p>
+            <p className="text-sm text-red-600">{scene.errorMessage}</p>
           )}
           <p className="text-sm text-muted-foreground">{scene.description}</p>
         </CardContent>

@@ -1,9 +1,8 @@
 'use client'
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Loader2, Pencil, RefreshCw, Upload, Video, Trash2, GripVertical, MessageCircle } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Scene, Scenario } from '../../types'
 import { EditSceneModal } from './edit-scene-modal'
 import { ConversationalEditModal } from './conversational-edit-modal'

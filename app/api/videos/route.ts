@@ -1,7 +1,7 @@
-import { Language, Scene, Scenario } from '@/app/types';
+import { Scene, Scenario } from '@/app/types';
 import { videoPromptToString } from '@/lib/prompt-utils';
 import { generateSceneVideo, waitForOperation } from '@/lib/veo';
-import { Storage } from '@google-cloud/storage';
+
 import logger from '@/app/logger';
 import { getRAIUserMessage } from '@/lib/rai'
 
@@ -33,10 +33,9 @@ const placeholderVideoUrls916 = [
  */
 export async function POST(req: Request): Promise<Response> {
 
-  const { scenes, scenario, language, aspectRatio, model, generateAudio, durationSeconds }: {
+  const { scenes, scenario, aspectRatio, model, generateAudio, durationSeconds }: {
     scenes: Array<Scene>
     scenario: Scenario
-    language: Language
     aspectRatio: string
     model?: string
     generateAudio?: boolean
@@ -49,7 +48,7 @@ export async function POST(req: Request): Promise<Response> {
     logger.debug('Generating videos in parallel...');
     logger.debug(`scenes: ${scenes}`);
     logger.debug(`durationSeconds: ${durationSeconds}`);
-    const storage = new Storage();
+
 
     const videoGenerationTasks = scenes
       .filter(scene => scene.imageGcsUri)

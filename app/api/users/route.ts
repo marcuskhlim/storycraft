@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { firestore } from '@/lib/firestore'
 import { auth } from '@/auth'
 import { Timestamp } from '@google-cloud/firestore'
 import type { FirestoreUser } from '@/types/firestore'
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     const session = await auth()
     if (!session?.user?.id || !session?.user?.email) {
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await auth()
     if (!session?.user?.id) {

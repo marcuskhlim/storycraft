@@ -11,12 +11,12 @@ export async function resizeImage(base64Image: string, width: number = 1920, hei
   try {
     // Remove data URL prefix if present
     const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '')
-    
+
     // Convert base64 to buffer
     const buffer = Buffer.from(base64Data, 'base64')
     const resizedImageBuffer = await sharp(buffer)
-      .resize(1792, 1024, { 
-        fit: 'contain', 
+      .resize(width, height, {
+        fit: 'contain',
         background: { r: 0, g: 0, b: 0 } // Black background for initial resize
       })
       // .flatten({ background: '#FFFFFF' })
@@ -53,7 +53,7 @@ export async function createCollage(
 ): Promise<string> {
   // Calculate canvas dimensions based on aspect ratio
   let canvasWidth: number, canvasHeight: number;
-  
+
   if (aspectRatio === '16:9') {
     canvasWidth = 1920;
     canvasHeight = 1080;
@@ -81,18 +81,18 @@ export async function createCollage(
   // Calculate grid layout
   const itemsPerRow = Math.ceil(Math.sqrt(items.length));
   const rows = Math.ceil(items.length / itemsPerRow);
-  
+
   // Calculate item dimensions
   const padding = 20;
   const labelHeight = 40;
   const availableWidth = canvasWidth - (padding * 2);
   const availableHeight = canvasHeight - (padding * 2) - (labelHeight * rows);
-  
+
   const itemWidth = Math.floor((availableWidth - (padding * (itemsPerRow - 1))) / itemsPerRow);
   const itemHeight = Math.floor(availableHeight / rows);
 
   // Create blank canvas
-  let canvas = sharp({
+  const canvas = sharp({
     create: {
       width: canvasWidth,
       height: canvasHeight,
@@ -103,24 +103,24 @@ export async function createCollage(
 
   // Process each item
   const composites: sharp.OverlayOptions[] = [];
-  
+
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     const row = Math.floor(i / itemsPerRow);
     const col = i % itemsPerRow;
-    
+
     try {
       // Download and get image metadata
       const imageSharp = await gcsUriToSharp(item.imageGcsUri!);
       const metadata = await imageSharp.metadata();
-      
+
       // Calculate aspect ratio of source image
       const sourceAspectRatio = (metadata.width || 1) / (metadata.height || 1);
-      
+
       // Calculate dimensions to fit within grid cell while maintaining aspect ratio
       let finalWidth = itemWidth;
       let finalHeight = itemHeight;
-      
+
       if (sourceAspectRatio > itemWidth / itemHeight) {
         // Image is wider than grid cell - fit to width
         finalHeight = Math.floor(itemWidth / sourceAspectRatio);
@@ -128,7 +128,7 @@ export async function createCollage(
         // Image is taller than grid cell - fit to height
         finalWidth = Math.floor(itemHeight * sourceAspectRatio);
       }
-      
+
       // Resize image maintaining aspect ratio
       const resizedImage = await imageSharp
         .resize(finalWidth, finalHeight, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 0 } })
@@ -149,7 +149,7 @@ export async function createCollage(
       // Create label text
       const labelText = `${item.name} (${item.type})`;
       logger.debug(`Label text: ${labelText}`);
-      
+
       // Create text label as SVG with same width as the resized image
       const svgText = `
         <svg width="${finalWidth}" height="${labelHeight}" xmlns="http://www.w3.org/2000/svg">
@@ -190,7 +190,7 @@ export async function createCollage(
   const filename = `collage-${Date.now()}.png`;
   const base64Collage = collageBuffer.toString('base64');
   const gcsUri = await uploadImage(base64Collage, filename);
-  
+
   if (!gcsUri) {
     throw new Error('Failed to upload collage to storage');
   }

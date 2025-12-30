@@ -1,14 +1,11 @@
 'use client'
 
-import { Stepper } from "@/components/ui/stepper" // Removing this might break if I don't remove it from imports
-// Actually I should remove it.
 import { useScenario } from '@/hooks/use-scenario'
 import { useTimeline } from '@/hooks/use-timeline'
-import { BookOpen, Film, LayoutGrid, Library, PenLine, Scissors } from 'lucide-react'
+import { BookOpen, Film, LayoutGrid, PenLine, Scissors } from 'lucide-react'
 import Image from 'next/image'
 import { useEffect, useState, useRef } from 'react'
 import { generateScenario, generateStoryboard } from './actions/generate-scenes'
-import { exportMovieAction } from './actions/generate-video'
 import { exportVideoClient } from '@/lib/client-export'
 
 import { resizeImage } from './actions/resize-image'
@@ -17,16 +14,13 @@ import { CreateTab } from './components/create/create-tab'
 import { type Style } from "./components/create/style-selector"
 import { EditorTab } from './components/editor/editor-tab'
 import { ScenarioTab } from "./components/scenario/scenario-tab"
-// import { StoriesTab } from './components/stories/stories-tab' // No longer needed
 import { StoryboardTab } from './components/storyboard/storyboard-tab'
 import { UserProfile } from "./components/user-profile"
-import { VideoTab } from './components/video/video-tab'
 import { Scenario, Scene, TimelineLayer, type Language } from './types'
 import { regenerateCharacterAndScenarioFromText, regenerateCharacterAndScenarioFromImage, regenerateSettingAndScenarioFromImage, regenerateSettingAndScenarioFromText, regeneratePropAndScenarioFromImage, regeneratePropAndScenarioFromText } from "./actions/modify-scenario"
 import { Sidebar } from "./components/layout/sidebar"
 import { TopNav } from "./components/layout/top-nav"
 import { Button } from "@/components/ui/button"
-import { PanelLeft } from 'lucide-react'
 
 const styles: Style[] = [
   { name: "Photographic", image: "/styles/cinematic.jpg" },
@@ -42,9 +36,10 @@ const DEFAULT_LANGUAGE: Language = {
 };
 
 const VALID_DURATIONS = [4, 6, 8] as const;
+type ValidDuration = typeof VALID_DURATIONS[number];
 
 const validateDuration = (duration: number): number => {
-  return VALID_DURATIONS.includes(duration as any) ? duration : 8;
+  return VALID_DURATIONS.includes(duration as ValidDuration) ? duration : 8;
 };
 
 export default function Home() {
@@ -55,10 +50,10 @@ export default function Home() {
   const [durationSeconds, setDurationSeconds] = useState(8)
   const [language, setLanguage] = useState<Language>(DEFAULT_LANGUAGE)
   const [logoOverlay, setLogoOverlay] = useState<string | null>(null)
-  const [isUploading, setIsUploading] = useState(false);
+  const [, setIsUploading] = useState(false);
   const [numScenes, setNumScenes] = useState(6)
   const [isLoading, setIsLoading] = useState(false)
-  const [withVoiceOver, setWithVoiceOver] = useState(false)
+  const [, setWithVoiceOver] = useState(false)
   const [isVideoLoading, setIsVideoLoading] = useState(false)
   const [exportProgress, setExportProgress] = useState(0)
   const [scenario, setScenario] = useState<Scenario>()
@@ -67,8 +62,8 @@ export default function Home() {
   const [generatingSettingImages, setGeneratingSettingImages] = useState<Set<number>>(new Set());
   const [generatingPropImages, setGeneratingPropImages] = useState<Set<number>>(new Set());
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [videoUri, setVideoUri] = useState<string | null>(null)
-  const [vttUri, setVttUri] = useState<string | null>(null)
+  const [, setVideoUri] = useState<string | null>(null)
+  const [, setVttUri] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<string>("create")
   const [currentTime, setCurrentTime] = useState(0)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
@@ -77,7 +72,7 @@ export default function Home() {
   // Ref to track when we're loading a scenario from sidebar (to prevent auto-save with stale data)
   const isLoadingScenarioRef = useRef(false)
 
-  const GCS_VIDEOS_STORAGE_URI = process.env.GCS_VIDEOS_STORAGE_URI;
+
 
   // Scenario auto-save functionality
   const { saveScenarioDebounced, getCurrentScenarioId, setCurrentScenarioId, isAuthenticated } = useScenario()
@@ -314,6 +309,7 @@ export default function Home() {
       a.click();
       document.body.removeChild(a);
 
+
       setVideoUri(videoUrl)
       setVttUri(null)
       // setActiveTab("video") // Don't switch (removed per request)
@@ -326,7 +322,7 @@ export default function Home() {
     }
   }
 
-  const handleGenerateAllVideos = async (model: string = "veo-3.0-generate-001", generateAudio: boolean = true, durationSeconds: number = 8) => {
+  const handleGenerateAllVideos = async (model: string = "veo-3.0-generate-001", generateAudio: boolean = true) => {
     if (!scenario) return;
     setErrorMessage(null);
     console.log("[Client] Generating videos for all scenes - START");
@@ -859,6 +855,7 @@ export default function Home() {
     setNumScenes(6);
     setWithVoiceOver(false);
     setErrorMessage(null);
+
     setVideoUri(null);
     setVttUri(null);
     setCurrentTime(0);
@@ -1009,7 +1006,7 @@ export default function Home() {
                   variant="default"
                   size="sm"
                   className="rounded-full"
-                  onClick={() => handleGenerateAllVideos(undefined, true, durationSeconds)}
+                  onClick={() => handleGenerateAllVideos(undefined, true)}
                   disabled={isVideoLoading || generatingScenes.size > 0}
                 >
                   {isVideoLoading ? (

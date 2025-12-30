@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { TimelineLayer, TimelineItem } from '@/app/types'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
@@ -39,19 +39,10 @@ export function MediabunnyPlayer({
   const lastFrameTimeRef = useRef<number>(0) // For tracking frame delta during gaps
   const timelinePositionRef = useRef<number>(0) // Current timeline position
   const activeVideoRef = useRef<'main' | 'next'>('main') // Track which video element is currently active
-  
+
   const [isReady, setIsReady] = useState(false)
-  const [totalDuration, setTotalDuration] = useState(0)
-  const [showBlackScreen, setShowBlackScreen] = useState(false)
-  const [activeVideoElement, setActiveVideoElement] = useState<'main' | 'next'>('main')
-
-  // Keep isPlayingRef in sync
-  useEffect(() => {
-    isPlayingRef.current = isPlaying
-  }, [isPlaying])
-
-  // Calculate total duration from all layers (max end time)
-  useEffect(() => {
+  // totalDuration is derived from layers
+  const totalDuration = useMemo(() => {
     let maxEndTime = 0
     layers.forEach(layer => {
       layer.items.forEach(item => {
@@ -61,8 +52,16 @@ export function MediabunnyPlayer({
         }
       })
     })
-    setTotalDuration(maxEndTime)
+    return maxEndTime
   }, [layers])
+
+  const [showBlackScreen, setShowBlackScreen] = useState(false)
+  const [activeVideoElement, setActiveVideoElement] = useState<'main' | 'next'>('main')
+
+  // Keep isPlayingRef in sync
+  useEffect(() => {
+    isPlayingRef.current = isPlaying
+  }, [isPlaying])
 
   // Initialize audio context
   useEffect(() => {
@@ -73,6 +72,7 @@ export function MediabunnyPlayer({
       })
     }
 
+    const activeSources = activeSourcesRef.current
     return () => {
       // Cancel any running RAF loop
       if (rafIdRef.current !== null) {
@@ -81,14 +81,14 @@ export function MediabunnyPlayer({
       }
 
       // Full cleanup on unmount
-      activeSourcesRef.current.forEach(({ source, gainNode }) => {
+      activeSources.forEach(({ source, gainNode }) => {
         try {
           source.stop()
           source.disconnect()
           gainNode.disconnect()
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
       })
-      activeSourcesRef.current.clear()
+      activeSources.clear()
 
       if (audioContextRef.current) {
         audioContextRef.current.close()
@@ -198,7 +198,7 @@ export function MediabunnyPlayer({
   const preloadNextClip = useCallback((currentClipId: string) => {
     const nextClip = getNextVideoClip(currentClipId)
     const preloadVideo = getPreloadVideo()
-    
+
     if (nextClip && preloadVideo && preloadedClipIdRef.current !== nextClip.id) {
       preloadVideo.src = nextClip.content
       preloadVideo.load()
@@ -208,7 +208,7 @@ export function MediabunnyPlayer({
 
   // Track clips that are currently being started (to prevent race conditions)
   const startingAudioClipsRef = useRef<Set<string>>(new Set())
-  
+
   // Generation counter to invalidate any in-flight audio operations
   const audioGenerationRef = useRef<number>(0)
 
@@ -216,9 +216,9 @@ export function MediabunnyPlayer({
   const stopAllAudio = useCallback((shouldRecreateContext: boolean = false) => {
     // Increment generation to invalidate any in-flight async audio operations
     audioGenerationRef.current += 1
-    
+
     const audioContext = audioContextRef.current
-    
+
     // Stop all active sources
     activeSourcesRef.current.forEach(({ source, gainNode }) => {
       try {
@@ -228,35 +228,35 @@ export function MediabunnyPlayer({
           gainNode.gain.cancelScheduledValues(audioContext.currentTime)
           gainNode.gain.setValueAtTime(0, audioContext.currentTime)
         }
-      } catch (e) { /* ignore */ }
-      
+      } catch { /* ignore */ }
+
       try {
         // Remove the onended callback to prevent any lingering references
         source.onended = null
-      } catch (e) { /* ignore */ }
-      
+      } catch { /* ignore */ }
+
       try {
         source.stop(0) // Stop immediately (0 = now)
-      } catch (e) { /* ignore - might already be stopped */ }
-      
+      } catch { /* ignore - might already be stopped */ }
+
       try {
         source.disconnect()
-      } catch (e) { /* ignore */ }
-      
+      } catch { /* ignore */ }
+
       try {
         gainNode.disconnect()
-      } catch (e) { /* ignore */ }
+      } catch { /* ignore */ }
     })
-    
+
     activeSourcesRef.current.clear()
     startingAudioClipsRef.current.clear()
-    
+
     // Nuclear option: close and recreate the audio context to ensure all audio stops
     if (shouldRecreateContext && audioContext) {
       try {
         audioContext.close()
-      } catch (e) { /* ignore */ }
-      
+      } catch { /* ignore */ }
+
       // Create a new audio context
       audioContextRef.current = new AudioContext({
         latencyHint: 'playback',
@@ -270,10 +270,10 @@ export function MediabunnyPlayer({
   // Start a single audio clip (only if not already playing or being started)
   const startAudioClip = useCallback(async (clip: { item: TimelineItem; clipTime: number; type: 'voiceover' | 'music' }) => {
     const clipId = clip.item.id
-    
+
     // Capture the current generation at the start of this operation
     const startGeneration = audioGenerationRef.current
-    
+
     // Don't start if already playing, already being started, or if we're not in playing state
     if (activeSourcesRef.current.has(clipId) || startingAudioClipsRef.current.has(clipId) || !isPlayingRef.current) {
       return
@@ -307,13 +307,13 @@ export function MediabunnyPlayer({
       }
 
       const buffer = await loadAudioBuffer(clip.item.content)
-      
+
       // Check again after loading buffer - generation might have changed
       if (audioGenerationRef.current !== startGeneration) {
         startingAudioClipsRef.current.delete(clipId)
         return
       }
-      
+
       // Check again after loading buffer
       if (!buffer || !isPlayingRef.current) {
         startingAudioClipsRef.current.delete(clipId)
@@ -328,7 +328,7 @@ export function MediabunnyPlayer({
 
       const source = audioContext.createBufferSource()
       const gainNode = audioContext.createGain()
-      
+
       source.buffer = buffer
       source.connect(gainNode)
       gainNode.connect(audioContext.destination)
@@ -338,7 +338,7 @@ export function MediabunnyPlayer({
 
       const startOffset = Math.max(0, Math.min(clip.clipTime, buffer.duration - 0.01))
       source.start(audioContext.currentTime, startOffset)
-      
+
       activeSourcesRef.current.set(clipId, { source, gainNode })
       startingAudioClipsRef.current.delete(clipId)
 
@@ -367,7 +367,7 @@ export function MediabunnyPlayer({
           source.stop()
           source.disconnect()
           gainNode.disconnect()
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
         activeSourcesRef.current.delete(clipId)
       }
     })
@@ -384,7 +384,7 @@ export function MediabunnyPlayer({
   const startPlaybackLoop = useCallback(() => {
     lastFrameTimeRef.current = performance.now()
     let isLoadingClip = false // Track when we're waiting for a clip to load
-    
+
     const tick = () => {
       if (!isPlayingRef.current) {
         rafIdRef.current = null
@@ -415,7 +415,7 @@ export function MediabunnyPlayer({
         const clipEndTime = currentClip.endTime
         // Calculate timeline time from video time: startTime + (videoCurrentTime - trimStart)
         const videoTime = currentClip.startTime + (video.currentTime - currentClip.trimStart)
-        
+
         if (videoTime >= clipEndTime - 0.05) { // Small buffer to prevent stuttering
           // Current clip has ended
           video.pause()
@@ -428,20 +428,20 @@ export function MediabunnyPlayer({
 
       // Check if we're in a video clip
       const clipAtTime = getCurrentVideoClip(timelineTime)
-      
+
       // Determine if video is actually playing and ready
-      const videoIsPlaying = video && !video.paused && video.readyState >= 2
-      
+
+
       if (clipAtTime && video) {
         // We're in a video clip
         setShowBlackScreen(false)
-        
+
         // Check if we need to switch to this clip (different clip or no current clip)
         if (!currentClipRef.current || currentClipRef.current.id !== clipAtTime.item.id) {
           // Stop audio when loading a new clip to prevent desync
           isLoadingClip = true
           stopAllAudio()
-          
+
           const trimStart = (clipAtTime.item.metadata?.trimStart as number) || 0
           currentClipRef.current = {
             id: clipAtTime.item.id,
@@ -450,7 +450,7 @@ export function MediabunnyPlayer({
             url: clipAtTime.item.content,
             trimStart,
           }
-          
+
           // Check if this clip is already preloaded in the other video element
           const preloadVideo = getPreloadVideo()
           if (preloadedClipIdRef.current === clipAtTime.item.id && preloadVideo && preloadVideo.readyState >= 2) {
@@ -467,11 +467,11 @@ export function MediabunnyPlayer({
             video.currentTime = clipAtTime.clipTime
             video.play().catch(console.error)
           }
-          
+
           // Preload the next clip while this one plays
           preloadNextClip(clipAtTime.item.id)
         }
-        
+
         // Get time from video if it's playing (use the currently active video)
         const activeVideo = getActiveVideo()
         const activeVideoIsPlaying = activeVideo && !activeVideo.paused && activeVideo.readyState >= 2
@@ -539,19 +539,19 @@ export function MediabunnyPlayer({
 
     timelinePositionRef.current = currentTime
     const clipData = getCurrentVideoClip(currentTime)
-    
+
     if (!clipData) {
       // We're in a gap - show black screen
-      setShowBlackScreen(true)
+      requestAnimationFrame(() => setShowBlackScreen(true))
       currentClipRef.current = null
       return
     }
 
     // We're in a clip
-    setShowBlackScreen(false)
+    requestAnimationFrame(() => setShowBlackScreen(false))
     const { item, clipTime } = clipData
     const trimStart = (item.metadata?.trimStart as number) || 0
-    
+
     currentClipRef.current = {
       id: item.id,
       startTime: item.startTime,
@@ -567,9 +567,9 @@ export function MediabunnyPlayer({
       video.load()
       lastLoadedVideoRef.current = item.content
     }
-    
+
     video.currentTime = clipTime
-    
+
     // Preload next clip when seeking
     preloadNextClip(item.id)
   }, [currentTime, isPlaying, getCurrentVideoClip, getActiveVideo, preloadNextClip])
@@ -584,16 +584,16 @@ export function MediabunnyPlayer({
       // FIRST: Stop any existing audio to ensure clean state
       // This is critical when seeking to a new position
       stopAllAudio(false) // false = don't recreate context, just stop sources
-      
+
       // Resume audio context and wait for it
       const resumeAndStart = async () => {
         if (audioContextRef.current?.state === 'suspended') {
           await audioContextRef.current.resume()
         }
-        
+
         // Double check we're still supposed to be playing
         if (!isPlayingRef.current) return
-        
+
         // Start audio for current position (only clips not already playing or starting)
         const audioClips = getActiveAudioClips(currentTime)
         audioClips.forEach(clip => {
@@ -602,7 +602,7 @@ export function MediabunnyPlayer({
           }
         })
       }
-      
+
       resumeAndStart()
 
       // Initialize timeline position
@@ -613,7 +613,7 @@ export function MediabunnyPlayer({
       if (clipData) {
         const { item, clipTime } = clipData
         const trimStart = (item.metadata?.trimStart as number) || 0
-        
+
         currentClipRef.current = {
           id: item.id,
           startTime: item.startTime,
@@ -629,13 +629,13 @@ export function MediabunnyPlayer({
           video.currentTime = clipTime
           video.play().catch(console.error)
         }
-        setShowBlackScreen(false)
-        
+        requestAnimationFrame(() => setShowBlackScreen(false))
+
         // Preload the next clip immediately
         preloadNextClip(item.id)
       } else {
         // Starting in a gap
-        setShowBlackScreen(true)
+        requestAnimationFrame(() => setShowBlackScreen(true))
         currentClipRef.current = null
       }
 
@@ -645,17 +645,18 @@ export function MediabunnyPlayer({
       // STOP everything immediately
       // Set isPlayingRef FIRST to prevent any async audio from starting
       isPlayingRef.current = false
-      
+
       // Pause both video elements
       mainVideo.pause()
       if (nextVideo) nextVideo.pause()
-      
+
       // Stop the RAF loop FIRST to prevent any new audio from being started
       stopPlaybackLoop()
-      
+
       // Stop all audio sources and recreate context to ensure clean slate
       stopAllAudio(true) // true = recreate audio context
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlaying]) // Only run when play state changes - functions access refs directly
 
   // Pre-load audio buffers
@@ -676,7 +677,7 @@ export function MediabunnyPlayer({
 
   // Track which video URLs we've already preloaded to avoid repeated loads
   const preloadedUrlsRef = useRef<Set<string>>(new Set())
-  
+
   // Pre-load first video clip for instant playback on first play
   // Only reacts to actual content changes, not position changes
   useEffect(() => {
@@ -687,16 +688,16 @@ export function MediabunnyPlayer({
     const videoUrls = videoLayer.items
       .filter(item => item.content)
       .map(item => item.content)
-    
+
     // Check if we have any new URLs that need preloading
     const hasNewContent = videoUrls.some(url => !preloadedUrlsRef.current.has(url))
-    
+
     if (!hasNewContent) return // No new content, skip
 
     const sortedClips = [...videoLayer.items]
       .filter(item => item.content)
       .sort((a, b) => a.startTime - b.startTime)
-    
+
     if (sortedClips.length > 0 && videoRef.current) {
       const firstClip = sortedClips[0]
       // Only load if this URL hasn't been loaded into this element
@@ -705,7 +706,7 @@ export function MediabunnyPlayer({
         videoRef.current.load()
         preloadedUrlsRef.current.add(firstClip.content)
       }
-      
+
       // If there's a second clip with different content, preload it
       if (sortedClips.length > 1 && nextVideoRef.current) {
         const secondClip = sortedClips[1]
@@ -736,16 +737,14 @@ export function MediabunnyPlayer({
 
   return (
     <div className="relative w-full">
-      <div 
-        className={`relative w-full bg-black rounded-lg overflow-hidden ${
-          aspectRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-video'
-        }`}
+      <div
+        className={`relative w-full bg-black rounded-lg overflow-hidden ${aspectRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-video'
+          }`}
       >
         <video
           ref={videoRef}
-          className={`w-full h-full object-contain absolute inset-0 ${
-            showBlackScreen || activeVideoElement !== 'main' ? 'hidden' : ''
-          }`}
+          className={`w-full h-full object-contain absolute inset-0 ${showBlackScreen || activeVideoElement !== 'main' ? 'hidden' : ''
+            }`}
           onLoadedMetadata={handleLoadedMetadata}
           onCanPlay={handleCanPlay}
           onEnded={handleVideoEnded}
@@ -754,12 +753,11 @@ export function MediabunnyPlayer({
           muted
           preload="auto"
         />
-        
+
         <video
           ref={nextVideoRef}
-          className={`w-full h-full object-contain absolute inset-0 ${
-            showBlackScreen || activeVideoElement !== 'next' ? 'hidden' : ''
-          }`}
+          className={`w-full h-full object-contain absolute inset-0 ${showBlackScreen || activeVideoElement !== 'next' ? 'hidden' : ''
+            }`}
           onLoadedMetadata={handleLoadedMetadata}
           onCanPlay={handleCanPlay}
           onEnded={handleVideoEnded}
@@ -768,7 +766,7 @@ export function MediabunnyPlayer({
           muted
           preload="auto"
         />
-        
+
         {!isReady && hasVideoContent && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/80">
             <div className="flex flex-col items-center gap-3">

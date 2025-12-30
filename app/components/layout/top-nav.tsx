@@ -1,7 +1,6 @@
 'use client'
 
 import { cn } from "@/lib/utils"
-import { Check } from "lucide-react"
 
 interface Step {
     id: string
@@ -18,7 +17,7 @@ interface TopNavProps {
 export function TopNav({ steps, activeTab, onTabChange }: TopNavProps) {
     return (
         <nav className="flex items-center space-x-2 bg-card/50 p-2 rounded-full border border-border/50 shadow-sm w-fit mx-auto">
-            {steps.map((step, index) => {
+            {steps.map((step) => {
                 const isActive = activeTab === step.id
                 // Find if this step is "completed" (this logic depends on your needs, 
                 // for now we just verify if it's previous to active or logic handled by parent)

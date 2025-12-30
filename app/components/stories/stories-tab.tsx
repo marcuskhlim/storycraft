@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useScenario } from '@/hooks/use-scenario'
@@ -15,19 +15,13 @@ interface StoriesTabProps {
 }
 
 export function StoriesTab({ onSelectScenario, onCreateNewStory }: StoriesTabProps) {
-  const [scenarios, setScenarios] = useState<Array<any>>([])
+  const [scenarios, setScenarios] = useState<(Scenario & { id: string; updatedAt?: unknown })[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { loadUserScenarios, setCurrentScenarioId } = useScenario()
   const { session } = useAuth()
 
-  useEffect(() => {
-    if (session?.user?.id) {
-      loadScenarios()
-    }
-  }, [session?.user?.id])
-
-  const loadScenarios = async () => {
+  const loadScenarios = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -39,12 +33,18 @@ export function StoriesTab({ onSelectScenario, onCreateNewStory }: StoriesTabPro
     } finally {
       setLoading(false)
     }
-  }
+  }, [loadUserScenarios])
 
-  const handleSelectScenario = (scenario: any) => {
+  useEffect(() => {
+    if (session?.user?.id) {
+      loadScenarios()
+    }
+  }, [session?.user?.id, loadScenarios])
+
+  const handleSelectScenario = (scenario: Scenario & { id: string }) => {
     // Set the current scenario ID for future saves
     setCurrentScenarioId(scenario.id)
-    
+
     // Convert Firestore data back to app format
     const appScenario: Scenario = {
       name: scenario.name,
@@ -64,7 +64,7 @@ export function StoriesTab({ onSelectScenario, onCreateNewStory }: StoriesTabPro
       musicUrl: scenario.musicUrl,
       logoOverlay: scenario.logoOverlay
     }
-    
+
     // Pass both the scenario and its ID
     onSelectScenario(appScenario, scenario.id)
   }
@@ -74,11 +74,11 @@ export function StoriesTab({ onSelectScenario, onCreateNewStory }: StoriesTabPro
       const response = await fetch(`/api/scenarios?id=${scenarioId}`, {
         method: 'DELETE'
       })
-      
+
       if (!response.ok) {
         throw new Error('Failed to delete scenario')
       }
-      
+
       // Refresh the list
       await loadScenarios()
     } catch (err) {
@@ -87,21 +87,24 @@ export function StoriesTab({ onSelectScenario, onCreateNewStory }: StoriesTabPro
     }
   }
 
-  const formatDate = (timestamp: any) => {
+  const formatDate = (timestamp: unknown) => {
     if (!timestamp) return 'Unknown'
-    
+
     let date: Date
-    if (timestamp.toDate) {
+    // Type assertion to access potential properties safely
+    const ts = timestamp as { toDate?: () => Date; _seconds?: number }
+
+    if (typeof ts.toDate === 'function') {
       // Firestore Timestamp
-      date = timestamp.toDate()
-    } else if (timestamp._seconds) {
+      date = ts.toDate()
+    } else if (typeof ts._seconds === 'number') {
       // Firestore Timestamp object
-      date = new Date(timestamp._seconds * 1000)
+      date = new Date(ts._seconds * 1000)
     } else {
       // Regular Date or string
-      date = new Date(timestamp)
+      date = new Date(timestamp as string | number | Date)
     }
-    
+
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -182,7 +185,7 @@ export function StoriesTab({ onSelectScenario, onCreateNewStory }: StoriesTabPro
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {/* Create New Story Card */}
-        <Card 
+        <Card
           className="hover:shadow-lg transition-shadow border-dashed border-2 border-primary/30 hover:border-primary/50 cursor-pointer"
           onClick={onCreateNewStory}
         >
@@ -212,7 +215,7 @@ export function StoriesTab({ onSelectScenario, onCreateNewStory }: StoriesTabPro
               {/* Scene Image */}
               {scenario.scenes?.[0]?.imageGcsUri && (
                 <div className="relative h-32 w-full mb-3 rounded-md overflow-hidden">
-                  <GcsImage 
+                  <GcsImage
                     gcsUri={scenario.scenes[0].imageGcsUri}
                     alt={`${scenario.name || 'Story'} preview`}
                     className="object-cover"
@@ -220,7 +223,7 @@ export function StoriesTab({ onSelectScenario, onCreateNewStory }: StoriesTabPro
                   />
                 </div>
               )}
-              
+
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <CardTitle className="text-lg line-clamp-2">
@@ -255,13 +258,13 @@ export function StoriesTab({ onSelectScenario, onCreateNewStory }: StoriesTabPro
                   <Clock className="h-4 w-4 mr-2" />
                   <span>{scenario.scenes?.length || 0} scenes</span>
                 </div>
-                
+
                 <div className="flex items-center text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4 mr-2" />
                   <span>Updated {formatDate(scenario.updatedAt)}</span>
                 </div>
 
-                <Button 
+                <Button
                   onClick={() => handleSelectScenario(scenario)}
                   className="w-full"
                   size="sm"
