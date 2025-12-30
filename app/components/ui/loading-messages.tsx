@@ -26,7 +26,23 @@ const MESSAGES = [
     "Hydrating the pixels...",
     "Polishing the subtitles...",
     "Casting the pixels...",
-    "Cueing the dramatic music..."
+    "Cueing the dramatic music...",
+    "Calming down the director after a creative tantrum...",
+    "Waiting for the golden hour (it’s taking forever)...",
+    "Ensuring the AI cat doesn’t look 'uncanny'...",
+    "Scouting for a location that isn't a warehouse...",
+    "Re-aligning the stars for better dramatic timing...",
+    "Teaching the AI that 'action' doesn't always mean 'explosions'...",
+    "Explaining to the bots why we can't use copyrighted music...",
+    "Scanning the multiverse for a better plot twist...",
+    "Persuading the pixels to stay in their assigned seats...",
+    "Dusting off the digital lenses...",
+    "Optimizing the 'Emotional Impact' slider to 88%...",
+    "Generating a waiting message to make this feel faster...",
+    "Pretending to work while the GPUs do all the heavy lifting...",
+    "Searching for the 'Save' button... just kidding, found it...",
+    "Trying to remember where we put the opening credits...",
+    "Calculating the meaning of life (and also your video)..."
 ]
 
 interface LoadingMessagesProps {
@@ -44,6 +60,7 @@ export function LoadingMessages({ isLoading, className }: LoadingMessagesProps) 
         }
 
         // Pick a random start index
+        console.log(MESSAGES.length)
         setCurrentMessageIndex(Math.floor(Math.random() * MESSAGES.length))
 
         const interval = setInterval(() => {
@@ -63,7 +80,7 @@ export function LoadingMessages({ isLoading, className }: LoadingMessagesProps) 
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.5 }}
-                        className="text-sm text-muted-foreground italic truncate max-w-[400px]"
+                        className="text-sm text-muted-foreground italic max-w-[500px]"
                     >
                         {MESSAGES[currentMessageIndex]}
                     </motion.p>

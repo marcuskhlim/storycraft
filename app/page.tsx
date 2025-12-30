@@ -72,6 +72,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<string>("create")
   const [currentTime, setCurrentTime] = useState(0)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [sidebarRefreshTrigger, setSidebarRefreshTrigger] = useState(0)
 
   // Ref to track when we're loading a scenario from sidebar (to prevent auto-save with stale data)
   const isLoadingScenarioRef = useRef(false)
@@ -103,6 +104,10 @@ export default function Home() {
     if (scenario && isAuthenticated) {
       console.log('Auto-saving scenario to Firestore...')
       saveScenarioDebounced(scenario, getCurrentScenarioId() || undefined)
+      // Trigger sidebar refresh after save (with a small delay to allow debounced save to complete)
+      setTimeout(() => {
+        setSidebarRefreshTrigger(prev => prev + 1)
+      }, 1500) // Wait longer than the 1s debounce
     }
   }, [scenario, isAuthenticated, saveScenarioDebounced, getCurrentScenarioId])
 
@@ -975,6 +980,7 @@ export default function Home() {
         onCreateNewStory={handleCreateNewStory}
         isCollapsed={isSidebarCollapsed}
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        refreshTrigger={sidebarRefreshTrigger}
       />
 
       {/* Main Content Area */}

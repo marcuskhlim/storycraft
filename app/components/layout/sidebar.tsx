@@ -14,11 +14,12 @@ interface SidebarProps {
     onCreateNewStory: () => void
     isCollapsed: boolean
     onToggle: () => void
+    refreshTrigger?: number // Increment this to trigger a refresh of the scenarios list
 }
 
-export function Sidebar({ currentScenarioId, onSelectScenario, onCreateNewStory, isCollapsed, onToggle }: SidebarProps) {
+export function Sidebar({ currentScenarioId, onSelectScenario, onCreateNewStory, isCollapsed, onToggle, refreshTrigger }: SidebarProps) {
     const [scenarios, setScenarios] = useState<Array<any>>([])
-    const { loadUserScenarios, setCurrentScenarioId } = useScenario()
+    const { loadUserScenarios, loadScenario, setCurrentScenarioId } = useScenario()
     const { session } = useAuth()
     const [isLoading, setIsLoading] = useState(true)
 
@@ -27,6 +28,13 @@ export function Sidebar({ currentScenarioId, onSelectScenario, onCreateNewStory,
             loadScenarios()
         }
     }, [session?.user?.id])
+
+    // Refresh scenarios when refreshTrigger changes
+    useEffect(() => {
+        if (session?.user?.id && refreshTrigger !== undefined && refreshTrigger > 0) {
+            loadScenarios()
+        }
+    }, [refreshTrigger])
 
     const loadScenarios = async () => {
         try {
@@ -40,30 +48,60 @@ export function Sidebar({ currentScenarioId, onSelectScenario, onCreateNewStory,
         }
     }
 
-    const handleSelect = (scenario: any) => {
+    const handleSelect = async (scenario: any) => {
         setCurrentScenarioId(scenario.id)
 
-        // Construct app scenario object
-        const appScenario: Scenario = {
-            name: scenario.name,
-            pitch: scenario.pitch,
-            scenario: scenario.scenario,
-            style: scenario.style,
-            aspectRatio: scenario.aspectRatio || "16:9",
-            durationSeconds: scenario.durationSeconds || 8,
-            genre: scenario.genre,
-            mood: scenario.mood,
-            music: scenario.music,
-            language: scenario.language,
-            characters: scenario.characters || [],
-            props: scenario.props || [],
-            settings: scenario.settings || [],
-            scenes: scenario.scenes || [],
-            musicUrl: scenario.musicUrl,
-            logoOverlay: scenario.logoOverlay
-        }
+        try {
+            // Fetch fresh data from Firestore instead of using cached sidebar data
+            const freshScenario = await loadScenario(scenario.id)
 
-        onSelectScenario(appScenario, scenario.id)
+            if (freshScenario) {
+                onSelectScenario(freshScenario, scenario.id)
+            } else {
+                // Fallback to cached data if fetch fails
+                const appScenario: Scenario = {
+                    name: scenario.name,
+                    pitch: scenario.pitch,
+                    scenario: scenario.scenario,
+                    style: scenario.style,
+                    aspectRatio: scenario.aspectRatio || "16:9",
+                    durationSeconds: scenario.durationSeconds || 8,
+                    genre: scenario.genre,
+                    mood: scenario.mood,
+                    music: scenario.music,
+                    language: scenario.language,
+                    characters: scenario.characters || [],
+                    props: scenario.props || [],
+                    settings: scenario.settings || [],
+                    scenes: scenario.scenes || [],
+                    musicUrl: scenario.musicUrl,
+                    logoOverlay: scenario.logoOverlay
+                }
+                onSelectScenario(appScenario, scenario.id)
+            }
+        } catch (error) {
+            console.error('Error loading fresh scenario:', error)
+            // Fallback to cached data if fetch fails
+            const appScenario: Scenario = {
+                name: scenario.name,
+                pitch: scenario.pitch,
+                scenario: scenario.scenario,
+                style: scenario.style,
+                aspectRatio: scenario.aspectRatio || "16:9",
+                durationSeconds: scenario.durationSeconds || 8,
+                genre: scenario.genre,
+                mood: scenario.mood,
+                music: scenario.music,
+                language: scenario.language,
+                characters: scenario.characters || [],
+                props: scenario.props || [],
+                settings: scenario.settings || [],
+                scenes: scenario.scenes || [],
+                musicUrl: scenario.musicUrl,
+                logoOverlay: scenario.logoOverlay
+            }
+            onSelectScenario(appScenario, scenario.id)
+        }
     }
 
     return (
