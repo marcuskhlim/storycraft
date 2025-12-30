@@ -1,8 +1,13 @@
-import { Scenario, Language } from "./types"
-import { Type } from '@google/genai';
+import { Scenario, Language } from "./types";
+import { Type } from "@google/genai";
 
-export function getScenarioPrompt(pitch: string, numScenes: number, style: string, language: Language): string {
-  const prompt = `
+export function getScenarioPrompt(
+    pitch: string,
+    numScenes: number,
+    style: string,
+    language: Language,
+): string {
+    const prompt = `
 You are tasked with generating a creative scenario for a short movie and creating prompts for storyboard illustrations. Follow these instructions carefully:
 1. First, you will be given a story pitch. This story pitch will be the foundation for your scenario.
 
@@ -92,108 +97,122 @@ Here's an example of how your output should be structured:
 
 Remember, your goal is to create a compelling and visually interesting story that can be effectively illustrated through a storyboard. Be creative, consistent, and detailed in your scenario and prompts.
 `;
-  return prompt
+    return prompt;
 }
 
 export const scenarioSchema = {
-  type: Type.OBJECT,
-  properties: {
-    'scenario': {
-      type: Type.STRING,
-      nullable: false,
-    },
-    'genre': {
-      type: Type.STRING,
-      nullable: false,
-    },
-    'mood': {
-      type: Type.STRING,
-      nullable: false,
-    },
-    'music': {
-      type: Type.STRING,
-      nullable: false,
-    },
-    'language': {
-      type: Type.OBJECT,
-      nullable: false,
-      properties: {
-        'name': {
-          type: Type.STRING,
-          nullable: false,
+    type: Type.OBJECT,
+    properties: {
+        scenario: {
+            type: Type.STRING,
+            nullable: false,
         },
-        'code': {
-          type: Type.STRING,
-          nullable: false,
-        }
-      },
-      required: ['name', 'code'],
-    },
-    'characters': {
-      type: Type.ARRAY,
-      nullable: false,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          'name': {
+        genre: {
             type: Type.STRING,
             nullable: false,
-          },
-          'voice': {
-            type: Type.STRING,
-            nullable: false,
-          },
-          'description': {
-            type: Type.STRING,
-            nullable: false,
-          }
         },
-        required: ['name', 'voice', 'description'],
-      }
-    },
-    'settings': {
-      type: Type.ARRAY,
-      nullable: false,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          'name': {
+        mood: {
             type: Type.STRING,
             nullable: false,
-          },
-          'description': {
-            type: Type.STRING,
-            nullable: false,
-          }
         },
-        required: ['name', 'description'],
-      }
-    },
-    'props': {
-      type: Type.ARRAY,
-      nullable: false,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          'name': {
+        music: {
             type: Type.STRING,
             nullable: false,
-          },
-          'description': {
-            type: Type.STRING,
-            nullable: false,
-          }
         },
-        required: ['name', 'description'],
-      }
-    }
-  },
-  required: ['scenario', 'genre', 'mood', 'music', 'language', 'characters', 'settings', 'props'],
-}
+        language: {
+            type: Type.OBJECT,
+            nullable: false,
+            properties: {
+                name: {
+                    type: Type.STRING,
+                    nullable: false,
+                },
+                code: {
+                    type: Type.STRING,
+                    nullable: false,
+                },
+            },
+            required: ["name", "code"],
+        },
+        characters: {
+            type: Type.ARRAY,
+            nullable: false,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    name: {
+                        type: Type.STRING,
+                        nullable: false,
+                    },
+                    voice: {
+                        type: Type.STRING,
+                        nullable: false,
+                    },
+                    description: {
+                        type: Type.STRING,
+                        nullable: false,
+                    },
+                },
+                required: ["name", "voice", "description"],
+            },
+        },
+        settings: {
+            type: Type.ARRAY,
+            nullable: false,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    name: {
+                        type: Type.STRING,
+                        nullable: false,
+                    },
+                    description: {
+                        type: Type.STRING,
+                        nullable: false,
+                    },
+                },
+                required: ["name", "description"],
+            },
+        },
+        props: {
+            type: Type.ARRAY,
+            nullable: false,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    name: {
+                        type: Type.STRING,
+                        nullable: false,
+                    },
+                    description: {
+                        type: Type.STRING,
+                        nullable: false,
+                    },
+                },
+                required: ["name", "description"],
+            },
+        },
+    },
+    required: [
+        "scenario",
+        "genre",
+        "mood",
+        "music",
+        "language",
+        "characters",
+        "settings",
+        "props",
+    ],
+};
 
-export function getScenesPrompt(scenario: Scenario, numScenes: number, style: string, language: Language): string {
-  const durationSeconds = scenario.durationSeconds || 8;
-  const prompt = `
+export function getScenesPrompt(
+    scenario: Scenario,
+    numScenes: number,
+    style: string,
+    language: Language,
+): string {
+    const durationSeconds = scenario.durationSeconds || 8;
+    const prompt = `
       You are tasked with generating a creative scenes for a short movie and creating prompts for storyboard illustrations. Follow these instructions carefully:
 1. First, you will be given a scenario in ${scenario.language.name}. This scenario will be the foundation for your storyboard.
 
@@ -202,17 +221,21 @@ ${scenario.scenario}
 </scenario>
 
 <characters>
-${scenario.characters.map(character => `Name: ${character.name}
+${scenario.characters
+    .map(
+        (character) => `Name: ${character.name}
   Description: ${character.description}
-  Voice Description: ${character.voice}`).join('\n\n\n')}
+  Voice Description: ${character.voice}`,
+    )
+    .join("\n\n\n")}
 </characters>
 
 <props>
-${scenario.props?.map(prop => `${prop.name}\n\n${prop.description}`).join('\n\n\n')}
+${scenario.props?.map((prop) => `${prop.name}\n\n${prop.description}`).join("\n\n\n")}
 </props>
 
 <settings>
-${scenario.settings.map(setting => `${setting.name}\n\n${setting.description}`).join('\n\n\n')}
+${scenario.settings.map((setting) => `${setting.name}\n\n${setting.description}`).join("\n\n\n")}
 </settings>
 
 <music>
@@ -232,7 +255,7 @@ ${scenario.mood}
   "Ambiance_Audio": "Diegetic Sound Only. This is crucial. Describe only the sounds that exist within the world of the scene. Do not mention music or narration, as those are post-production layers for different models. Be specific.",
   "Dialogue": [
     {
-      "name": "speaker name, only the name, choices are [${scenario.characters?.map(character => `${character.name}`).join(',')}]",
+      "name": "speaker name, only the name, choices are [${scenario.characters?.map((character) => `${character.name}`).join(",")}]",
       "speaker": "Assign lines using physical descriptions, not names, for maximum clarity (e.g., 'The man in the blue shirt', 'The woman with red hair')",
       "line": "The actual dialogue spoken"
     }
@@ -252,17 +275,17 @@ ${scenario.mood}
   },
   "Subject": [
     {
-      "name": "character name, only the name, choices are [${scenario.characters?.map(character => `${character.name}`).join(',')}]",
+      "name": "character name, only the name, choices are [${scenario.characters?.map((character) => `${character.name}`).join(",")}]",
     }
   ],
   "Prop": [
     {
-      "name": "prop name, only the name, choices are [${scenario.props?.map(prop => `${prop.name}`).join(',')}]",
+      "name": "prop name, only the name, choices are [${scenario.props?.map((prop) => `${prop.name}`).join(",")}]",
     }
   ],
   "Context": [
     {
-      "name": "setting name, only the name, choices are [${scenario.settings?.map(setting => `${setting.name}`).join(',')}]",
+      "name": "setting name, only the name, choices are [${scenario.settings?.map((setting) => `${setting.name}`).join(",")}]",
     }
   ],
 }   
@@ -329,153 +352,175 @@ Here's an example of how your output should be structured:
 }
 
 Remember, your goal is to create a compelling and visually interesting story that can be effectively illustrated through a storyboard. Be creative, consistent, and detailed in your prompts.
-Remember, the number of scenes should be exactly ${numScenes}.`
-  return prompt;
+Remember, the number of scenes should be exactly ${numScenes}.`;
+    return prompt;
 }
 
 export const storyboardSchema = {
-  type: Type.OBJECT,
-  properties: {
-    'scenes': {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          'imagePrompt': {
-            type: Type.OBJECT,
-            nullable: false,
-            properties: {
-              'Style': {
-                type: Type.STRING,
-                nullable: false,
-              },
-              'Composition': {
-                type: Type.OBJECT,
-                nullable: false,
-                properties: {
-                  'shot_type': {
-                    type: Type.STRING,
-                    nullable: false,
-                  },
-                  'lighting': {
-                    type: Type.STRING,
-                    nullable: false,
-                  },
-                  'overall_mood': {
-                    type: Type.STRING,
-                    nullable: false,
-                  }
-                },
-                required: ['shot_type', 'lighting', 'overall_mood'],
-              },
-              'Subject': {
-                type: Type.ARRAY,
-                nullable: false,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    'name': {
-                      type: Type.STRING,
-                      nullable: false,
-                    }
-                  },
-                  required: ['name'],
-                }
-              },
-              'Prop': {
-                type: Type.ARRAY,
-                nullable: false,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    'name': {
-                      type: Type.STRING,
-                      nullable: false,
-                    }
-                  },
-                  required: ['name'],
-                }
-              },
-              'Context': {
-                type: Type.ARRAY,
-                nullable: false,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    'name': {
-                      type: Type.STRING,
-                      nullable: false,
-                    }
-                  },
-                  required: ['name'],
-                }
-              },
-              'Scene': {
-                type: Type.STRING,
-                nullable: false,
-              }
-            },
-            required: ['Style', 'Composition', 'Subject', 'Prop', 'Context', 'Scene'],
-          },
-          'videoPrompt': {
-            type: Type.OBJECT,
-            nullable: false,
-            properties: {
-              'Action': {
-                type: Type.STRING,
-                nullable: false,
-              },
-              'Camera_Motion': {
-                type: Type.STRING,
-                nullable: false,
-              },
-              'Ambiance_Audio': {
-                type: Type.STRING,
-                nullable: false,
-              },
-              'Dialogue': {
-                type: Type.ARRAY,
-                nullable: false,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    'name': {
-                      type: Type.STRING,
-                      nullable: false,
-                    },
-                    'speaker': {
-                      type: Type.STRING,
-                      nullable: false,
-                    },
-                    'line': {
-                      type: Type.STRING,
-                      nullable: false,
-                    }
-                  },
-                  required: ['name', 'speaker', 'line'],
-                }
-              }
-            },
-            required: ['Action', 'Camera_Motion', 'Ambiance_Audio', 'Dialogue'],
-          },
-          'description': {
-            type: Type.STRING,
-            nullable: false,
-          },
-          'voiceover': {
-            type: Type.STRING,
-            nullable: false,
-          },
-          'charactersPresent': {
+    type: Type.OBJECT,
+    properties: {
+        scenes: {
             type: Type.ARRAY,
             items: {
-              type: Type.STRING
-            }
-          }
+                type: Type.OBJECT,
+                properties: {
+                    imagePrompt: {
+                        type: Type.OBJECT,
+                        nullable: false,
+                        properties: {
+                            Style: {
+                                type: Type.STRING,
+                                nullable: false,
+                            },
+                            Composition: {
+                                type: Type.OBJECT,
+                                nullable: false,
+                                properties: {
+                                    shot_type: {
+                                        type: Type.STRING,
+                                        nullable: false,
+                                    },
+                                    lighting: {
+                                        type: Type.STRING,
+                                        nullable: false,
+                                    },
+                                    overall_mood: {
+                                        type: Type.STRING,
+                                        nullable: false,
+                                    },
+                                },
+                                required: [
+                                    "shot_type",
+                                    "lighting",
+                                    "overall_mood",
+                                ],
+                            },
+                            Subject: {
+                                type: Type.ARRAY,
+                                nullable: false,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        name: {
+                                            type: Type.STRING,
+                                            nullable: false,
+                                        },
+                                    },
+                                    required: ["name"],
+                                },
+                            },
+                            Prop: {
+                                type: Type.ARRAY,
+                                nullable: false,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        name: {
+                                            type: Type.STRING,
+                                            nullable: false,
+                                        },
+                                    },
+                                    required: ["name"],
+                                },
+                            },
+                            Context: {
+                                type: Type.ARRAY,
+                                nullable: false,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        name: {
+                                            type: Type.STRING,
+                                            nullable: false,
+                                        },
+                                    },
+                                    required: ["name"],
+                                },
+                            },
+                            Scene: {
+                                type: Type.STRING,
+                                nullable: false,
+                            },
+                        },
+                        required: [
+                            "Style",
+                            "Composition",
+                            "Subject",
+                            "Prop",
+                            "Context",
+                            "Scene",
+                        ],
+                    },
+                    videoPrompt: {
+                        type: Type.OBJECT,
+                        nullable: false,
+                        properties: {
+                            Action: {
+                                type: Type.STRING,
+                                nullable: false,
+                            },
+                            Camera_Motion: {
+                                type: Type.STRING,
+                                nullable: false,
+                            },
+                            Ambiance_Audio: {
+                                type: Type.STRING,
+                                nullable: false,
+                            },
+                            Dialogue: {
+                                type: Type.ARRAY,
+                                nullable: false,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        name: {
+                                            type: Type.STRING,
+                                            nullable: false,
+                                        },
+                                        speaker: {
+                                            type: Type.STRING,
+                                            nullable: false,
+                                        },
+                                        line: {
+                                            type: Type.STRING,
+                                            nullable: false,
+                                        },
+                                    },
+                                    required: ["name", "speaker", "line"],
+                                },
+                            },
+                        },
+                        required: [
+                            "Action",
+                            "Camera_Motion",
+                            "Ambiance_Audio",
+                            "Dialogue",
+                        ],
+                    },
+                    description: {
+                        type: Type.STRING,
+                        nullable: false,
+                    },
+                    voiceover: {
+                        type: Type.STRING,
+                        nullable: false,
+                    },
+                    charactersPresent: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.STRING,
+                        },
+                    },
+                },
+                required: [
+                    "imagePrompt",
+                    "videoPrompt",
+                    "description",
+                    "voiceover",
+                    "charactersPresent",
+                ],
+            },
         },
-        required: ['imagePrompt', 'videoPrompt', 'description', 'voiceover', 'charactersPresent'],
-      }
-    }
-  },
-  required: ['scenes'],
-}
+    },
+    required: ["scenes"],
+};

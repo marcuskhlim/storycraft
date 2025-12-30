@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { cn } from "@/lib/utils"
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 const MESSAGES = [
     "Convincing the lead actor to come out of their trailer...",
@@ -42,8 +42,8 @@ const MESSAGES = [
     "Pretending to work while the GPUs do all the heavy lifting...",
     "Searching for the 'Save' button... just kidding, found it...",
     "Trying to remember where we put the opening credits...",
-    "Calculating the meaning of life (and also your video)..."
-]
+    "Calculating the meaning of life (and also your video)...",
+];
 
 interface LoadingMessagesProps {
     isLoading: boolean;
@@ -51,43 +51,52 @@ interface LoadingMessagesProps {
 }
 
 // Helper to get a random starting index
-const getRandomIndex = () => Math.floor(Math.random() * MESSAGES.length)
+const getRandomIndex = () => Math.floor(Math.random() * MESSAGES.length);
 
-export function LoadingMessages({ isLoading, className }: LoadingMessagesProps) {
+export function LoadingMessages({
+    isLoading,
+    className,
+}: LoadingMessagesProps) {
     // Initialize with a random index using a function to avoid the lint warning
-    const [currentMessageIndex, setCurrentMessageIndex] = useState(getRandomIndex)
-    const wasLoadingRef = useRef(isLoading)
+    const [currentMessageIndex, setCurrentMessageIndex] =
+        useState(getRandomIndex);
+    const wasLoadingRef = useRef(isLoading);
 
     // Memoized function to advance to the next message
     const advanceMessage = useCallback(() => {
-        setCurrentMessageIndex((prev) => (prev + 1) % MESSAGES.length)
-    }, [])
+        setCurrentMessageIndex((prev) => (prev + 1) % MESSAGES.length);
+    }, []);
 
     useEffect(() => {
         // When transitioning from not loading to loading, reset to random index
         if (isLoading && !wasLoadingRef.current) {
             // Use setTimeout to avoid synchronous setState warning if needed
             const timer = setTimeout(() => {
-                setCurrentMessageIndex(getRandomIndex())
-            }, 0)
-            wasLoadingRef.current = true
-            return () => clearTimeout(timer)
+                setCurrentMessageIndex(getRandomIndex());
+            }, 0);
+            wasLoadingRef.current = true;
+            return () => clearTimeout(timer);
         }
 
         if (!isLoading && wasLoadingRef.current) {
-            wasLoadingRef.current = false
+            wasLoadingRef.current = false;
         }
-    }, [isLoading])
+    }, [isLoading]);
 
     useEffect(() => {
-        if (!isLoading) return
+        if (!isLoading) return;
 
-        const interval = setInterval(advanceMessage, 5000)
-        return () => clearInterval(interval)
-    }, [isLoading, advanceMessage])
+        const interval = setInterval(advanceMessage, 5000);
+        return () => clearInterval(interval);
+    }, [isLoading, advanceMessage]);
 
     return (
-        <div className={cn("h-6 flex items-center justify-end overflow-hidden", className)}>
+        <div
+            className={cn(
+                "flex h-6 items-center justify-end overflow-hidden",
+                className,
+            )}
+        >
             <AnimatePresence mode="wait">
                 {isLoading && (
                     <motion.p
@@ -96,12 +105,12 @@ export function LoadingMessages({ isLoading, className }: LoadingMessagesProps) 
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.5 }}
-                        className="text-sm text-muted-foreground italic max-w-[500px]"
+                        className="max-w-[500px] text-sm italic text-muted-foreground"
                     >
                         {MESSAGES[currentMessageIndex]}
                     </motion.p>
                 )}
             </AnimatePresence>
         </div>
-    )
+    );
 }

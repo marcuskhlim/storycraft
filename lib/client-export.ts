@@ -1,4 +1,3 @@
-
 import {
     AudioBufferSource,
     AudioEncodingConfig,
@@ -10,9 +9,9 @@ import {
     Output,
     UrlSource,
     VideoEncodingConfig,
-    ALL_FORMATS
-} from 'mediabunny';
-import { TimelineLayer } from '@/app/types';
+    ALL_FORMATS,
+} from "mediabunny";
+import { TimelineLayer } from "@/app/types";
 
 // Constants
 const FPS = 30;
@@ -21,9 +20,9 @@ const HEIGHT = 1080;
 
 export async function exportVideoClient(
     layers: TimelineLayer[],
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
 ): Promise<Blob> {
-    console.log('Starting client-side export...');
+    console.log("Starting client-side export...");
 
     // 1. Initialize Output with BufferTarget (MP4)
     const target = new BufferTarget();
@@ -35,11 +34,11 @@ export async function exportVideoClient(
     // 2. Setup Video Track
     // Create an OffscreenCanvas for drawing frames
     const canvas = new OffscreenCanvas(WIDTH, HEIGHT);
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext("2d")!;
 
     // Video Encoding Config (H.264)
     const videoConfig: VideoEncodingConfig = {
-        codec: 'avc', // H.264
+        codec: "avc", // H.264
         bitrate: 5_000_000, // 5 Mbps
     };
 
@@ -49,7 +48,7 @@ export async function exportVideoClient(
     // 3. Setup Audio Track
     // We will mix all audio logic using OfflineAudioContext, then add as a single track
     const audioConfig: AudioEncodingConfig = {
-        codec: 'aac', // AAC LC
+        codec: "aac", // AAC LC
         bitrate: 128_000,
     };
 
@@ -65,8 +64,8 @@ export async function exportVideoClient(
     // 5. Compute Duration
     // Find max duration from layers
     let duration = 0;
-    layers.forEach(layer => {
-        layer.items.forEach(item => {
+    layers.forEach((layer) => {
+        layer.items.forEach((item) => {
             duration = Math.max(duration, item.startTime + item.duration);
         });
     });
@@ -80,23 +79,25 @@ export async function exportVideoClient(
     const audioContext = new OfflineAudioContext(2, duration * 48000, 48000);
 
     // Helper to load audio buffer
-    const loadAudioBuffer = async (url: string): Promise<AudioBuffer | null> => {
+    const loadAudioBuffer = async (
+        url: string,
+    ): Promise<AudioBuffer | null> => {
         try {
             const response = await fetch(url);
             const arrayBuffer = await response.arrayBuffer();
-            // We need a temp audio context to decode if we weren't in OfflineContext? 
+            // We need a temp audio context to decode if we weren't in OfflineContext?
             // OfflineAudioContext can decode too via decodeAudioData
             return await audioContext.decodeAudioData(arrayBuffer);
         } catch {
-            console.error('Failed to load audio:', url);
+            console.error("Failed to load audio:", url);
             return null;
         }
     };
 
     // Process all audio items
-    const audioPromises = layers.flatMap(layer => {
-        if (layer.type === 'voiceover' || layer.type === 'music') {
-            return layer.items.map(async item => {
+    const audioPromises = layers.flatMap((layer) => {
+        if (layer.type === "voiceover" || layer.type === "music") {
+            return layer.items.map(async (item) => {
                 if (!item.content) return;
                 const buffer = await loadAudioBuffer(item.content);
                 if (buffer) {
@@ -108,7 +109,10 @@ export async function exportVideoClient(
                     // Handle trimming if metadata exists
                     const startTime = item.startTime;
                     // Trim Logic:
-                    const offset = typeof item.metadata?.trimStart === 'number' ? item.metadata.trimStart : 0;
+                    const offset =
+                        typeof item.metadata?.trimStart === "number"
+                            ? item.metadata.trimStart
+                            : 0;
                     const playDuration = item.duration;
 
                     source.connect(gainNode);
@@ -117,7 +121,7 @@ export async function exportVideoClient(
                     source.start(startTime, offset, playDuration);
 
                     // Add ducking for music tracks for the last 2 seconds
-                    if (layer.type === 'music') {
+                    if (layer.type === "music") {
                         const duckStart = Math.max(0, duration - 2);
                         const duckEnd = duration;
 
@@ -140,8 +144,8 @@ export async function exportVideoClient(
 
     // 7. Process Video (Frame by Frame)
     // We need to load Video Inputs
-    const videoLayer = layers.find(l => l.type === 'video');
-    const videoInputs = new Map<string, { input: Input, sink: CanvasSink }>();
+    const videoLayer = layers.find((l) => l.type === "video");
+    const videoInputs = new Map<string, { input: Input; sink: CanvasSink }>();
 
     if (videoLayer) {
         for (const item of videoLayer.items) {
@@ -149,7 +153,7 @@ export async function exportVideoClient(
                 try {
                     const input = new Input({
                         source: new UrlSource(item.content),
-                        formats: ALL_FORMATS
+                        formats: ALL_FORMATS,
                     });
                     const track = await input.getPrimaryVideoTrack();
                     if (track) {
@@ -157,7 +161,7 @@ export async function exportVideoClient(
                         videoInputs.set(item.id, { input, sink });
                     }
                 } catch {
-                    console.error('Failed to load video input:', item.content);
+                    console.error("Failed to load video input:", item.content);
                 }
             }
         }
@@ -167,7 +171,6 @@ export async function exportVideoClient(
     const dt = 1 / FPS;
     // Iterate strictly by frame count to avoid float drift issues potentially
     const totalFrames = Math.ceil(duration * FPS);
-
 
     for (let i = 0; i < totalFrames; i++) {
         const time = i * dt;
@@ -179,12 +182,13 @@ export async function exportVideoClient(
         }
 
         // Clear canvas
-        ctx.fillStyle = 'black';
+        ctx.fillStyle = "black";
         ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
         // Find active video clip
         const activeClip = videoLayer?.items.find(
-            item => time >= item.startTime && time < item.startTime + item.duration
+            (item) =>
+                time >= item.startTime && time < item.startTime + item.duration,
         );
 
         if (activeClip && videoInputs.has(activeClip.id)) {
@@ -192,8 +196,11 @@ export async function exportVideoClient(
 
             // Calculate time within clip
             // Account for trimStart
-            const offset = typeof activeClip.metadata?.trimStart === 'number' ? activeClip.metadata.trimStart : 0;
-            const clipTime = (time - activeClip.startTime) + offset;
+            const offset =
+                typeof activeClip.metadata?.trimStart === "number"
+                    ? activeClip.metadata.trimStart
+                    : 0;
+            const clipTime = time - activeClip.startTime + offset;
 
             try {
                 const wrapped = await sink.getCanvas(clipTime);
@@ -217,8 +224,8 @@ export async function exportVideoClient(
     await output.finalize();
 
     if (!target.buffer) {
-        throw new Error('Export failed: No buffer produced');
+        throw new Error("Export failed: No buffer produced");
     }
 
-    return new Blob([target.buffer], { type: 'video/mp4' });
+    return new Blob([target.buffer], { type: "video/mp4" });
 }

@@ -1,13 +1,25 @@
-'use client'
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { LayoutGrid, Loader2, Pencil, Upload, Plus, X, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+    LayoutGrid,
+    Loader2,
+    Pencil,
+    Upload,
+    Plus,
+    X,
+    RefreshCw,
+} from "lucide-react";
 import { Scenario } from "../../types";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { GcsImage } from "../ui/gcs-image";
-import { deleteCharacterFromScenario, deleteSettingFromScenario, deletePropFromScenario } from "@/app/actions/modify-scenario";
+import {
+    deleteCharacterFromScenario,
+    deleteSettingFromScenario,
+    deletePropFromScenario,
+} from "@/app/actions/modify-scenario";
 import { LoadingMessages } from "@/app/components/ui/loading-messages";
 
 interface ScenarioTabProps {
@@ -15,54 +27,117 @@ interface ScenarioTabProps {
     onGenerateStoryBoard: () => void;
     isLoading: boolean;
     onScenarioUpdate?: (updatedScenario: Scenario) => void;
-    onRegenerateCharacterImage?: (characterIndex: number, name: string, description: string, voice: string) => Promise<void>;
-    onUploadCharacterImage?: (characterIndex: number, file: File) => Promise<void>;
+    onRegenerateCharacterImage?: (
+        characterIndex: number,
+        name: string,
+        description: string,
+        voice: string,
+    ) => Promise<void>;
+    onUploadCharacterImage?: (
+        characterIndex: number,
+        file: File,
+    ) => Promise<void>;
     generatingCharacterImages?: Set<number>;
-    onRegenerateSettingImage?: (settingIndex: number, name: string, description: string) => Promise<void>;
+    onRegenerateSettingImage?: (
+        settingIndex: number,
+        name: string,
+        description: string,
+    ) => Promise<void>;
     onUploadSettingImage?: (settingIndex: number, file: File) => Promise<void>;
     generatingSettingImages?: Set<number>;
-    onRegeneratePropImage?: (propIndex: number, name: string, description: string) => Promise<void>;
+    onRegeneratePropImage?: (
+        propIndex: number,
+        name: string,
+        description: string,
+    ) => Promise<void>;
     onUploadPropImage?: (propIndex: number, file: File) => Promise<void>;
     generatingPropImages?: Set<number>;
 }
 
-export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScenarioUpdate, onRegenerateCharacterImage, onUploadCharacterImage, generatingCharacterImages, onRegenerateSettingImage, onUploadSettingImage, generatingSettingImages, onRegeneratePropImage, onUploadPropImage, generatingPropImages }: ScenarioTabProps) {
+export function ScenarioTab({
+    scenario,
+    onGenerateStoryBoard,
+    isLoading,
+    onScenarioUpdate,
+    onRegenerateCharacterImage,
+    onUploadCharacterImage,
+    generatingCharacterImages,
+    onRegenerateSettingImage,
+    onUploadSettingImage,
+    generatingSettingImages,
+    onRegeneratePropImage,
+    onUploadPropImage,
+    generatingPropImages,
+}: ScenarioTabProps) {
     const [isEditing, setIsEditing] = useState(false);
-    const [editedScenario, setEditedScenario] = useState(scenario?.scenario || '');
+    const [editedScenario, setEditedScenario] = useState(
+        scenario?.scenario || "",
+    );
     const [isScenarioHovering, setIsScenarioHovering] = useState(false);
-    const [editingCharacterIndex, setEditingCharacterIndex] = useState<number | null>(null);
-    const [editedCharacterDescriptions, setEditedCharacterDescriptions] = useState<string[]>([]);
-    const [editedCharacterNames, setEditedCharacterNames] = useState<string[]>([]);
-    const [editedCharacterVoices, setEditedCharacterVoices] = useState<string[]>([]);
-    const [characterHoverStates, setCharacterHoverStates] = useState<boolean[]>([]);
-    const [editingSettingIndex, setEditingSettingIndex] = useState<number | null>(null);
-    const [editedSettingDescriptions, setEditedSettingDescriptions] = useState<string[]>([]);
+    const [editingCharacterIndex, setEditingCharacterIndex] = useState<
+        number | null
+    >(null);
+    const [editedCharacterDescriptions, setEditedCharacterDescriptions] =
+        useState<string[]>([]);
+    const [editedCharacterNames, setEditedCharacterNames] = useState<string[]>(
+        [],
+    );
+    const [editedCharacterVoices, setEditedCharacterVoices] = useState<
+        string[]
+    >([]);
+    const [characterHoverStates, setCharacterHoverStates] = useState<boolean[]>(
+        [],
+    );
+    const [editingSettingIndex, setEditingSettingIndex] = useState<
+        number | null
+    >(null);
+    const [editedSettingDescriptions, setEditedSettingDescriptions] = useState<
+        string[]
+    >([]);
     const [editedSettingNames, setEditedSettingNames] = useState<string[]>([]);
     const [settingHoverStates, setSettingHoverStates] = useState<boolean[]>([]);
 
-    const [editingPropIndex, setEditingPropIndex] = useState<number | null>(null);
-    const [editedPropDescriptions, setEditedPropDescriptions] = useState<string[]>([]);
+    const [editingPropIndex, setEditingPropIndex] = useState<number | null>(
+        null,
+    );
+    const [editedPropDescriptions, setEditedPropDescriptions] = useState<
+        string[]
+    >([]);
     const [editedPropNames, setEditedPropNames] = useState<string[]>([]);
     const [propHoverStates, setPropHoverStates] = useState<boolean[]>([]);
 
-    const [localGeneratingSettings, setLocalGeneratingSettings] = useState<Set<number>>(new Set());
+    const [localGeneratingSettings, setLocalGeneratingSettings] = useState<
+        Set<number>
+    >(new Set());
     const [isEditingMusic, setIsEditingMusic] = useState(false);
-    const [editedMusic, setEditedMusic] = useState('');
+    const [editedMusic, setEditedMusic] = useState("");
     const [isMusicHovering, setIsMusicHovering] = useState(false);
-    const [localGeneratingCharacters, setLocalGeneratingCharacters] = useState<Set<number>>(new Set());
-    const [localGeneratingProps, setLocalGeneratingProps] = useState<Set<number>>(new Set());
+    const [localGeneratingCharacters, setLocalGeneratingCharacters] = useState<
+        Set<number>
+    >(new Set());
+    const [localGeneratingProps, setLocalGeneratingProps] = useState<
+        Set<number>
+    >(new Set());
 
     // Helper functions to check if an item is in any loading state
     const isCharacterLoading = (index: number) => {
-        return generatingCharacterImages?.has(index) || localGeneratingCharacters.has(index);
+        return (
+            generatingCharacterImages?.has(index) ||
+            localGeneratingCharacters.has(index)
+        );
     };
 
     const isSettingLoading = (index: number) => {
-        return generatingSettingImages?.has(index) || localGeneratingSettings.has(index);
+        return (
+            generatingSettingImages?.has(index) ||
+            localGeneratingSettings.has(index)
+        );
     };
 
     const isPropLoading = (index: number) => {
-        return generatingPropImages?.has(index) || localGeneratingProps.has(index);
+        return (
+            generatingPropImages?.has(index) || localGeneratingProps.has(index)
+        );
     };
 
     const scenarioRef = useRef<HTMLDivElement>(null);
@@ -79,46 +154,80 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
             setEditedScenario(scenario.scenario);
         }
         if (scenario?.characters) {
-            setEditedCharacterDescriptions(scenario.characters.map(char => char.description));
-            setEditedCharacterNames(scenario.characters.map(char => char.name));
-            setEditedCharacterVoices(scenario.characters.map(char => char.voice || ''));
+            setEditedCharacterDescriptions(
+                scenario.characters.map((char) => char.description),
+            );
+            setEditedCharacterNames(
+                scenario.characters.map((char) => char.name),
+            );
+            setEditedCharacterVoices(
+                scenario.characters.map((char) => char.voice || ""),
+            );
             // Initialize refs array for character editing areas
-            characterEditingRefs.current = new Array(scenario.characters.length).fill(null);
+            characterEditingRefs.current = new Array(
+                scenario.characters.length,
+            ).fill(null);
             // Initialize refs array for character file inputs
-            characterFileInputRefs.current = new Array(scenario.characters.length).fill(null);
+            characterFileInputRefs.current = new Array(
+                scenario.characters.length,
+            ).fill(null);
             // Initialize hover states for characters
-            setCharacterHoverStates(new Array(scenario.characters.length).fill(false));
+            setCharacterHoverStates(
+                new Array(scenario.characters.length).fill(false),
+            );
         }
         if (scenario?.settings) {
-            setEditedSettingDescriptions(scenario.settings.map(setting => setting.description));
-            setEditedSettingNames(scenario.settings.map(setting => setting.name));
+            setEditedSettingDescriptions(
+                scenario.settings.map((setting) => setting.description),
+            );
+            setEditedSettingNames(
+                scenario.settings.map((setting) => setting.name),
+            );
             // Initialize refs array for setting editing areas
-            settingEditingRefs.current = new Array(scenario.settings.length).fill(null);
+            settingEditingRefs.current = new Array(
+                scenario.settings.length,
+            ).fill(null);
             // Initialize refs array for setting file inputs
-            settingFileInputRefs.current = new Array(scenario.settings.length).fill(null);
+            settingFileInputRefs.current = new Array(
+                scenario.settings.length,
+            ).fill(null);
             // Initialize hover states for settings
-            setSettingHoverStates(new Array(scenario.settings.length).fill(false));
+            setSettingHoverStates(
+                new Array(scenario.settings.length).fill(false),
+            );
         }
         if (scenario?.props) {
-            setEditedPropDescriptions(scenario.props.map(prop => prop.description));
-            setEditedPropNames(scenario.props.map(prop => prop.name));
+            setEditedPropDescriptions(
+                scenario.props.map((prop) => prop.description),
+            );
+            setEditedPropNames(scenario.props.map((prop) => prop.name));
             // Initialize refs array for prop editing areas
-            propEditingRefs.current = new Array(scenario.props.length).fill(null);
+            propEditingRefs.current = new Array(scenario.props.length).fill(
+                null,
+            );
             // Initialize refs array for prop file inputs
-            propFileInputRefs.current = new Array(scenario.props.length).fill(null);
+            propFileInputRefs.current = new Array(scenario.props.length).fill(
+                null,
+            );
             // Initialize hover states for props
             setPropHoverStates(new Array(scenario.props.length).fill(false));
         }
         if (scenario?.music) {
             setEditedMusic(scenario.music);
         }
-    }, [scenario?.scenario, scenario?.characters, scenario?.settings, scenario?.props, scenario?.music]);
+    }, [
+        scenario?.scenario,
+        scenario?.characters,
+        scenario?.settings,
+        scenario?.props,
+        scenario?.music,
+    ]);
 
     const handleSave = useCallback(async () => {
         if (scenario && onScenarioUpdate) {
             const updatedScenario = {
                 ...scenario,
-                scenario: editedScenario
+                scenario: editedScenario,
             };
             onScenarioUpdate(updatedScenario);
             setEditedScenario(updatedScenario.scenario);
@@ -126,77 +235,97 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
         setIsEditing(false);
     }, [scenario, onScenarioUpdate, editedScenario]);
 
-    const handleSaveCharacter = useCallback(async (index: number) => {
-        if (scenario && onScenarioUpdate) {
-            const updatedDescription = editedCharacterDescriptions[index];
-            const updatedName = editedCharacterNames[index];
-            const updatedVoice = editedCharacterVoices[index];
+    const handleSaveCharacter = useCallback(
+        async (index: number) => {
+            if (scenario && onScenarioUpdate) {
+                const updatedDescription = editedCharacterDescriptions[index];
+                const updatedName = editedCharacterNames[index];
+                const updatedVoice = editedCharacterVoices[index];
 
-            // Update the scenario with the new description and name
-            const updatedCharacters = [...scenario.characters];
-            updatedCharacters[index] = {
-                ...updatedCharacters[index],
-                name: updatedName,
-                description: updatedDescription,
-                voice: updatedVoice
-            };
-            const updatedScenario = {
-                ...scenario,
-                characters: updatedCharacters
-            };
-            onScenarioUpdate(updatedScenario);
-        }
-        setEditingCharacterIndex(null);
-    }, [scenario, onScenarioUpdate, editedCharacterDescriptions, editedCharacterNames, editedCharacterVoices]);
+                // Update the scenario with the new description and name
+                const updatedCharacters = [...scenario.characters];
+                updatedCharacters[index] = {
+                    ...updatedCharacters[index],
+                    name: updatedName,
+                    description: updatedDescription,
+                    voice: updatedVoice,
+                };
+                const updatedScenario = {
+                    ...scenario,
+                    characters: updatedCharacters,
+                };
+                onScenarioUpdate(updatedScenario);
+            }
+            setEditingCharacterIndex(null);
+        },
+        [
+            scenario,
+            onScenarioUpdate,
+            editedCharacterDescriptions,
+            editedCharacterNames,
+            editedCharacterVoices,
+        ],
+    );
 
-    const handleSaveSetting = useCallback(async (index: number) => {
-        if (scenario && onScenarioUpdate) {
-            const updatedDescription = editedSettingDescriptions[index];
-            const updatedName = editedSettingNames[index];
+    const handleSaveSetting = useCallback(
+        async (index: number) => {
+            if (scenario && onScenarioUpdate) {
+                const updatedDescription = editedSettingDescriptions[index];
+                const updatedName = editedSettingNames[index];
 
-            // Update the scenario with the new description and name
-            const updatedSettings = [...scenario.settings];
-            updatedSettings[index] = {
-                ...updatedSettings[index],
-                name: updatedName,
-                description: updatedDescription
-            };
-            const updatedScenario = {
-                ...scenario,
-                settings: updatedSettings
-            };
-            onScenarioUpdate(updatedScenario);
-        }
-        setEditingSettingIndex(null);
-    }, [scenario, onScenarioUpdate, editedSettingDescriptions, editedSettingNames]);
+                // Update the scenario with the new description and name
+                const updatedSettings = [...scenario.settings];
+                updatedSettings[index] = {
+                    ...updatedSettings[index],
+                    name: updatedName,
+                    description: updatedDescription,
+                };
+                const updatedScenario = {
+                    ...scenario,
+                    settings: updatedSettings,
+                };
+                onScenarioUpdate(updatedScenario);
+            }
+            setEditingSettingIndex(null);
+        },
+        [
+            scenario,
+            onScenarioUpdate,
+            editedSettingDescriptions,
+            editedSettingNames,
+        ],
+    );
 
-    const handleSaveProp = useCallback(async (index: number) => {
-        if (scenario && onScenarioUpdate) {
-            const updatedDescription = editedPropDescriptions[index];
-            const updatedName = editedPropNames[index];
+    const handleSaveProp = useCallback(
+        async (index: number) => {
+            if (scenario && onScenarioUpdate) {
+                const updatedDescription = editedPropDescriptions[index];
+                const updatedName = editedPropNames[index];
 
-            // Update the scenario with the new description and name
-            const updatedProps = [...scenario.props];
-            updatedProps[index] = {
-                ...updatedProps[index],
-                name: updatedName,
-                description: updatedDescription
-            };
-            const updatedScenario = {
-                ...scenario,
-                props: updatedProps
-            };
-            onScenarioUpdate(updatedScenario);
-        }
-        setEditingPropIndex(null);
-    }, [scenario, onScenarioUpdate, editedPropDescriptions, editedPropNames]);
+                // Update the scenario with the new description and name
+                const updatedProps = [...scenario.props];
+                updatedProps[index] = {
+                    ...updatedProps[index],
+                    name: updatedName,
+                    description: updatedDescription,
+                };
+                const updatedScenario = {
+                    ...scenario,
+                    props: updatedProps,
+                };
+                onScenarioUpdate(updatedScenario);
+            }
+            setEditingPropIndex(null);
+        },
+        [scenario, onScenarioUpdate, editedPropDescriptions, editedPropNames],
+    );
 
     const handleSaveMusic = useCallback(async () => {
         if (scenario && onScenarioUpdate) {
             // Update only the music property without regenerating scenario
             const updatedScenario = {
                 ...scenario,
-                music: editedMusic
+                music: editedMusic,
             };
             onScenarioUpdate(updatedScenario);
         }
@@ -216,15 +345,20 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
 
             // Check if click is outside character editing area
             if (editingCharacterIndex !== null) {
-                const currentCharacterRef = characterEditingRefs.current[editingCharacterIndex];
-                if (currentCharacterRef && !currentCharacterRef.contains(target)) {
+                const currentCharacterRef =
+                    characterEditingRefs.current[editingCharacterIndex];
+                if (
+                    currentCharacterRef &&
+                    !currentCharacterRef.contains(target)
+                ) {
                     handleSaveCharacter(editingCharacterIndex);
                 }
             }
 
             // Check if click is outside setting editing area
             if (editingSettingIndex !== null) {
-                const currentSettingRef = settingEditingRefs.current[editingSettingIndex];
+                const currentSettingRef =
+                    settingEditingRefs.current[editingSettingIndex];
                 if (currentSettingRef && !currentSettingRef.contains(target)) {
                     handleSaveSetting(editingSettingIndex);
                 }
@@ -232,7 +366,8 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
 
             // Check if click is outside prop editing area
             if (editingPropIndex !== null) {
-                const currentPropRef = propEditingRefs.current[editingPropIndex];
+                const currentPropRef =
+                    propEditingRefs.current[editingPropIndex];
                 if (currentPropRef && !currentPropRef.contains(target)) {
                     handleSaveProp(editingPropIndex);
                 }
@@ -246,13 +381,26 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
             }
         }
 
-        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener("mousedown", handleClickOutside);
         return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener("mousedown", handleClickOutside);
         };
-    }, [isEditing, editingCharacterIndex, editingSettingIndex, editingPropIndex, isEditingMusic, handleSave, handleSaveCharacter, handleSaveSetting, handleSaveProp, handleSaveMusic]);
+    }, [
+        isEditing,
+        editingCharacterIndex,
+        editingSettingIndex,
+        editingPropIndex,
+        isEditingMusic,
+        handleSave,
+        handleSaveCharacter,
+        handleSaveSetting,
+        handleSaveProp,
+        handleSaveMusic,
+    ]);
 
-    const handleScenarioChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const handleScenarioChange = (
+        e: React.ChangeEvent<HTMLTextAreaElement>,
+    ) => {
         setEditedScenario(e.target.value);
     };
 
@@ -264,7 +412,7 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
 
     const handleCharacterVoiceChange = (index: number, value: string) => {
         const newVoices = [...editedCharacterVoices];
-        console.log('handleCharacterVoiceChange');
+        console.log("handleCharacterVoiceChange");
         console.log(value);
         newVoices[index] = value;
         setEditedCharacterVoices(newVoices);
@@ -326,7 +474,10 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
         characterFileInputRefs.current[index]?.click();
     };
 
-    const handleCharacterFileChange = async (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleCharacterFileChange = async (
+        index: number,
+        event: React.ChangeEvent<HTMLInputElement>,
+    ) => {
         const file = event.target.files?.[0];
         if (file && onUploadCharacterImage) {
             await onUploadCharacterImage(index, file);
@@ -337,7 +488,10 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
         settingFileInputRefs.current[index]?.click();
     };
 
-    const handleSettingFileChange = async (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleSettingFileChange = async (
+        index: number,
+        event: React.ChangeEvent<HTMLInputElement>,
+    ) => {
         const file = event.target.files?.[0];
         if (file && onUploadSettingImage) {
             await onUploadSettingImage(index, file);
@@ -348,25 +502,26 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
         propFileInputRefs.current[index]?.click();
     };
 
-    const handlePropFileChange = async (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
+    const handlePropFileChange = async (
+        index: number,
+        event: React.ChangeEvent<HTMLInputElement>,
+    ) => {
         const file = event.target.files?.[0];
         if (file && onUploadPropImage) {
             await onUploadPropImage(index, file);
         }
     };
 
-
-
     const handleAddCharacter = () => {
         if (scenario && onScenarioUpdate) {
             const newCharacter = {
                 name: "New Character",
-                description: "Enter character description..."
+                description: "Enter character description...",
             };
             const updatedCharacters = [...scenario.characters, newCharacter];
             const updatedScenario = {
                 ...scenario,
-                characters: updatedCharacters
+                characters: updatedCharacters,
             };
             onScenarioUpdate(updatedScenario);
 
@@ -377,28 +532,37 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
 
     const handleRemoveCharacter = async (index: number) => {
         if (scenario && onScenarioUpdate) {
-            setLocalGeneratingCharacters(prev => new Set([...prev, index]));
+            setLocalGeneratingCharacters((prev) => new Set([...prev, index]));
             try {
-                const newScenario = await deleteCharacterFromScenario(scenario.scenario, scenario.characters[index].name, scenario.characters[index].description);
-                const updatedCharacters = scenario.characters.filter((_, i) => i !== index);
+                const newScenario = await deleteCharacterFromScenario(
+                    scenario.scenario,
+                    scenario.characters[index].name,
+                    scenario.characters[index].description,
+                );
+                const updatedCharacters = scenario.characters.filter(
+                    (_, i) => i !== index,
+                );
                 const updatedScenario = {
                     ...scenario,
                     characters: updatedCharacters,
-                    scenario: newScenario.updatedScenario
+                    scenario: newScenario.updatedScenario,
                 };
                 onScenarioUpdate(updatedScenario);
 
                 // Clear editing state if we're removing the character being edited
                 if (editingCharacterIndex === index) {
                     setEditingCharacterIndex(null);
-                } else if (editingCharacterIndex !== null && editingCharacterIndex > index) {
+                } else if (
+                    editingCharacterIndex !== null &&
+                    editingCharacterIndex > index
+                ) {
                     // Adjust editing index if removing a character before the one being edited
                     setEditingCharacterIndex(editingCharacterIndex - 1);
                 }
             } catch (error) {
-                console.error('Error deleting character:', error);
+                console.error("Error deleting character:", error);
             } finally {
-                setLocalGeneratingCharacters(prev => {
+                setLocalGeneratingCharacters((prev) => {
                     const newSet = new Set(prev);
                     newSet.delete(index);
                     return newSet;
@@ -411,12 +575,12 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
         if (scenario && onScenarioUpdate) {
             const newSetting = {
                 name: "New Setting",
-                description: "Enter setting description..."
+                description: "Enter setting description...",
             };
             const updatedSettings = [...scenario.settings, newSetting];
             const updatedScenario = {
                 ...scenario,
-                settings: updatedSettings
+                settings: updatedSettings,
             };
             onScenarioUpdate(updatedScenario);
 
@@ -427,28 +591,37 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
 
     const handleRemoveSetting = async (index: number) => {
         if (scenario && onScenarioUpdate) {
-            setLocalGeneratingSettings(prev => new Set([...prev, index]));
+            setLocalGeneratingSettings((prev) => new Set([...prev, index]));
             try {
-                const newScenario = await deleteSettingFromScenario(scenario.scenario, scenario.settings[index].name, scenario.settings[index].description);
-                const updatedSettings = scenario.settings.filter((_, i) => i !== index);
+                const newScenario = await deleteSettingFromScenario(
+                    scenario.scenario,
+                    scenario.settings[index].name,
+                    scenario.settings[index].description,
+                );
+                const updatedSettings = scenario.settings.filter(
+                    (_, i) => i !== index,
+                );
                 const updatedScenario = {
                     ...scenario,
                     settings: updatedSettings,
-                    scenario: newScenario.updatedScenario
+                    scenario: newScenario.updatedScenario,
                 };
                 onScenarioUpdate(updatedScenario);
 
                 // Clear editing state if we're removing the setting being edited
                 if (editingSettingIndex === index) {
                     setEditingSettingIndex(null);
-                } else if (editingSettingIndex !== null && editingSettingIndex > index) {
+                } else if (
+                    editingSettingIndex !== null &&
+                    editingSettingIndex > index
+                ) {
                     // Adjust editing index if removing a setting before the one being edited
                     setEditingSettingIndex(editingSettingIndex - 1);
                 }
             } catch (error) {
-                console.error('Error deleting setting:', error);
+                console.error("Error deleting setting:", error);
             } finally {
-                setLocalGeneratingSettings(prev => {
+                setLocalGeneratingSettings((prev) => {
                     const newSet = new Set(prev);
                     newSet.delete(index);
                     return newSet;
@@ -461,12 +634,12 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
         if (scenario && onScenarioUpdate) {
             const newProp = {
                 name: "New Prop",
-                description: "Enter prop description..."
+                description: "Enter prop description...",
             };
             const updatedProps = [...scenario.props, newProp];
             const updatedScenario = {
                 ...scenario,
-                props: updatedProps
+                props: updatedProps,
             };
             onScenarioUpdate(updatedScenario);
 
@@ -477,28 +650,37 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
 
     const handleRemoveProp = async (index: number) => {
         if (scenario && onScenarioUpdate) {
-            setLocalGeneratingProps(prev => new Set([...prev, index]));
+            setLocalGeneratingProps((prev) => new Set([...prev, index]));
             try {
-                const newScenario = await deletePropFromScenario(scenario.scenario, scenario.props[index].name, scenario.props[index].description);
-                const updatedProps = scenario.props.filter((_, i) => i !== index);
+                const newScenario = await deletePropFromScenario(
+                    scenario.scenario,
+                    scenario.props[index].name,
+                    scenario.props[index].description,
+                );
+                const updatedProps = scenario.props.filter(
+                    (_, i) => i !== index,
+                );
                 const updatedScenario = {
                     ...scenario,
                     props: updatedProps,
-                    scenario: newScenario.updatedScenario
+                    scenario: newScenario.updatedScenario,
                 };
                 onScenarioUpdate(updatedScenario);
 
                 // Clear editing state if we're removing the prop being edited
                 if (editingPropIndex === index) {
                     setEditingPropIndex(null);
-                } else if (editingPropIndex !== null && editingPropIndex > index) {
+                } else if (
+                    editingPropIndex !== null &&
+                    editingPropIndex > index
+                ) {
                     // Adjust editing index if removing a prop before the one being edited
                     setEditingPropIndex(editingPropIndex - 1);
                 }
             } catch (error) {
-                console.error('Error deleting prop:', error);
+                console.error("Error deleting prop:", error);
             } finally {
-                setLocalGeneratingProps(prev => {
+                setLocalGeneratingProps((prev) => {
                     const newSet = new Set(prev);
                     newSet.delete(index);
                     return newSet;
@@ -511,7 +693,7 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
         <div className="space-y-8">
             {scenario && (
                 <>
-                    <div className="flex justify-end items-center gap-4">
+                    <div className="flex items-center justify-end gap-4">
                         <LoadingMessages isLoading={isLoading} />
                         <Button
                             onClick={onGenerateStoryBoard}
@@ -531,20 +713,20 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
                             )}
                         </Button>
                     </div>
-                    <div className="max-w-4xl mx-auto space-y-4">
+                    <div className="mx-auto max-w-4xl space-y-4">
                         <div className="col-span-1">
                             <h3 className="text-xl font-bold">Scenario</h3>
                         </div>
                         <div
                             ref={scenarioRef}
-                            className="relative group"
+                            className="group relative"
                             onMouseEnter={() => setIsScenarioHovering(true)}
                             onMouseLeave={() => setIsScenarioHovering(false)}
                         >
                             {!isEditing && isScenarioHovering && (
                                 <button
                                     onClick={() => setIsEditing(true)}
-                                    className="absolute top-2 right-2 p-2 rounded-full text-primary-foreground bg-primary/80 hover:bg-primary shadow-sm transition-all"
+                                    className="absolute right-2 top-2 rounded-full bg-primary/80 p-2 text-primary-foreground shadow-sm transition-all hover:bg-primary"
                                 >
                                     <Pencil className="h-4 w-4" />
                                 </button>
@@ -558,10 +740,12 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
                                     autoFocus
                                 />
                             ) : (
-                                <p className="whitespace-pre-wrap p-4 rounded-lg border border-transparent group-hover:border-gray-200 transition-colors">{scenario.scenario}</p>
+                                <p className="whitespace-pre-wrap rounded-lg border border-transparent p-4 transition-colors group-hover:border-gray-200">
+                                    {scenario.scenario}
+                                </p>
                             )}
                         </div>
-                        <div className="col-span-1 flex justify-between items-center">
+                        <div className="col-span-1 flex items-center justify-between">
                             <h3 className="text-xl font-bold">Characters</h3>
                             <Button
                                 onClick={handleAddCharacter}
@@ -574,118 +758,187 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
                             </Button>
                         </div>
                         {scenario.characters.map((character, index) => (
-                            <div key={index} className="flex gap-4 items-start">
-                                <div className="flex-shrink-0 w-[200px] h-[200px] relative group">
+                            <div key={index} className="flex items-start gap-4">
+                                <div className="group relative h-[200px] w-[200px] flex-shrink-0">
                                     {isCharacterLoading(index) && (
-                                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10 rounded-lg">
-                                            <Loader2 className="h-8 w-8 text-white animate-spin" />
+                                        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-black bg-opacity-50">
+                                            <Loader2 className="h-8 w-8 animate-spin text-white" />
                                         </div>
                                     )}
                                     <GcsImage
                                         gcsUri={character.imageGcsUri || null}
                                         alt={`Character ${character.name}`}
-                                        className="object-cover rounded-lg shadow-md"
+                                        className="rounded-lg object-cover shadow-md"
                                         sizes="200px"
                                     />
-                                    <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="absolute left-2 top-2 opacity-0 transition-opacity group-hover:opacity-100">
                                         <Button
                                             variant="secondary"
                                             size="icon"
                                             className="bg-black/50 hover:bg-blue-500 hover:text-white"
-                                            onClick={() => onRegenerateCharacterImage?.(index, character.name, character.description, character.voice || '')}
+                                            onClick={() =>
+                                                onRegenerateCharacterImage?.(
+                                                    index,
+                                                    character.name,
+                                                    character.description,
+                                                    character.voice || "",
+                                                )
+                                            }
                                             disabled={isCharacterLoading(index)}
                                         >
                                             <RefreshCw className="h-4 w-4" />
-                                            <span className="sr-only">Regenerate character image</span>
+                                            <span className="sr-only">
+                                                Regenerate character image
+                                            </span>
                                         </Button>
                                     </div>
-                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                    <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                                         <Button
                                             variant="secondary"
                                             size="icon"
                                             className="bg-black/50 hover:bg-green-500 hover:text-white"
-                                            onClick={() => handleCharacterUploadClick(index)}
+                                            onClick={() =>
+                                                handleCharacterUploadClick(
+                                                    index,
+                                                )
+                                            }
                                             disabled={isCharacterLoading(index)}
                                         >
                                             <Upload className="h-4 w-4" />
-                                            <span className="sr-only">Upload character image</span>
+                                            <span className="sr-only">
+                                                Upload character image
+                                            </span>
                                         </Button>
                                         <Button
                                             variant="secondary"
                                             size="icon"
                                             className="bg-black/50 hover:bg-red-500 hover:text-white"
-                                            onClick={() => handleRemoveCharacter(index)}
+                                            onClick={() =>
+                                                handleRemoveCharacter(index)
+                                            }
                                             disabled={isCharacterLoading(index)}
                                         >
                                             <X className="h-4 w-4" />
-                                            <span className="sr-only">Remove character</span>
+                                            <span className="sr-only">
+                                                Remove character
+                                            </span>
                                         </Button>
                                     </div>
                                     <input
                                         type="file"
                                         ref={(el) => {
-                                            characterFileInputRefs.current[index] = el;
+                                            characterFileInputRefs.current[
+                                                index
+                                            ] = el;
                                             return;
                                         }}
-                                        onChange={(e) => handleCharacterFileChange(index, e)}
+                                        onChange={(e) =>
+                                            handleCharacterFileChange(index, e)
+                                        }
                                         accept="image/*"
                                         className="hidden"
                                     />
                                 </div>
-                                <div className="flex-grow relative group">
+                                <div className="group relative flex-grow">
                                     <div
                                         ref={(el) => {
-                                            characterEditingRefs.current[index] = el;
+                                            characterEditingRefs.current[
+                                                index
+                                            ] = el;
                                             return;
                                         }}
                                         className="relative"
-                                        onMouseEnter={() => handleCharacterHover(index, true)}
-                                        onMouseLeave={() => handleCharacterHover(index, false)}
+                                        onMouseEnter={() =>
+                                            handleCharacterHover(index, true)
+                                        }
+                                        onMouseLeave={() =>
+                                            handleCharacterHover(index, false)
+                                        }
                                     >
-                                        {editingCharacterIndex !== index && characterHoverStates[index] && (
-                                            <button
-                                                onClick={() => setEditingCharacterIndex(index)}
-                                                className="absolute top-0 right-2 p-2 rounded-full text-primary-foreground bg-primary/80 hover:bg-primary shadow-sm transition-all z-10"
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </button>
-                                        )}
+                                        {editingCharacterIndex !== index &&
+                                            characterHoverStates[index] && (
+                                                <button
+                                                    onClick={() =>
+                                                        setEditingCharacterIndex(
+                                                            index,
+                                                        )
+                                                    }
+                                                    className="absolute right-2 top-0 z-10 rounded-full bg-primary/80 p-2 text-primary-foreground shadow-sm transition-all hover:bg-primary"
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </button>
+                                            )}
                                         {editingCharacterIndex === index ? (
                                             <div className="space-y-3">
                                                 <div>
-                                                    <label className="block text-sm font-medium mb-1">Character Name</label>
+                                                    <label className="mb-1 block text-sm font-medium">
+                                                        Character Name
+                                                    </label>
                                                     <Input
-                                                        value={editedCharacterNames[index] || ''}
-                                                        onChange={(e) => handleCharacterNameChange(index, e.target.value)}
+                                                        value={
+                                                            editedCharacterNames[
+                                                                index
+                                                            ] || ""
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleCharacterNameChange(
+                                                                index,
+                                                                e.target.value,
+                                                            )
+                                                        }
                                                         placeholder="Enter character name..."
                                                         autoFocus
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-medium mb-1">Character Description</label>
+                                                    <label className="mb-1 block text-sm font-medium">
+                                                        Character Description
+                                                    </label>
                                                     <Textarea
-                                                        value={editedCharacterDescriptions[index] || ''}
-                                                        onChange={(e) => handleCharacterDescriptionChange(index, e.target.value)}
+                                                        value={
+                                                            editedCharacterDescriptions[
+                                                                index
+                                                            ] || ""
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleCharacterDescriptionChange(
+                                                                index,
+                                                                e.target.value,
+                                                            )
+                                                        }
                                                         className="min-h-[100px] w-full"
                                                         placeholder="Enter character description..."
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-medium mb-1">Voice</label>
+                                                    <label className="mb-1 block text-sm font-medium">
+                                                        Voice
+                                                    </label>
                                                     <Input
-                                                        value={editedCharacterVoices[index] || ''}
-                                                        onChange={(e) => handleCharacterVoiceChange(index, e.target.value)}
+                                                        value={
+                                                            editedCharacterVoices[
+                                                                index
+                                                            ] || ""
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleCharacterVoiceChange(
+                                                                index,
+                                                                e.target.value,
+                                                            )
+                                                        }
                                                         placeholder="Enter voice description..."
                                                     />
                                                 </div>
                                             </div>
                                         ) : (
                                             <div>
-                                                <h4 className="text-lg font-semibold mb-2">{character.name}</h4>
-                                                <p className="whitespace-pre-wrap p-4 rounded-lg border border-transparent group-hover:border-gray-200 transition-colors">
+                                                <h4 className="mb-2 text-lg font-semibold">
+                                                    {character.name}
+                                                </h4>
+                                                <p className="whitespace-pre-wrap rounded-lg border border-transparent p-4 transition-colors group-hover:border-gray-200">
                                                     {character.description}
                                                 </p>
-                                                <p className="whitespace-pre-wrap p-4 rounded-lg border border-transparent group-hover:border-gray-200 transition-colors">
+                                                <p className="whitespace-pre-wrap rounded-lg border border-transparent p-4 transition-colors group-hover:border-gray-200">
                                                     Voice: {character.voice}
                                                 </p>
                                             </div>
@@ -694,7 +947,7 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
                                 </div>
                             </div>
                         ))}
-                        <div className="col-span-1 flex justify-between items-center">
+                        <div className="col-span-1 flex items-center justify-between">
                             <h3 className="text-xl font-bold">Props</h3>
                             <Button
                                 onClick={handleAddProp}
@@ -707,98 +960,148 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
                             </Button>
                         </div>
                         {scenario.props?.map((prop, index) => (
-                            <div key={index} className="flex gap-4 items-start">
-                                <div className="flex-shrink-0 w-[200px] h-[200px] relative group">
+                            <div key={index} className="flex items-start gap-4">
+                                <div className="group relative h-[200px] w-[200px] flex-shrink-0">
                                     {isPropLoading(index) && (
-                                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10 rounded-lg">
-                                            <Loader2 className="h-8 w-8 text-white animate-spin" />
+                                        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-black bg-opacity-50">
+                                            <Loader2 className="h-8 w-8 animate-spin text-white" />
                                         </div>
                                     )}
                                     <GcsImage
                                         gcsUri={prop.imageGcsUri || null}
                                         alt={`Prop ${prop.name}`}
-                                        className="object-cover rounded-lg shadow-md"
+                                        className="rounded-lg object-cover shadow-md"
                                         sizes="200px"
                                     />
-                                    <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="absolute left-2 top-2 opacity-0 transition-opacity group-hover:opacity-100">
                                         <Button
                                             variant="secondary"
                                             size="icon"
                                             className="bg-black/50 hover:bg-blue-500 hover:text-white"
-                                            onClick={() => onRegeneratePropImage?.(index, prop.name, prop.description)}
+                                            onClick={() =>
+                                                onRegeneratePropImage?.(
+                                                    index,
+                                                    prop.name,
+                                                    prop.description,
+                                                )
+                                            }
                                             disabled={isPropLoading(index)}
                                         >
                                             <RefreshCw className="h-4 w-4" />
-                                            <span className="sr-only">Regenerate prop image</span>
+                                            <span className="sr-only">
+                                                Regenerate prop image
+                                            </span>
                                         </Button>
                                     </div>
-                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                    <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                                         <Button
                                             variant="secondary"
                                             size="icon"
                                             className="bg-black/50 hover:bg-green-500 hover:text-white"
-                                            onClick={() => handlePropUploadClick(index)}
+                                            onClick={() =>
+                                                handlePropUploadClick(index)
+                                            }
                                             disabled={isPropLoading(index)}
                                         >
                                             <Upload className="h-4 w-4" />
-                                            <span className="sr-only">Upload prop image</span>
+                                            <span className="sr-only">
+                                                Upload prop image
+                                            </span>
                                         </Button>
                                         <Button
                                             variant="secondary"
                                             size="icon"
                                             className="bg-black/50 hover:bg-red-500 hover:text-white"
-                                            onClick={() => handleRemoveProp(index)}
+                                            onClick={() =>
+                                                handleRemoveProp(index)
+                                            }
                                             disabled={isPropLoading(index)}
                                         >
                                             <X className="h-4 w-4" />
-                                            <span className="sr-only">Remove prop</span>
+                                            <span className="sr-only">
+                                                Remove prop
+                                            </span>
                                         </Button>
                                     </div>
                                     <input
                                         type="file"
                                         ref={(el) => {
-                                            propFileInputRefs.current[index] = el;
+                                            propFileInputRefs.current[index] =
+                                                el;
                                             return;
                                         }}
-                                        onChange={(e) => handlePropFileChange(index, e)}
+                                        onChange={(e) =>
+                                            handlePropFileChange(index, e)
+                                        }
                                         accept="image/*"
                                         className="hidden"
                                     />
                                 </div>
-                                <div className="flex-grow relative group">
+                                <div className="group relative flex-grow">
                                     <div
                                         ref={(el) => {
                                             propEditingRefs.current[index] = el;
                                             return;
                                         }}
                                         className="relative"
-                                        onMouseEnter={() => handlePropHover(index, true)}
-                                        onMouseLeave={() => handlePropHover(index, false)}
+                                        onMouseEnter={() =>
+                                            handlePropHover(index, true)
+                                        }
+                                        onMouseLeave={() =>
+                                            handlePropHover(index, false)
+                                        }
                                     >
-                                        {editingPropIndex !== index && propHoverStates[index] && (
-                                            <button
-                                                onClick={() => setEditingPropIndex(index)}
-                                                className="absolute top-0 right-2 p-2 rounded-full text-primary-foreground bg-primary/80 hover:bg-primary shadow-sm transition-all z-10"
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </button>
-                                        )}
+                                        {editingPropIndex !== index &&
+                                            propHoverStates[index] && (
+                                                <button
+                                                    onClick={() =>
+                                                        setEditingPropIndex(
+                                                            index,
+                                                        )
+                                                    }
+                                                    className="absolute right-2 top-0 z-10 rounded-full bg-primary/80 p-2 text-primary-foreground shadow-sm transition-all hover:bg-primary"
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </button>
+                                            )}
                                         {editingPropIndex === index ? (
                                             <div className="space-y-3">
                                                 <div>
-                                                    <label className="block text-sm font-medium mb-1">Prop Name</label>
+                                                    <label className="mb-1 block text-sm font-medium">
+                                                        Prop Name
+                                                    </label>
                                                     <Input
-                                                        value={editedPropNames[index] || ''}
-                                                        onChange={(e) => handlePropNameChange(index, e.target.value)}
+                                                        value={
+                                                            editedPropNames[
+                                                                index
+                                                            ] || ""
+                                                        }
+                                                        onChange={(e) =>
+                                                            handlePropNameChange(
+                                                                index,
+                                                                e.target.value,
+                                                            )
+                                                        }
                                                         placeholder="Enter prop name..."
                                                         autoFocus
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-medium mb-1">Prop Description</label>
+                                                    <label className="mb-1 block text-sm font-medium">
+                                                        Prop Description
+                                                    </label>
                                                     <Textarea
-                                                        value={editedPropDescriptions[index] || ''}
-                                                        onChange={(e) => handlePropDescriptionChange(index, e.target.value)}
+                                                        value={
+                                                            editedPropDescriptions[
+                                                                index
+                                                            ] || ""
+                                                        }
+                                                        onChange={(e) =>
+                                                            handlePropDescriptionChange(
+                                                                index,
+                                                                e.target.value,
+                                                            )
+                                                        }
                                                         className="min-h-[100px] w-full"
                                                         placeholder="Enter prop description..."
                                                     />
@@ -806,8 +1109,10 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
                                             </div>
                                         ) : (
                                             <div>
-                                                <h4 className="text-lg font-semibold mb-2">{prop.name}</h4>
-                                                <p className="whitespace-pre-wrap p-4 rounded-lg border border-transparent group-hover:border-gray-200 transition-colors">
+                                                <h4 className="mb-2 text-lg font-semibold">
+                                                    {prop.name}
+                                                </h4>
+                                                <p className="whitespace-pre-wrap rounded-lg border border-transparent p-4 transition-colors group-hover:border-gray-200">
                                                     {prop.description}
                                                 </p>
                                             </div>
@@ -816,7 +1121,7 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
                                 </div>
                             </div>
                         ))}
-                        <div className="col-span-1 flex justify-between items-center">
+                        <div className="col-span-1 flex items-center justify-between">
                             <h3 className="text-xl font-bold">Settings</h3>
                             <Button
                                 onClick={handleAddSetting}
@@ -829,98 +1134,150 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
                             </Button>
                         </div>
                         {scenario.settings.map((setting, index) => (
-                            <div key={index} className="flex gap-4 items-start">
-                                <div className="flex-shrink-0 w-[200px] h-[200px] relative group">
+                            <div key={index} className="flex items-start gap-4">
+                                <div className="group relative h-[200px] w-[200px] flex-shrink-0">
                                     {isSettingLoading(index) && (
-                                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10 rounded-lg">
-                                            <Loader2 className="h-8 w-8 text-white animate-spin" />
+                                        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-black bg-opacity-50">
+                                            <Loader2 className="h-8 w-8 animate-spin text-white" />
                                         </div>
                                     )}
                                     <GcsImage
                                         gcsUri={setting.imageGcsUri || null}
                                         alt={`Setting ${setting.name}`}
-                                        className="object-contain rounded-lg shadow-md"
+                                        className="rounded-lg object-contain shadow-md"
                                         sizes="200px"
                                     />
-                                    <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="absolute left-2 top-2 opacity-0 transition-opacity group-hover:opacity-100">
                                         <Button
                                             variant="secondary"
                                             size="icon"
                                             className="bg-black/50 hover:bg-blue-500 hover:text-white"
-                                            onClick={() => onRegenerateSettingImage?.(index, setting.name, setting.description)}
+                                            onClick={() =>
+                                                onRegenerateSettingImage?.(
+                                                    index,
+                                                    setting.name,
+                                                    setting.description,
+                                                )
+                                            }
                                             disabled={isSettingLoading(index)}
                                         >
                                             <RefreshCw className="h-4 w-4" />
-                                            <span className="sr-only">Regenerate setting image</span>
+                                            <span className="sr-only">
+                                                Regenerate setting image
+                                            </span>
                                         </Button>
                                     </div>
-                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                    <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                                         <Button
                                             variant="secondary"
                                             size="icon"
                                             className="bg-black/50 hover:bg-green-500 hover:text-white"
-                                            onClick={() => handleSettingUploadClick(index)}
+                                            onClick={() =>
+                                                handleSettingUploadClick(index)
+                                            }
                                             disabled={isSettingLoading(index)}
                                         >
                                             <Upload className="h-4 w-4" />
-                                            <span className="sr-only">Upload setting image</span>
+                                            <span className="sr-only">
+                                                Upload setting image
+                                            </span>
                                         </Button>
                                         <Button
                                             variant="secondary"
                                             size="icon"
                                             className="bg-black/50 hover:bg-red-500 hover:text-white"
-                                            onClick={() => handleRemoveSetting(index)}
+                                            onClick={() =>
+                                                handleRemoveSetting(index)
+                                            }
                                             disabled={isSettingLoading(index)}
                                         >
                                             <X className="h-4 w-4" />
-                                            <span className="sr-only">Remove setting</span>
+                                            <span className="sr-only">
+                                                Remove setting
+                                            </span>
                                         </Button>
                                     </div>
                                     <input
                                         type="file"
                                         ref={(el) => {
-                                            settingFileInputRefs.current[index] = el;
+                                            settingFileInputRefs.current[
+                                                index
+                                            ] = el;
                                             return;
                                         }}
-                                        onChange={(e) => handleSettingFileChange(index, e)}
+                                        onChange={(e) =>
+                                            handleSettingFileChange(index, e)
+                                        }
                                         accept="image/*"
                                         className="hidden"
                                     />
                                 </div>
-                                <div className="flex-grow relative group">
+                                <div className="group relative flex-grow">
                                     <div
                                         ref={(el) => {
-                                            settingEditingRefs.current[index] = el;
+                                            settingEditingRefs.current[index] =
+                                                el;
                                             return;
                                         }}
                                         className="relative"
-                                        onMouseEnter={() => handleSettingHover(index, true)}
-                                        onMouseLeave={() => handleSettingHover(index, false)}
+                                        onMouseEnter={() =>
+                                            handleSettingHover(index, true)
+                                        }
+                                        onMouseLeave={() =>
+                                            handleSettingHover(index, false)
+                                        }
                                     >
-                                        {editingSettingIndex !== index && settingHoverStates[index] && (
-                                            <button
-                                                onClick={() => setEditingSettingIndex(index)}
-                                                className="absolute top-0 right-2 p-2 rounded-full text-primary-foreground bg-primary/80 hover:bg-primary shadow-sm transition-all z-10"
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </button>
-                                        )}
+                                        {editingSettingIndex !== index &&
+                                            settingHoverStates[index] && (
+                                                <button
+                                                    onClick={() =>
+                                                        setEditingSettingIndex(
+                                                            index,
+                                                        )
+                                                    }
+                                                    className="absolute right-2 top-0 z-10 rounded-full bg-primary/80 p-2 text-primary-foreground shadow-sm transition-all hover:bg-primary"
+                                                >
+                                                    <Pencil className="h-4 w-4" />
+                                                </button>
+                                            )}
                                         {editingSettingIndex === index ? (
                                             <div className="space-y-3">
                                                 <div>
-                                                    <label className="block text-sm font-medium mb-1">Setting Name</label>
+                                                    <label className="mb-1 block text-sm font-medium">
+                                                        Setting Name
+                                                    </label>
                                                     <Input
-                                                        value={editedSettingNames[index] || ''}
-                                                        onChange={(e) => handleSettingNameChange(index, e.target.value)}
+                                                        value={
+                                                            editedSettingNames[
+                                                                index
+                                                            ] || ""
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleSettingNameChange(
+                                                                index,
+                                                                e.target.value,
+                                                            )
+                                                        }
                                                         placeholder="Enter setting name..."
                                                         autoFocus
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-medium mb-1">Setting Description</label>
+                                                    <label className="mb-1 block text-sm font-medium">
+                                                        Setting Description
+                                                    </label>
                                                     <Textarea
-                                                        value={editedSettingDescriptions[index] || ''}
-                                                        onChange={(e) => handleSettingDescriptionChange(index, e.target.value)}
+                                                        value={
+                                                            editedSettingDescriptions[
+                                                                index
+                                                            ] || ""
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleSettingDescriptionChange(
+                                                                index,
+                                                                e.target.value,
+                                                            )
+                                                        }
                                                         className="min-h-[100px] w-full"
                                                         placeholder="Enter setting description..."
                                                     />
@@ -928,8 +1285,10 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
                                             </div>
                                         ) : (
                                             <div>
-                                                <h4 className="text-lg font-semibold mb-2">{setting.name}</h4>
-                                                <p className="whitespace-pre-wrap p-4 rounded-lg border border-transparent group-hover:border-gray-200 transition-colors">
+                                                <h4 className="mb-2 text-lg font-semibold">
+                                                    {setting.name}
+                                                </h4>
+                                                <p className="whitespace-pre-wrap rounded-lg border border-transparent p-4 transition-colors group-hover:border-gray-200">
                                                     {setting.description}
                                                 </p>
                                             </div>
@@ -943,14 +1302,14 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
                         </div>
                         <div
                             ref={musicRef}
-                            className="relative group col-span-2"
+                            className="group relative col-span-2"
                             onMouseEnter={() => setIsMusicHovering(true)}
                             onMouseLeave={() => setIsMusicHovering(false)}
                         >
                             {!isEditingMusic && isMusicHovering && (
                                 <button
                                     onClick={() => setIsEditingMusic(true)}
-                                    className="absolute top-2 right-2 p-2 rounded-full text-primary-foreground bg-primary/80 hover:bg-primary shadow-sm transition-all"
+                                    className="absolute right-2 top-2 rounded-full bg-primary/80 p-2 text-primary-foreground shadow-sm transition-all hover:bg-primary"
                                 >
                                     <Pencil className="h-4 w-4" />
                                 </button>
@@ -964,7 +1323,7 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
                                     autoFocus
                                 />
                             ) : (
-                                <p className="whitespace-pre-wrap p-4 rounded-lg border border-transparent group-hover:border-gray-200 transition-colors">
+                                <p className="whitespace-pre-wrap rounded-lg border border-transparent p-4 transition-colors group-hover:border-gray-200">
                                     {scenario.music}
                                 </p>
                             )}
@@ -973,6 +1332,5 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
                 </>
             )}
         </div>
-    )
+    );
 }
-

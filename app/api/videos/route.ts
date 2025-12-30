@@ -1,30 +1,29 @@
-import { Scene, Scenario } from '@/app/types';
-import { videoPromptToString } from '@/lib/prompt-utils';
-import { generateSceneVideo, waitForOperation } from '@/lib/veo';
+import { Scene, Scenario } from "@/app/types";
+import { videoPromptToString } from "@/lib/prompt-utils";
+import { generateSceneVideo, waitForOperation } from "@/lib/veo";
 
-import logger from '@/app/logger';
-import { getRAIUserMessage } from '@/lib/rai'
-
+import logger from "@/app/logger";
+import { getRAIUserMessage } from "@/lib/rai";
 
 const USE_COSMO = process.env.USE_COSMO === "true";
 const GCS_VIDEOS_STORAGE_URI = process.env.GCS_VIDEOS_STORAGE_URI;
 
 const placeholderVideoUrls = [
-  `${GCS_VIDEOS_STORAGE_URI}cosmo.mp4`,
-  `${GCS_VIDEOS_STORAGE_URI}dogs1.mp4`,
-  `${GCS_VIDEOS_STORAGE_URI}dogs2.mp4`,
-  `${GCS_VIDEOS_STORAGE_URI}cats1.mp4`,
+    `${GCS_VIDEOS_STORAGE_URI}cosmo.mp4`,
+    `${GCS_VIDEOS_STORAGE_URI}dogs1.mp4`,
+    `${GCS_VIDEOS_STORAGE_URI}dogs2.mp4`,
+    `${GCS_VIDEOS_STORAGE_URI}cats1.mp4`,
 ];
 
 const placeholderVideoUrls916 = [
-  //`${GCS_VIDEOS_STORAGE_URI}cat_1_9_16.mp4`,
-  `${GCS_VIDEOS_STORAGE_URI}cat_2_9_16.mp4`,
-  `${GCS_VIDEOS_STORAGE_URI}dog_9_16.mp4`,
-  `${GCS_VIDEOS_STORAGE_URI}dog_2_9_16.mp4`,
+    //`${GCS_VIDEOS_STORAGE_URI}cat_1_9_16.mp4`,
+    `${GCS_VIDEOS_STORAGE_URI}cat_2_9_16.mp4`,
+    `${GCS_VIDEOS_STORAGE_URI}dog_9_16.mp4`,
+    `${GCS_VIDEOS_STORAGE_URI}dog_2_9_16.mp4`,
 ];
 
 /**
- * Handles POST requests to generate videos from a list of scenes.
+ * Handles POST requests to generate videos from a list of scenes. test
  *
  * @param req - The incoming request object, containing a JSON payload with an array of scenes.
  *               Each scene should have `imagePrompt`, `description`, `voiceover`, and optionally `imageBase64`.
@@ -32,68 +31,109 @@ const placeholderVideoUrls916 = [
  *          with either a success flag and the generated video URLs or an error message.
  */
 export async function POST(req: Request): Promise<Response> {
+    const {
+        scenes,
+        scenario,
+        aspectRatio,
+        model,
+        generateAudio,
+        durationSeconds,
+    }: {
+        scenes: Array<Scene>;
+        scenario: Scenario;
+        aspectRatio: string;
+        model?: string;
+        generateAudio?: boolean;
+        durationSeconds?: number;
+    } = await req.json();
 
-  const { scenes, scenario, aspectRatio, model, generateAudio, durationSeconds }: {
-    scenes: Array<Scene>
-    scenario: Scenario
-    aspectRatio: string
-    model?: string
-    generateAudio?: boolean
-    durationSeconds?: number
-  } = await req.json();
+    try {
+        logger.debug("Generating videos in parallel...");
+        logger.debug(`scenes: ${scenes}`);
+        logger.debug(`durationSeconds: ${durationSeconds}`);
 
+        const videoGenerationTasks = scenes
+            .filter((scene) => scene.imageGcsUri)
+            .map(async (scene, index) => {
+                logger.debug(
+                    `Starting video generation for scene ${index + 1}`,
+                );
+                let url: string;
+                if (USE_COSMO) {
+                    // randomize the placeholder video urls
+                    logger.debug(`aspectRatio: ${aspectRatio}`);
+                    if (aspectRatio === "9:16") {
+                        url =
+                            placeholderVideoUrls916[
+                                Math.floor(
+                                    Math.random() *
+                                        placeholderVideoUrls916.length,
+                                )
+                            ];
+                    } else {
+                        url =
+                            placeholderVideoUrls[
+                                Math.floor(
+                                    Math.random() * placeholderVideoUrls.length,
+                                )
+                            ];
+                    }
+                } else {
+                    const promptString =
+                        typeof scene.videoPrompt === "string"
+                            ? scene.videoPrompt
+                            : videoPromptToString(scene.videoPrompt, scenario);
+                    logger.debug(promptString);
+                    const operationName = await generateSceneVideo(
+                        promptString,
+                        scene.imageGcsUri!,
+                        aspectRatio,
+                        model || "veo-3.0-generate-001",
+                        generateAudio !== false,
+                        durationSeconds,
+                    );
+                    logger.debug(`Operation started for scene ${index + 1}`);
 
+                    const generateVideoResponse = await waitForOperation(
+                        operationName,
+                        model || "veo-3.0-generate-001",
+                    );
+                    logger.debug(
+                        `Video generation completed for scene ${index + 1}`,
+                    );
+                    logger.debug(generateVideoResponse);
 
-  try {
-    logger.debug('Generating videos in parallel...');
-    logger.debug(`scenes: ${scenes}`);
-    logger.debug(`durationSeconds: ${durationSeconds}`);
+                    if (
+                        generateVideoResponse.response.raiMediaFilteredReasons
+                    ) {
+                        // Throw an error with the determined user-friendly message
+                        throw new Error(
+                            getRAIUserMessage(
+                                generateVideoResponse.response
+                                    .raiMediaFilteredReasons[0],
+                            ),
+                        );
+                    }
 
+                    const gcsUri =
+                        generateVideoResponse.response.videos[0].gcsUri;
+                    url = gcsUri;
+                }
+                logger.debug(`Video Generated! ${url}`);
+                return url;
+            });
 
-    const videoGenerationTasks = scenes
-      .filter(scene => scene.imageGcsUri)
-      .map(async (scene, index) => {
-        logger.debug(`Starting video generation for scene ${index + 1}`);
-        let url: string;
-        if (USE_COSMO) {
-          // randomize the placeholder video urls
-          logger.debug(`aspectRatio: ${aspectRatio}`);
-          if (aspectRatio === "9:16") {
-            url = placeholderVideoUrls916[Math.floor(Math.random() * placeholderVideoUrls916.length)];
-          } else {
-            url = placeholderVideoUrls[Math.floor(Math.random() * placeholderVideoUrls.length)];
-          }
-        } else {
-          const promptString = typeof scene.videoPrompt === 'string' ? scene.videoPrompt : videoPromptToString(scene.videoPrompt, scenario);
-          logger.debug(promptString)
-          const operationName = await generateSceneVideo(promptString, scene.imageGcsUri!, aspectRatio, model || "veo-3.0-generate-001", generateAudio !== false, durationSeconds);
-          logger.debug(`Operation started for scene ${index + 1}`);
+        const videoUrls = await Promise.all(videoGenerationTasks);
 
-          const generateVideoResponse = await waitForOperation(operationName, model || "veo-3.0-generate-001");
-          logger.debug(`Video generation completed for scene ${index + 1}`);
-          logger.debug(generateVideoResponse)
-
-          if (generateVideoResponse.response.raiMediaFilteredReasons) {
-            // Throw an error with the determined user-friendly message
-            throw new Error(getRAIUserMessage(generateVideoResponse.response.raiMediaFilteredReasons[0]));
-          }
-
-          const gcsUri = generateVideoResponse.response.videos[0].gcsUri;
-          url = gcsUri;
-        }
-        logger.debug(`Video Generated! ${url}`)
-        return url;
-      });
-
-    const videoUrls = await Promise.all(videoGenerationTasks);
-
-    return Response.json({ success: true, videoUrls }); // Return response data if needed
-  } catch (error) {
-    logger.error('Error in generateVideo:', error);
-    return Response.json(
-      { success: false, error: error instanceof Error ? error.message : 'Failed to generate video(s)' }
-    );
-  }
+        return Response.json({ success: true, videoUrls }); // Return response data if needed
+    } catch (error) {
+        logger.error("Error in generateVideo:", error);
+        return Response.json({
+            success: false,
+            error:
+                error instanceof Error
+                    ? error.message
+                    : "Failed to generate video(s)",
+        });
+    }
 }
-
-

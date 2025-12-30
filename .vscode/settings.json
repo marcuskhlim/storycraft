@@ -1,0 +1,4 @@
+{
+    "editor.defaultFormatter": "prettier.prettier-vscode",
+    "eslint.codeActionsOnSave.rules": null
+}

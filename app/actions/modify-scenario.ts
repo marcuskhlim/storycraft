@@ -1,12 +1,12 @@
 "use server";
 
-import { generateContent, generateImage } from '@/lib/gemini';
+import { generateContent, generateImage } from "@/lib/gemini";
 import { generateImageRest } from "@/lib/imagen";
 import { z } from "zod";
-import yaml from 'js-yaml';
-import logger from '../logger';
-import { createPartFromText, createPartFromUri } from '@google/genai';
-import { getRAIUserMessage } from '@/lib/rai';
+import yaml from "js-yaml";
+import logger from "../logger";
+import { createPartFromText, createPartFromUri } from "@google/genai";
+import { getRAIUserMessage } from "@/lib/rai";
 
 // Shared types
 export interface Character {
@@ -71,7 +71,8 @@ const PropScenarioUpdateSchema = z.object({
 
 // Common error handling
 const handleError = (operation: string, error: unknown): never => {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
     logger.error(`Error in ${operation}:`, error);
     throw new Error(`Failed to ${operation}: ${errorMessage}`);
 };
@@ -82,7 +83,7 @@ const geminiConfig = {
         includeThoughts: false,
         thinkingBudget: -1,
     },
-    responseMimeType: 'text/plain' as const,
+    responseMimeType: "text/plain" as const,
 };
 
 // Shared function to update scenario text
@@ -91,7 +92,7 @@ async function updateScenarioText(
     oldName: string,
     newName: string,
     newDescription: string,
-    entityType: 'character' | 'setting' | 'prop' = 'character',
+    entityType: "character" | "setting" | "prop" = "character",
 ): Promise<string> {
     const text = await generateContent(
         `Update the following scenario to reflect ${entityType} changes. The ${entityType} previously named "${oldName}" is now named "${newName}" with the following updated description: "${newDescription}".
@@ -107,7 +108,7 @@ INSTRUCTIONS:
 5. Keep the scenario length similar to the original
 
 Return ONLY the updated scenario text, no additional formatting or explanations.`,
-        geminiConfig
+        geminiConfig,
     );
 
     return text!.trim();
@@ -117,7 +118,7 @@ async function deleteFromScenarioText(
     currentScenario: string,
     oldName: string,
     oldDescription: string,
-    entityType: 'character' | 'setting' | 'prop' = 'character'
+    entityType: "character" | "setting" | "prop" = "character",
 ): Promise<string> {
     const text = await generateContent(
         `Delete the following ${entityType} from the scenario.
@@ -132,13 +133,16 @@ INSTRUCTIONS:
 4. Keep the scenario length similar to the original
 
 Return ONLY the updated scenario text, no additional formatting or explanations.`,
-        geminiConfig
+        geminiConfig,
     );
     return text!.trim();
 }
 
 // Generate character image from description
-async function generateCharacterImage(description: string, style: string): Promise<string> {
+async function generateCharacterImage(
+    description: string,
+    style: string,
+): Promise<string> {
     const orderedPrompt = {
         style,
         shot_type: "Medium Shot",
@@ -148,19 +152,23 @@ async function generateCharacterImage(description: string, style: string): Promi
     const imageResult = await generateImageRest(
         yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }),
         "1:1",
-        true
+        true,
     );
 
     if (imageResult.predictions[0].raiFilteredReason) {
         throw new Error(
-            `Image generation failed: ${getRAIUserMessage(imageResult.predictions[0].raiFilteredReason)}`
+            `Image generation failed: ${getRAIUserMessage(imageResult.predictions[0].raiFilteredReason)}`,
         );
     }
 
     return imageResult.predictions[0].gcsUri;
 }
 
-async function generateSettingImage(description: string, style: string, aspectRatio: string = "16:9"): Promise<string> {
+async function generateSettingImage(
+    description: string,
+    style: string,
+    aspectRatio: string = "16:9",
+): Promise<string> {
     const orderedPrompt = {
         style,
         shot_type: "Wide Shot",
@@ -169,19 +177,22 @@ async function generateSettingImage(description: string, style: string, aspectRa
     const imageResult = await generateImageRest(
         yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }),
         aspectRatio,
-        true
+        true,
     );
 
     if (imageResult.predictions[0].raiFilteredReason) {
         throw new Error(
-            `Image generation failed: ${getRAIUserMessage(imageResult.predictions[0].raiFilteredReason)}`
+            `Image generation failed: ${getRAIUserMessage(imageResult.predictions[0].raiFilteredReason)}`,
         );
     }
 
     return imageResult.predictions[0].gcsUri;
 }
 
-async function generatePropImage(description: string, style: string): Promise<string> {
+async function generatePropImage(
+    description: string,
+    style: string,
+): Promise<string> {
     const orderedPrompt = {
         style,
         shot_type: "Close Shot",
@@ -190,30 +201,35 @@ async function generatePropImage(description: string, style: string): Promise<st
     const imageResult = await generateImageRest(
         yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }),
         "1:1",
-        true
+        true,
     );
 
     if (imageResult.predictions[0].raiFilteredReason) {
         throw new Error(
-            `Image generation failed: ${getRAIUserMessage(imageResult.predictions[0].raiFilteredReason)}`
+            `Image generation failed: ${getRAIUserMessage(imageResult.predictions[0].raiFilteredReason)}`,
         );
     }
 
     return imageResult.predictions[0].gcsUri;
 }
 
-async function styleImage(imageGcsUri: string, description: string, style: string): Promise<string> {
+async function styleImage(
+    imageGcsUri: string,
+    description: string,
+    style: string,
+): Promise<string> {
     const orderedPrompt = {
         style: style,
         //name: setting.name,
         shot_type: "Medium Shot",
         description: description,
     };
-    const prompt = yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 })
-    const result = await generateImage(
-        [createPartFromUri(imageGcsUri, 'image/png'), createPartFromText(prompt)]
-    )
-    return result.imageGcsUri!
+    const prompt = yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 });
+    const result = await generateImage([
+        createPartFromUri(imageGcsUri, "image/png"),
+        createPartFromText(prompt),
+    ]);
+    return result.imageGcsUri!;
 }
 
 export async function deleteCharacterFromScenario(
@@ -227,16 +243,16 @@ export async function deleteCharacterFromScenario(
             currentScenario,
             oldName,
             oldDescription,
-            'character'
+            "character",
         );
 
         return {
             updatedScenario,
         };
     } catch (error) {
-        handleError('delete character from scenario text', error);
+        handleError("delete character from scenario text", error);
     }
-    throw new Error('Unreachable code');
+    throw new Error("Unreachable code");
 }
 
 export async function deleteSettingFromScenario(
@@ -249,16 +265,16 @@ export async function deleteSettingFromScenario(
             currentScenario,
             oldName,
             oldDescription,
-            'setting'
+            "setting",
         );
 
         return {
             updatedScenario,
         };
     } catch (error) {
-        handleError('delete setting from scenario text', error);
+        handleError("delete setting from scenario text", error);
     }
-    throw new Error('Unreachable code');
+    throw new Error("Unreachable code");
 }
 
 export async function deletePropFromScenario(
@@ -271,18 +287,17 @@ export async function deletePropFromScenario(
             currentScenario,
             oldName,
             oldDescription,
-            'prop'
+            "prop",
         );
 
         return {
             updatedScenario,
         };
     } catch (error) {
-        handleError('delete prop from scenario text', error);
+        handleError("delete prop from scenario text", error);
     }
-    throw new Error('Unreachable code');
+    throw new Error("Unreachable code");
 }
-
 
 /**
  * Regenerate character and scenario from text input
@@ -293,11 +308,14 @@ export async function regenerateCharacterAndScenarioFromText(
     oldCharacterName: string,
     newCharacterName: string,
     newCharacterDescription: string,
-    style: string
+    style: string,
 ): Promise<ScenarioUpdateResult> {
     try {
         // Generate new character image
-        const newImageGcsUri = await generateCharacterImage(newCharacterDescription, style);
+        const newImageGcsUri = await generateCharacterImage(
+            newCharacterDescription,
+            style,
+        );
 
         // Update scenario text
         const updatedScenario = await updateScenarioText(
@@ -305,7 +323,7 @@ export async function regenerateCharacterAndScenarioFromText(
             oldCharacterName,
             newCharacterName,
             newCharacterDescription,
-            'character',
+            "character",
         );
 
         return {
@@ -313,9 +331,9 @@ export async function regenerateCharacterAndScenarioFromText(
             newImageGcsUri,
         };
     } catch (error) {
-        handleError('regenerate character and scenario from text', error);
+        handleError("regenerate character and scenario from text", error);
     }
-    throw new Error('Unreachable code');
+    throw new Error("Unreachable code");
 }
 
 /**
@@ -329,7 +347,7 @@ export async function regenerateCharacterAndScenarioFromImage(
     currentCharacterVoice: string,
     imageGcsUri: string,
     allCharacters: Character[],
-    style: string
+    style: string,
 ): Promise<ScenarioUpdateResult> {
     try {
         const characterListText = allCharacters
@@ -337,13 +355,14 @@ export async function regenerateCharacterAndScenarioFromImage(
             .join("\n");
 
         const text = await generateContent(
-            [{
-                fileData: {
-                    fileUri: imageGcsUri,
-                    mimeType: 'image/png',
-                }
-            },
-            `Analyze the provided image and update both the character description and scenario text to match the visual characteristics shown.
+            [
+                {
+                    fileData: {
+                        fileUri: imageGcsUri,
+                        mimeType: "image/png",
+                    },
+                },
+                `Analyze the provided image and update both the character description and scenario text to match the visual characteristics shown.
 
 CURRENT SCENARIO:
 "${currentScenario}"
@@ -364,16 +383,23 @@ INSTRUCTIONS:
 6. Preserve the story narrative and flow, but ensure all descriptions of ${characterName} match the visual characteristics
 7. Keep the same tone and style as the original text
 
-Return both the updated scenario (maintaining all characters) and the updated description for ${characterName}.`],
+Return both the updated scenario (maintaining all characters) and the updated description for ${characterName}.`,
+            ],
             {
                 ...geminiConfig,
-                responseMimeType: 'application/json',
+                responseMimeType: "application/json",
                 responseSchema: z.toJSONSchema(CharacterScenarioUpdateSchema),
-            }
+            },
         );
 
-        const characterScenarioUpdate = CharacterScenarioUpdateSchema.parse(JSON.parse(text!))
-        const newImageGcsUri = await styleImage(imageGcsUri, characterScenarioUpdate.updatedCharacter.description, style)
+        const characterScenarioUpdate = CharacterScenarioUpdateSchema.parse(
+            JSON.parse(text!),
+        );
+        const newImageGcsUri = await styleImage(
+            imageGcsUri,
+            characterScenarioUpdate.updatedCharacter.description,
+            style,
+        );
 
         return {
             updatedScenario: characterScenarioUpdate.updatedScenario,
@@ -381,9 +407,9 @@ Return both the updated scenario (maintaining all characters) and the updated de
             newImageGcsUri,
         };
     } catch (error) {
-        handleError('regenerate character and scenario', error);
+        handleError("regenerate character and scenario", error);
     }
-    throw new Error('Unreachable code');
+    throw new Error("Unreachable code");
 }
 
 /**
@@ -396,11 +422,15 @@ export async function regenerateSettingAndScenarioFromText(
     newSettingName: string,
     newSettingDescription: string,
     style: string,
-    aspectRatio: string = "16:9"
+    aspectRatio: string = "16:9",
 ): Promise<ScenarioUpdateResult> {
     try {
         // Generate new character image
-        const newImageGcsUri = await generateSettingImage(newSettingDescription, style, aspectRatio);
+        const newImageGcsUri = await generateSettingImage(
+            newSettingDescription,
+            style,
+            aspectRatio,
+        );
 
         // Update scenario text
         const updatedScenario = await updateScenarioText(
@@ -408,7 +438,7 @@ export async function regenerateSettingAndScenarioFromText(
             oldSettingName,
             newSettingName,
             newSettingDescription,
-            'setting'
+            "setting",
         );
 
         logger.debug(updatedScenario);
@@ -418,9 +448,9 @@ export async function regenerateSettingAndScenarioFromText(
             newImageGcsUri,
         };
     } catch (error) {
-        handleError('regenerate scenario from setting', error);
+        handleError("regenerate scenario from setting", error);
     }
-    throw new Error('Unreachable code');
+    throw new Error("Unreachable code");
 }
 
 /**
@@ -432,11 +462,14 @@ export async function regeneratePropAndScenarioFromText(
     oldPropName: string,
     newPropName: string,
     newPropDescription: string,
-    style: string
+    style: string,
 ): Promise<ScenarioUpdateResult> {
     try {
         // Generate new character image
-        const newImageGcsUri = await generatePropImage(newPropDescription, style);
+        const newImageGcsUri = await generatePropImage(
+            newPropDescription,
+            style,
+        );
 
         // Update scenario text
         const updatedScenario = await updateScenarioText(
@@ -444,7 +477,7 @@ export async function regeneratePropAndScenarioFromText(
             oldPropName,
             newPropName,
             newPropDescription,
-            'prop'
+            "prop",
         );
 
         logger.debug(updatedScenario);
@@ -454,9 +487,9 @@ export async function regeneratePropAndScenarioFromText(
             newImageGcsUri,
         };
     } catch (error) {
-        handleError('regenerate scenario from prop', error);
+        handleError("regenerate scenario from prop", error);
     }
-    throw new Error('Unreachable code');
+    throw new Error("Unreachable code");
 }
 
 /**
@@ -469,7 +502,7 @@ export async function regenerateSettingAndScenarioFromImage(
     currentSettingDescription: string,
     imageGcsUri: string,
     allSettings: Setting[],
-    style: string
+    style: string,
 ): Promise<ScenarioUpdateResult> {
     try {
         const settingListText = allSettings
@@ -477,13 +510,14 @@ export async function regenerateSettingAndScenarioFromImage(
             .join("\n");
 
         const text = await generateContent(
-            [{
-                fileData: {
-                    fileUri: imageGcsUri,
-                    mimeType: 'image/png',
-                }
-            },
-            `Analyze the provided image and update both the setting description and scenario text to match the visual characteristics shown.
+            [
+                {
+                    fileData: {
+                        fileUri: imageGcsUri,
+                        mimeType: "image/png",
+                    },
+                },
+                `Analyze the provided image and update both the setting description and scenario text to match the visual characteristics shown.
 
 CURRENT SCENARIO:
 "${currentScenario}"
@@ -502,16 +536,23 @@ INSTRUCTIONS:
 7. Preserve the story narrative and flow, but ensure all descriptions of ${settingName} match the visual characteristics
 8. Keep the same tone and style as the original text
 
-Return both the updated scenario (maintaining all settings) and the updated description for ${settingName}.`],
+Return both the updated scenario (maintaining all settings) and the updated description for ${settingName}.`,
+            ],
             {
                 ...geminiConfig,
-                responseMimeType: 'application/json',
+                responseMimeType: "application/json",
                 responseSchema: z.toJSONSchema(SettingScenarioUpdateSchema),
-            }
+            },
         );
 
-        const settingScenarioUpdate = SettingScenarioUpdateSchema.parse(JSON.parse(text!))
-        const newImageGcsUri = await styleImage(imageGcsUri, settingScenarioUpdate.updatedSetting.description, style)
+        const settingScenarioUpdate = SettingScenarioUpdateSchema.parse(
+            JSON.parse(text!),
+        );
+        const newImageGcsUri = await styleImage(
+            imageGcsUri,
+            settingScenarioUpdate.updatedSetting.description,
+            style,
+        );
 
         return {
             updatedScenario: settingScenarioUpdate.updatedScenario,
@@ -519,9 +560,9 @@ Return both the updated scenario (maintaining all settings) and the updated desc
             newImageGcsUri,
         };
     } catch (error) {
-        handleError('regenerate setting and scenario', error);
+        handleError("regenerate setting and scenario", error);
     }
-    throw new Error('Unreachable code');
+    throw new Error("Unreachable code");
 }
 
 /**
@@ -534,7 +575,7 @@ export async function regeneratePropAndScenarioFromImage(
     currentPropDescription: string,
     imageGcsUri: string,
     allProps: Prop[],
-    style: string
+    style: string,
 ): Promise<ScenarioUpdateResult> {
     try {
         const propListText = allProps
@@ -542,13 +583,14 @@ export async function regeneratePropAndScenarioFromImage(
             .join("\n");
 
         const text = await generateContent(
-            [{
-                fileData: {
-                    fileUri: imageGcsUri,
-                    mimeType: 'image/png',
-                }
-            },
-            `Analyze the provided image and update both the prop description and scenario text to match the visual characteristics shown.
+            [
+                {
+                    fileData: {
+                        fileUri: imageGcsUri,
+                        mimeType: "image/png",
+                    },
+                },
+                `Analyze the provided image and update both the prop description and scenario text to match the visual characteristics shown.
 
 CURRENT SCENARIO:
 "${currentScenario}"
@@ -567,16 +609,23 @@ INSTRUCTIONS:
 7. Preserve the story narrative and flow, but ensure all descriptions of ${propName} match the visual characteristics
 8. Keep the same tone and style as the original text
 
-Return both the updated scenario (maintaining all props) and the updated description for ${propName}.`],
+Return both the updated scenario (maintaining all props) and the updated description for ${propName}.`,
+            ],
             {
                 ...geminiConfig,
-                responseMimeType: 'application/json',
+                responseMimeType: "application/json",
                 responseSchema: z.toJSONSchema(PropScenarioUpdateSchema),
-            }
+            },
         );
 
-        const propScenarioUpdate = PropScenarioUpdateSchema.parse(JSON.parse(text!))
-        const newImageGcsUri = await styleImage(imageGcsUri, propScenarioUpdate.updatedProp.description, style)
+        const propScenarioUpdate = PropScenarioUpdateSchema.parse(
+            JSON.parse(text!),
+        );
+        const newImageGcsUri = await styleImage(
+            imageGcsUri,
+            propScenarioUpdate.updatedProp.description,
+            style,
+        );
 
         return {
             updatedScenario: propScenarioUpdate.updatedScenario,
@@ -584,7 +633,7 @@ Return both the updated scenario (maintaining all props) and the updated descrip
             newImageGcsUri,
         };
     } catch (error) {
-        handleError('regenerate prop and scenario', error);
+        handleError("regenerate prop and scenario", error);
     }
-    throw new Error('Unreachable code');
+    throw new Error("Unreachable code");
 }

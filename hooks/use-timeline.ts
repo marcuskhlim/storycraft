@@ -1,109 +1,125 @@
-import { useCallback, useRef } from 'react'
-import { useAuth } from './use-auth'
-import type { TimelineLayer } from '@/app/types'
+import { useCallback, useRef } from "react";
+import { useAuth } from "./use-auth";
+import type { TimelineLayer } from "@/app/types";
 
 export function useTimeline() {
-  const { session } = useAuth()
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const { session } = useAuth();
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const saveTimeline = useCallback(async (scenarioId: string, layers: TimelineLayer[]) => {
-    if (!session?.user?.id) {
-      console.warn('Cannot save timeline: user not authenticated')
-      return null
-    }
+    const saveTimeline = useCallback(
+        async (scenarioId: string, layers: TimelineLayer[]) => {
+            if (!session?.user?.id) {
+                console.warn("Cannot save timeline: user not authenticated");
+                return null;
+            }
 
-    try {
-      const response = await fetch('/api/timeline', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenarioId, layers })
-      })
+            try {
+                const response = await fetch("/api/timeline", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ scenarioId, layers }),
+                });
 
-      if (!response.ok) {
-        throw new Error('Failed to save timeline')
-      }
+                if (!response.ok) {
+                    throw new Error("Failed to save timeline");
+                }
 
-      const result = await response.json()
-      return result.timelineId
-    } catch (error) {
-      console.error('Error saving timeline:', error)
-      throw error
-    }
-  }, [session?.user?.id])
+                const result = await response.json();
+                return result.timelineId;
+            } catch (error) {
+                console.error("Error saving timeline:", error);
+                throw error;
+            }
+        },
+        [session?.user?.id],
+    );
 
-  const saveTimelineDebounced = useCallback((scenarioId: string, layers: TimelineLayer[]) => {
-    // Clear existing timeout
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current)
-    }
+    const saveTimelineDebounced = useCallback(
+        (scenarioId: string, layers: TimelineLayer[]) => {
+            // Clear existing timeout
+            if (saveTimeoutRef.current) {
+                clearTimeout(saveTimeoutRef.current);
+            }
 
-    // Set new timeout for debounced save
-    saveTimeoutRef.current = setTimeout(() => {
-      saveTimeline(scenarioId, layers).catch(error => {
-        console.error('Debounced timeline save failed:', error)
-      })
-    }, 1000) // Wait 1 second after last change before saving
-  }, [saveTimeline])
+            // Set new timeout for debounced save
+            saveTimeoutRef.current = setTimeout(() => {
+                saveTimeline(scenarioId, layers).catch((error) => {
+                    console.error("Debounced timeline save failed:", error);
+                });
+            }, 1000); // Wait 1 second after last change before saving
+        },
+        [saveTimeline],
+    );
 
-  const loadTimeline = useCallback(async (scenarioId: string): Promise<TimelineLayer[] | null> => {
-    if (!session?.user?.id) {
-      console.warn('Cannot load timeline: user not authenticated')
-      return null
-    }
+    const loadTimeline = useCallback(
+        async (scenarioId: string): Promise<TimelineLayer[] | null> => {
+            if (!session?.user?.id) {
+                console.warn("Cannot load timeline: user not authenticated");
+                return null;
+            }
 
-    try {
-      const response = await fetch(`/api/timeline?scenarioId=${scenarioId}`)
+            try {
+                const response = await fetch(
+                    `/api/timeline?scenarioId=${scenarioId}`,
+                );
 
-      if (!response.ok) {
-        if (response.status === 404) {
-          return null
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        return null;
+                    }
+                    throw new Error("Failed to load timeline");
+                }
+
+                const { timeline } = await response.json();
+                return timeline?.layers || null;
+            } catch (error) {
+                console.error("Error loading timeline:", error);
+                return null;
+            }
+        },
+        [session?.user?.id],
+    );
+
+    const resetTimeline = useCallback(
+        async (scenarioId: string) => {
+            if (!session?.user?.id) {
+                console.warn("Cannot reset timeline: user not authenticated");
+                return;
+            }
+
+            try {
+                const response = await fetch(
+                    `/api/timeline?scenarioId=${scenarioId}`,
+                    {
+                        method: "DELETE",
+                    },
+                );
+
+                if (!response.ok) {
+                    throw new Error("Failed to reset timeline");
+                }
+            } catch (error) {
+                console.error("Error resetting timeline:", error);
+                throw error;
+            }
+        },
+        [session?.user?.id],
+    );
+
+    // Cancel any pending debounced save
+    const cancelPendingSave = useCallback(() => {
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+            saveTimeoutRef.current = null;
         }
-        throw new Error('Failed to load timeline')
-      }
+    }, []);
 
-      const { timeline } = await response.json()
-      return timeline?.layers || null
-    } catch (error) {
-      console.error('Error loading timeline:', error)
-      return null
-    }
-  }, [session?.user?.id])
-
-  const resetTimeline = useCallback(async (scenarioId: string) => {
-    if (!session?.user?.id) {
-      console.warn('Cannot reset timeline: user not authenticated')
-      return
-    }
-
-    try {
-      const response = await fetch(`/api/timeline?scenarioId=${scenarioId}`, {
-        method: 'DELETE'
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to reset timeline')
-      }
-    } catch (error) {
-      console.error('Error resetting timeline:', error)
-      throw error
-    }
-  }, [session?.user?.id])
-
-  // Cancel any pending debounced save
-  const cancelPendingSave = useCallback(() => {
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current)
-      saveTimeoutRef.current = null
-    }
-  }, [])
-
-  return {
-    saveTimeline,
-    saveTimelineDebounced,
-    loadTimeline,
-    resetTimeline,
-    cancelPendingSave,
-    isAuthenticated: !!session?.user?.id
-  }
+    return {
+        saveTimeline,
+        saveTimelineDebounced,
+        loadTimeline,
+        resetTimeline,
+        cancelPendingSave,
+        isAuthenticated: !!session?.user?.id,
+    };
 }
-

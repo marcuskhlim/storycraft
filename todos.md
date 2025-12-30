@@ -1,20 +1,22 @@
 # Done
 
-* props?
-* 9/16
-* choose model
-* fix GCSImage?
-* voice description
-* clip duration
-* fix delete character/settings/props loader
-* nano banana more than 3 reference images
-* fix image generation language Imagen4
+- props?
+- 9/16
+- choose model
+- fix GCSImage?
+- voice description
+- clip duration
+- fix delete character/settings/props loader
+- nano banana more than 3 reference images
+- fix image generation language Imagen4
 
 # On Hold:
+
     * google_searc + url_context
     * upload style image
 
 # Next:
+
     * specify model when generating content
     * specify aspectRatio when generatingImage
     * refactor regenerate-image
@@ -23,9 +25,9 @@
     * Review Scene data:
         * scene by scene model choice + params
         * conversational edit images
-    
 
 # TODO:
+
     * add images to conversational edit (e.g. add this logo onto ...)
     * linter and prettier format
     * Editor:
@@ -35,7 +37,7 @@
         * captions https://www.angel1254.com/blog/posts/word-by-word-captions
         * upload music/video
         * zoom
-        * undo/redo 
+        * undo/redo
         * transitions
         * cut clips
         * full screen
@@ -84,10 +86,10 @@
 17. Multiple video tracks - Picture-in-picture, overlays
 18. Audio scrubbing - Hear audio while seeking
 
-
------
+---
 
 ### Priority Recommendations
+
 If you want to add features incrementally, I'd suggest this order:
 
 1. Per-clip volume control - High impact, essential for mixing audio
@@ -96,4 +98,3 @@ If you want to add features incrementally, I'd suggest this order:
 4. Timeline zoom - Better editing precision
 5. Audio fade in/out - Polishes audio transitions
 6. Keyboard shortcuts (Delete, Ctrl+Z, etc.)
-

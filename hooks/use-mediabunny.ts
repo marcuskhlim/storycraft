@@ -1,414 +1,463 @@
-'use client'
+"use client";
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Input,
-  UrlSource,
-  ALL_FORMATS,
-  CanvasSink,
-  AudioBufferSink,
-} from 'mediabunny'
-import { TimelineLayer, TimelineItem } from '@/app/types'
+    Input,
+    UrlSource,
+    ALL_FORMATS,
+    CanvasSink,
+    AudioBufferSink,
+} from "mediabunny";
+import { TimelineLayer, TimelineItem } from "@/app/types";
 
 // Types for Mediabunny media management
 export interface MediaSource {
-  id: string
-  url: string
-  input: Input | null
-  canvasSink: CanvasSink | null
-  audioBufferSink: AudioBufferSink | null
-  duration: number
-  isLoaded: boolean
+    id: string;
+    url: string;
+    input: Input | null;
+    canvasSink: CanvasSink | null;
+    audioBufferSink: AudioBufferSink | null;
+    duration: number;
+    isLoaded: boolean;
 }
 
 export interface ThumbnailData {
-  id: string
-  frames: ImageBitmap[]
-  isLoading: boolean
+    id: string;
+    frames: ImageBitmap[];
+    isLoading: boolean;
 }
 
 export interface PlaybackState {
-  isPlaying: boolean
-  currentTime: number
-  duration: number
+    isPlaying: boolean;
+    currentTime: number;
+    duration: number;
 }
 
 interface UseMediabunnyOptions {
-  layers: TimelineLayer[]
-  onTimeUpdate?: (time: number) => void
+    layers: TimelineLayer[];
+    onTimeUpdate?: (time: number) => void;
 }
 
 interface UseMediabunnyReturn {
-  // Media sources
-  videoSources: Map<string, MediaSource>
-  audioSources: Map<string, MediaSource>
+    // Media sources
+    videoSources: Map<string, MediaSource>;
+    audioSources: Map<string, MediaSource>;
 
-  // Thumbnail extraction
-  extractThumbnails: (url: string, count: number, duration: number) => Promise<ImageBitmap[]>
-  getThumbnailsForClip: (clipId: string) => ThumbnailData | undefined
+    // Thumbnail extraction
+    extractThumbnails: (
+        url: string,
+        count: number,
+        duration: number,
+    ) => Promise<ImageBitmap[]>;
+    getThumbnailsForClip: (clipId: string) => ThumbnailData | undefined;
 
-  // Playback control
-  play: () => void
-  pause: () => void
-  seek: (time: number) => void
-  isPlaying: boolean
-  currentTime: number
-  totalDuration: number
+    // Playback control
+    play: () => void;
+    pause: () => void;
+    seek: (time: number) => void;
+    isPlaying: boolean;
+    currentTime: number;
+    totalDuration: number;
 
-  // Frame extraction for preview
-  getFrameAtTime: (time: number) => Promise<HTMLCanvasElement | OffscreenCanvas | null>
+    // Frame extraction for preview
+    getFrameAtTime: (
+        time: number,
+    ) => Promise<HTMLCanvasElement | OffscreenCanvas | null>;
 
-  // Audio mixing
-  getAudioBufferAtTime: (time: number) => Promise<AudioBuffer | null>
+    // Audio mixing
+    getAudioBufferAtTime: (time: number) => Promise<AudioBuffer | null>;
 
-  // Loading states
-  isInitializing: boolean
-  isReady: boolean
+    // Loading states
+    isInitializing: boolean;
+    isReady: boolean;
 }
 
 // Cache for loaded inputs to avoid re-loading
-const inputCache = new Map<string, Input>()
-const thumbnailCache = new Map<string, ImageBitmap[]>()
+const inputCache = new Map<string, Input>();
+const thumbnailCache = new Map<string, ImageBitmap[]>();
 
 export function useMediabunny({
-  layers,
-  onTimeUpdate,
+    layers,
+    onTimeUpdate,
 }: UseMediabunnyOptions): UseMediabunnyReturn {
-  const [videoSources, setVideoSources] = useState<Map<string, MediaSource>>(new Map())
-  const [audioSources, setAudioSources] = useState<Map<string, MediaSource>>(new Map())
-  const [thumbnails] = useState<Map<string, ThumbnailData>>(new Map())
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
-  const [totalDuration, setTotalDuration] = useState(0)
-  const [isInitializing, setIsInitializing] = useState(true)
-  const [isReady, setIsReady] = useState(false)
+    const [videoSources, setVideoSources] = useState<Map<string, MediaSource>>(
+        new Map(),
+    );
+    const [audioSources, setAudioSources] = useState<Map<string, MediaSource>>(
+        new Map(),
+    );
+    const [thumbnails] = useState<Map<string, ThumbnailData>>(new Map());
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [totalDuration, setTotalDuration] = useState(0);
+    const [isInitializing, setIsInitializing] = useState(true);
+    const [isReady, setIsReady] = useState(false);
 
-  const animationFrameRef = useRef<number | null>(null)
-  const lastFrameTimeRef = useRef<number>(0)
-  const audioContextRef = useRef<AudioContext | null>(null)
+    const animationFrameRef = useRef<number | null>(null);
+    const lastFrameTimeRef = useRef<number>(0);
+    const audioContextRef = useRef<AudioContext | null>(null);
 
-  // Initialize audio context
-  useEffect(() => {
-    if (typeof window !== 'undefined' && !audioContextRef.current) {
-      audioContextRef.current = new AudioContext({
-        latencyHint: 'playback',
-        sampleRate: 48000,
-      })
-    }
-
-    return () => {
-      if (audioContextRef.current) {
-        audioContextRef.current.close()
-        audioContextRef.current = null
-      }
-    }
-  }, [])
-
-  // Load an input source with caching
-  const loadInput = useCallback(async (url: string): Promise<Input | null> => {
-    if (!url) return null
-
-    // Check cache first
-    if (inputCache.has(url)) {
-      return inputCache.get(url)!
-    }
-
-    try {
-      const input = new Input({
-        source: new UrlSource(url),
-        formats: ALL_FORMATS,
-      })
-
-      inputCache.set(url, input)
-      return input
-    } catch (error) {
-      console.error('Failed to load input:', url, error)
-      return null
-    }
-  }, [])
-
-  // Extract thumbnails from a video URL
-  const extractThumbnails = useCallback(async (
-    url: string,
-    count: number,
-    duration: number
-  ): Promise<ImageBitmap[]> => {
-    // Check cache first
-    const cacheKey = `${url}-${count}-${duration}`
-    if (thumbnailCache.has(cacheKey)) {
-      return thumbnailCache.get(cacheKey)!
-    }
-
-    const input = await loadInput(url)
-    if (!input) return []
-
-    try {
-      const videoTrack = await input.getPrimaryVideoTrack()
-      if (!videoTrack) return []
-
-      const canvasSink = new CanvasSink(videoTrack)
-      const frames: ImageBitmap[] = []
-      const interval = duration / count
-
-      // Generate timestamps
-      const timestamps = Array.from({ length: count }, (_, i) =>
-        Math.min(i * interval, duration - 0.1)
-      )
-
-      // Extract frames using optimized pipeline
-      for await (const wrapped of canvasSink.canvasesAtTimestamps(timestamps)) {
-        if (wrapped && wrapped.canvas) {
-          try {
-            const bitmap = await createImageBitmap(wrapped.canvas)
-            frames.push(bitmap)
-          } catch {
-            console.warn('Failed to create bitmap')
-          }
+    // Initialize audio context
+    useEffect(() => {
+        if (typeof window !== "undefined" && !audioContextRef.current) {
+            audioContextRef.current = new AudioContext({
+                latencyHint: "playback",
+                sampleRate: 48000,
+            });
         }
-      }
 
-      thumbnailCache.set(cacheKey, frames)
-      return frames
-    } catch (error) {
-      console.error('Failed to extract thumbnails:', error)
-      return []
-    }
-  }, [loadInput])
-
-  // Get thumbnails for a specific clip
-  const getThumbnailsForClip = useCallback((clipId: string): ThumbnailData | undefined => {
-    return thumbnails.get(clipId)
-  }, [thumbnails])
-
-  // Get a single frame at a specific timeline time
-  const getFrameAtTime = useCallback(async (time: number): Promise<HTMLCanvasElement | OffscreenCanvas | null> => {
-    const videoLayer = layers.find(l => l.type === 'video')
-    if (!videoLayer) return null
-
-    // Find the clip at this time
-    const clip = videoLayer.items.find(
-      item => time >= item.startTime && time < item.startTime + item.duration
-    )
-    if (!clip || !clip.content) return null
-
-    const input = await loadInput(clip.content)
-    if (!input) return null
-
-    try {
-      const videoTrack = await input.getPrimaryVideoTrack()
-      if (!videoTrack) return null
-
-      const canvasSink = new CanvasSink(videoTrack)
-      const clipTime = time - clip.startTime
-      const wrapped = await canvasSink.getCanvas(clipTime)
-
-      if (wrapped && wrapped.canvas) {
-        return wrapped.canvas
-      }
-    } catch (error) {
-      console.error('Failed to get frame at time:', error)
-    }
-
-    return null
-  }, [layers, loadInput])
-
-  // Get audio buffer at a specific time
-  const getAudioBufferAtTime = useCallback(async (time: number): Promise<AudioBuffer | null> => {
-    // Find all active audio clips at this time
-    const activeClips: { item: TimelineItem; layer: TimelineLayer }[] = []
-
-    layers.forEach(layer => {
-      if (layer.type === 'voiceover' || layer.type === 'music') {
-        layer.items.forEach(item => {
-          if (time >= item.startTime && time < item.startTime + item.duration && item.content) {
-            activeClips.push({ item, layer })
-          }
-        })
-      }
-    })
-
-    if (activeClips.length === 0) return null
-
-    try {
-      // Get audio buffer from first active clip for now
-      const { item } = activeClips[0]
-      const input = await loadInput(item.content)
-      if (!input) return null
-
-      const audioTrack = await input.getPrimaryAudioTrack()
-      if (!audioTrack) return null
-
-      const sink = new AudioBufferSink(audioTrack)
-      const clipTime = time - item.startTime
-      const wrapped = await sink.getBuffer(clipTime)
-
-      return wrapped?.buffer || null
-    } catch (error) {
-      console.error('Failed to get audio buffer:', error)
-      return null
-    }
-  }, [layers, loadInput])
-
-  // Calculate total duration from video layer
-  useEffect(() => {
-    const videoLayer = layers.find(l => l.type === 'video')
-    if (videoLayer && videoLayer.items.length > 0) {
-      const lastItem = videoLayer.items[videoLayer.items.length - 1]
-      setTotalDuration(lastItem.startTime + lastItem.duration)
-    }
-  }, [layers])
-
-  // Initialize video sources
-  useEffect(() => {
-    const initSources = async () => {
-      setIsInitializing(true)
-      const newVideoSources = new Map<string, MediaSource>()
-      const newAudioSources = new Map<string, MediaSource>()
-
-      // Load video sources
-      const videoLayer = layers.find(l => l.type === 'video')
-      if (videoLayer) {
-        for (const item of videoLayer.items) {
-          if (item.content) {
-            const input = await loadInput(item.content)
-            const videoTrack = input ? await input.getPrimaryVideoTrack() : null
-            newVideoSources.set(item.id, {
-              id: item.id,
-              url: item.content,
-              input,
-              canvasSink: videoTrack ? new CanvasSink(videoTrack) : null,
-              audioBufferSink: null,
-              duration: item.duration,
-              isLoaded: !!input,
-            })
-          }
-        }
-      }
-
-      // Load audio sources (voiceovers and music)
-      for (const layer of layers) {
-        if (layer.type === 'voiceover' || layer.type === 'music') {
-          for (const item of layer.items) {
-            if (item.content) {
-              const input = await loadInput(item.content)
-              const audioTrack = input ? await input.getPrimaryAudioTrack() : null
-              newAudioSources.set(item.id, {
-                id: item.id,
-                url: item.content,
-                input,
-                canvasSink: null,
-                audioBufferSink: audioTrack ? new AudioBufferSink(audioTrack) : null,
-                duration: item.duration,
-                isLoaded: !!input,
-              })
+        return () => {
+            if (audioContextRef.current) {
+                audioContextRef.current.close();
+                audioContextRef.current = null;
             }
-          }
+        };
+    }, []);
+
+    // Load an input source with caching
+    const loadInput = useCallback(
+        async (url: string): Promise<Input | null> => {
+            if (!url) return null;
+
+            // Check cache first
+            if (inputCache.has(url)) {
+                return inputCache.get(url)!;
+            }
+
+            try {
+                const input = new Input({
+                    source: new UrlSource(url),
+                    formats: ALL_FORMATS,
+                });
+
+                inputCache.set(url, input);
+                return input;
+            } catch (error) {
+                console.error("Failed to load input:", url, error);
+                return null;
+            }
+        },
+        [],
+    );
+
+    // Extract thumbnails from a video URL
+    const extractThumbnails = useCallback(
+        async (
+            url: string,
+            count: number,
+            duration: number,
+        ): Promise<ImageBitmap[]> => {
+            // Check cache first
+            const cacheKey = `${url}-${count}-${duration}`;
+            if (thumbnailCache.has(cacheKey)) {
+                return thumbnailCache.get(cacheKey)!;
+            }
+
+            const input = await loadInput(url);
+            if (!input) return [];
+
+            try {
+                const videoTrack = await input.getPrimaryVideoTrack();
+                if (!videoTrack) return [];
+
+                const canvasSink = new CanvasSink(videoTrack);
+                const frames: ImageBitmap[] = [];
+                const interval = duration / count;
+
+                // Generate timestamps
+                const timestamps = Array.from({ length: count }, (_, i) =>
+                    Math.min(i * interval, duration - 0.1),
+                );
+
+                // Extract frames using optimized pipeline
+                for await (const wrapped of canvasSink.canvasesAtTimestamps(
+                    timestamps,
+                )) {
+                    if (wrapped && wrapped.canvas) {
+                        try {
+                            const bitmap = await createImageBitmap(
+                                wrapped.canvas,
+                            );
+                            frames.push(bitmap);
+                        } catch {
+                            console.warn("Failed to create bitmap");
+                        }
+                    }
+                }
+
+                thumbnailCache.set(cacheKey, frames);
+                return frames;
+            } catch (error) {
+                console.error("Failed to extract thumbnails:", error);
+                return [];
+            }
+        },
+        [loadInput],
+    );
+
+    // Get thumbnails for a specific clip
+    const getThumbnailsForClip = useCallback(
+        (clipId: string): ThumbnailData | undefined => {
+            return thumbnails.get(clipId);
+        },
+        [thumbnails],
+    );
+
+    // Get a single frame at a specific timeline time
+    const getFrameAtTime = useCallback(
+        async (
+            time: number,
+        ): Promise<HTMLCanvasElement | OffscreenCanvas | null> => {
+            const videoLayer = layers.find((l) => l.type === "video");
+            if (!videoLayer) return null;
+
+            // Find the clip at this time
+            const clip = videoLayer.items.find(
+                (item) =>
+                    time >= item.startTime &&
+                    time < item.startTime + item.duration,
+            );
+            if (!clip || !clip.content) return null;
+
+            const input = await loadInput(clip.content);
+            if (!input) return null;
+
+            try {
+                const videoTrack = await input.getPrimaryVideoTrack();
+                if (!videoTrack) return null;
+
+                const canvasSink = new CanvasSink(videoTrack);
+                const clipTime = time - clip.startTime;
+                const wrapped = await canvasSink.getCanvas(clipTime);
+
+                if (wrapped && wrapped.canvas) {
+                    return wrapped.canvas;
+                }
+            } catch (error) {
+                console.error("Failed to get frame at time:", error);
+            }
+
+            return null;
+        },
+        [layers, loadInput],
+    );
+
+    // Get audio buffer at a specific time
+    const getAudioBufferAtTime = useCallback(
+        async (time: number): Promise<AudioBuffer | null> => {
+            // Find all active audio clips at this time
+            const activeClips: { item: TimelineItem; layer: TimelineLayer }[] =
+                [];
+
+            layers.forEach((layer) => {
+                if (layer.type === "voiceover" || layer.type === "music") {
+                    layer.items.forEach((item) => {
+                        if (
+                            time >= item.startTime &&
+                            time < item.startTime + item.duration &&
+                            item.content
+                        ) {
+                            activeClips.push({ item, layer });
+                        }
+                    });
+                }
+            });
+
+            if (activeClips.length === 0) return null;
+
+            try {
+                // Get audio buffer from first active clip for now
+                const { item } = activeClips[0];
+                const input = await loadInput(item.content);
+                if (!input) return null;
+
+                const audioTrack = await input.getPrimaryAudioTrack();
+                if (!audioTrack) return null;
+
+                const sink = new AudioBufferSink(audioTrack);
+                const clipTime = time - item.startTime;
+                const wrapped = await sink.getBuffer(clipTime);
+
+                return wrapped?.buffer || null;
+            } catch (error) {
+                console.error("Failed to get audio buffer:", error);
+                return null;
+            }
+        },
+        [layers, loadInput],
+    );
+
+    // Calculate total duration from video layer
+    useEffect(() => {
+        const videoLayer = layers.find((l) => l.type === "video");
+        if (videoLayer && videoLayer.items.length > 0) {
+            const lastItem = videoLayer.items[videoLayer.items.length - 1];
+            setTotalDuration(lastItem.startTime + lastItem.duration);
         }
-      }
+    }, [layers]);
 
-      setVideoSources(newVideoSources)
-      setAudioSources(newAudioSources)
-      setIsInitializing(false)
-      setIsReady(true)
-    }
+    // Initialize video sources
+    useEffect(() => {
+        const initSources = async () => {
+            setIsInitializing(true);
+            const newVideoSources = new Map<string, MediaSource>();
+            const newAudioSources = new Map<string, MediaSource>();
 
-    if (layers.length > 0) {
-      initSources()
-    }
-  }, [layers, loadInput])
+            // Load video sources
+            const videoLayer = layers.find((l) => l.type === "video");
+            if (videoLayer) {
+                for (const item of videoLayer.items) {
+                    if (item.content) {
+                        const input = await loadInput(item.content);
+                        const videoTrack = input
+                            ? await input.getPrimaryVideoTrack()
+                            : null;
+                        newVideoSources.set(item.id, {
+                            id: item.id,
+                            url: item.content,
+                            input,
+                            canvasSink: videoTrack
+                                ? new CanvasSink(videoTrack)
+                                : null,
+                            audioBufferSink: null,
+                            duration: item.duration,
+                            isLoaded: !!input,
+                        });
+                    }
+                }
+            }
 
-  // Playback animation loop
-  useEffect(() => {
-    if (!isPlaying) {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-        animationFrameRef.current = null
-      }
-      return
-    }
+            // Load audio sources (voiceovers and music)
+            for (const layer of layers) {
+                if (layer.type === "voiceover" || layer.type === "music") {
+                    for (const item of layer.items) {
+                        if (item.content) {
+                            const input = await loadInput(item.content);
+                            const audioTrack = input
+                                ? await input.getPrimaryAudioTrack()
+                                : null;
+                            newAudioSources.set(item.id, {
+                                id: item.id,
+                                url: item.content,
+                                input,
+                                canvasSink: null,
+                                audioBufferSink: audioTrack
+                                    ? new AudioBufferSink(audioTrack)
+                                    : null,
+                                duration: item.duration,
+                                isLoaded: !!input,
+                            });
+                        }
+                    }
+                }
+            }
 
-    const animate = (timestamp: number) => {
-      if (!lastFrameTimeRef.current) {
-        lastFrameTimeRef.current = timestamp
-      }
+            setVideoSources(newVideoSources);
+            setAudioSources(newAudioSources);
+            setIsInitializing(false);
+            setIsReady(true);
+        };
 
-      const deltaTime = (timestamp - lastFrameTimeRef.current) / 1000
-      lastFrameTimeRef.current = timestamp
-
-      setCurrentTime(prev => {
-        const newTime = prev + deltaTime
-        if (newTime >= totalDuration) {
-          setIsPlaying(false)
-          return 0
+        if (layers.length > 0) {
+            initSources();
         }
-        onTimeUpdate?.(newTime)
-        return newTime
-      })
+    }, [layers, loadInput]);
 
-      animationFrameRef.current = requestAnimationFrame(animate)
-    }
+    // Playback animation loop
+    useEffect(() => {
+        if (!isPlaying) {
+            if (animationFrameRef.current) {
+                cancelAnimationFrame(animationFrameRef.current);
+                animationFrameRef.current = null;
+            }
+            return;
+        }
 
-    lastFrameTimeRef.current = 0
-    animationFrameRef.current = requestAnimationFrame(animate)
+        const animate = (timestamp: number) => {
+            if (!lastFrameTimeRef.current) {
+                lastFrameTimeRef.current = timestamp;
+            }
 
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-      }
-    }
-  }, [isPlaying, totalDuration, onTimeUpdate])
+            const deltaTime = (timestamp - lastFrameTimeRef.current) / 1000;
+            lastFrameTimeRef.current = timestamp;
 
-  // Play control
-  const play = useCallback(() => {
-    if (audioContextRef.current?.state === 'suspended') {
-      audioContextRef.current.resume()
-    }
-    setIsPlaying(true)
-  }, [])
+            setCurrentTime((prev) => {
+                const newTime = prev + deltaTime;
+                if (newTime >= totalDuration) {
+                    setIsPlaying(false);
+                    return 0;
+                }
+                onTimeUpdate?.(newTime);
+                return newTime;
+            });
 
-  // Pause control
-  const pause = useCallback(() => {
-    setIsPlaying(false)
-  }, [])
+            animationFrameRef.current = requestAnimationFrame(animate);
+        };
 
-  // Seek control
-  const seek = useCallback((time: number) => {
-    const clampedTime = Math.max(0, Math.min(time, totalDuration))
-    setCurrentTime(clampedTime)
-    onTimeUpdate?.(clampedTime)
-  }, [totalDuration, onTimeUpdate])
+        lastFrameTimeRef.current = 0;
+        animationFrameRef.current = requestAnimationFrame(animate);
 
-  return {
-    videoSources,
-    audioSources,
-    extractThumbnails,
-    getThumbnailsForClip,
-    play,
-    pause,
-    seek,
-    isPlaying,
-    currentTime,
-    totalDuration,
-    getFrameAtTime,
-    getAudioBufferAtTime,
-    isInitializing,
-    isReady,
-  }
+        return () => {
+            if (animationFrameRef.current) {
+                cancelAnimationFrame(animationFrameRef.current);
+            }
+        };
+    }, [isPlaying, totalDuration, onTimeUpdate]);
+
+    // Play control
+    const play = useCallback(() => {
+        if (audioContextRef.current?.state === "suspended") {
+            audioContextRef.current.resume();
+        }
+        setIsPlaying(true);
+    }, []);
+
+    // Pause control
+    const pause = useCallback(() => {
+        setIsPlaying(false);
+    }, []);
+
+    // Seek control
+    const seek = useCallback(
+        (time: number) => {
+            const clampedTime = Math.max(0, Math.min(time, totalDuration));
+            setCurrentTime(clampedTime);
+            onTimeUpdate?.(clampedTime);
+        },
+        [totalDuration, onTimeUpdate],
+    );
+
+    return {
+        videoSources,
+        audioSources,
+        extractThumbnails,
+        getThumbnailsForClip,
+        play,
+        pause,
+        seek,
+        isPlaying,
+        currentTime,
+        totalDuration,
+        getFrameAtTime,
+        getAudioBufferAtTime,
+        isInitializing,
+        isReady,
+    };
 }
 
 // Utility function to clear caches (useful for cleanup)
 export function clearMediabunnyCache() {
-  inputCache.forEach(input => {
-    try {
-      input.dispose()
-    } catch {
-      // Ignore cleanup errors
-    }
-  })
-  inputCache.clear()
+    inputCache.forEach((input) => {
+        try {
+            input.dispose();
+        } catch {
+            // Ignore cleanup errors
+        }
+    });
+    inputCache.clear();
 
-  thumbnailCache.forEach(frames => {
-    frames.forEach(bitmap => bitmap.close())
-  })
-  thumbnailCache.clear()
+    thumbnailCache.forEach((frames) => {
+        frames.forEach((bitmap) => bitmap.close());
+    });
+    thumbnailCache.clear();
 }

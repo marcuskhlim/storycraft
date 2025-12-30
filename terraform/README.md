@@ -1,11 +1,11 @@
-# Terraform Deployment Guide 
+# Terraform Deployment Guide
 
 This guide outlines the steps to deploy your containerized Storycraft application to Google Cloud Run using **Terraform**, integrating with a pre-configured Google OAuth client.
 
 ### Prerequisites
 
-* **Google Cloud Project:** An active Google Cloud project with billing enabled.
-* **Source Code:** You must clone the repository to your environment.
+- **Google Cloud Project:** An active Google Cloud project with billing enabled.
+- **Source Code:** You must clone the repository to your environment.
 
 ---
 
@@ -28,25 +28,24 @@ Configure the Oauth Consent screen
 
 1.  **Access the Google Cloud Console.**
 2.  **Configure the OAuth Consent Screen:** Navigate to **APIs & Services** $\rightarrow$ **OAuth consent screen**.
-    * Click **Get Started**
-    * Choose an App Name : e.g.  "Storycraft"
-    * Choose a User support email :  e.g. Google project's admin email
-    * Audience :  Internal
-    * Contact Information :  enter the addresses are Google will notify about any changes to the project.
-    * Check 'I agree to the Google API Services: User Data Policy.'
-    * Click on **Continue**
-    * Click on **Create**
+    - Click **Get Started**
+    - Choose an App Name : e.g. "Storycraft"
+    - Choose a User support email : e.g. Google project's admin email
+    - Audience : Internal
+    - Contact Information : enter the addresses are Google will notify about any changes to the project.
+    - Check 'I agree to the Google API Services: User Data Policy.'
+    - Click on **Continue**
+    - Click on **Create**
 
-
-Create the Web Application client ID *before* running Terraform.
+Create the Web Application client ID _before_ running Terraform.
 
 1.  **Access the Google Cloud Console.**
 2.  **Create OAuth Client:** Navigate to **APIs & Services** $\rightarrow$ **Credentials**.
-    * Click **+ CREATE CREDENTIALS**, and select **OAuth client ID**.
-    * For **Application type**, choose **Web application**.
-    * Give it a distinct name (e.g., `Storycraft Web Client`).
-    * **Leave the Authorized redirect URIs blank for now.**
-    * Click **CREATE**.
+    - Click **+ CREATE CREDENTIALS**, and select **OAuth client ID**.
+    - For **Application type**, choose **Web application**.
+    - Give it a distinct name (e.g., `Storycraft Web Client`).
+    - **Leave the Authorized redirect URIs blank for now.**
+    - Click **CREATE**.
 3.  **Save Credentials:** A pop-up will display your **Client ID** and **Client Secret**. **Save these two values immediately.**
 
 ---
@@ -87,21 +86,21 @@ terraform apply --auto-approve
     terraform output service_url
     terraform output redirect_url
     ```
+
     (Example output: `https://storycraft-123456789.us-central1.run.app`
     `https://storycraft-123456789.us-central1.run.app/api/auth/callback/google`)
 
-2. **Register Authorized Javascript Origins** Go back to the **Google Cloud Console** $\rightarrow$ **APIs & Services** $\rightarrow$ **Credentials**.
-    * Click the name of your OAuth 2.0 Client ID (e.g., `Storycraft Web Client`).
-    * Under **uthorized Javascript Origins**, click **ADD URI**.
-    * **Paste the exact URL obtained from the `terraform output service_url` command.**
-    * Click **SAVE**.
-
+2.  **Register Authorized Javascript Origins** Go back to the **Google Cloud Console** $\rightarrow$ **APIs & Services** $\rightarrow$ **Credentials**.
+    - Click the name of your OAuth 2.0 Client ID (e.g., `Storycraft Web Client`).
+    - Under **uthorized Javascript Origins**, click **ADD URI**.
+    - **Paste the exact URL obtained from the `terraform output service_url` command.**
+    - Click **SAVE**.
 
 3.  **Register the URI:** Go back to the **Google Cloud Console** $\rightarrow$ **APIs & Services** $\rightarrow$ **Credentials**.
-    * Click the name of your OAuth 2.0 Client ID (e.g., `Storycraft Web Client`).
-    * Under **Authorized redirect URIs**, click **ADD URI**.
-    * **Paste the exact URL obtained from the `terraform output redirect_url` command.**
-    * Click **SAVE**.
+    - Click the name of your OAuth 2.0 Client ID (e.g., `Storycraft Web Client`).
+    - Under **Authorized redirect URIs**, click **ADD URI**.
+    - **Paste the exact URL obtained from the `terraform output redirect_url` command.**
+    - Click **SAVE**.
 
 ---
 

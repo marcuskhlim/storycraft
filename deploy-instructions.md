@@ -5,74 +5,77 @@ This guide will help you deploy the StoryCraft application to Google Cloud Platf
 ## Quick Start
 
 1. **Set up your Google Cloud Project**:
-   ```bash
-   # Create a new project or use existing one
-   gcloud projects create YOUR_PROJECT_ID
-   gcloud config set project YOUR_PROJECT_ID
-   
-   # Enable billing for the project
-   # (This must be done through the Google Cloud Console)
-   ```
+
+    ```bash
+    # Create a new project or use existing one
+    gcloud projects create YOUR_PROJECT_ID
+    gcloud config set project YOUR_PROJECT_ID
+
+    # Enable billing for the project
+    # (This must be done through the Google Cloud Console)
+    ```
 
 2. **Configure Terraform**:
-   ```bash
-   cd terraform
-   cp terraform.tfvars.example terraform.tfvars
-   # Edit terraform.tfvars with your project details
-   ```
+
+    ```bash
+    cd terraform
+    cp terraform.tfvars.example terraform.tfvars
+    # Edit terraform.tfvars with your project details
+    ```
 
 3. **Deploy Infrastructure**:
-   ```bash
-   chmod +x ../scripts/setup-terraform.sh
-   ../scripts/setup-terraform.sh
-   ```
+
+    ```bash
+    chmod +x ../scripts/setup-terraform.sh
+    ../scripts/setup-terraform.sh
+    ```
 
 4. **Build and Deploy Application**:
-   ```bash
-   chmod +x ../scripts/build-and-deploy.sh
-   PROJECT_ID=$(cd terraform && terraform output -raw project_id) ./scripts/build-and-deploy.sh
-   ```
+    ```bash
+    chmod +x ../scripts/build-and-deploy.sh
+    PROJECT_ID=$(cd terraform && terraform output -raw project_id) ./scripts/build-and-deploy.sh
+    ```
 
 ## What Gets Created
 
 ### Google Cloud Resources
 
 1. **APIs Enabled**:
-   - Cloud Run API
-   - Cloud Build API
-   - Container Registry API
-   - Artifact Registry API
-   - Firestore API
-   - Cloud Storage API
-   - AI Platform API
-   - Text-to-Speech API
-   - Cloud Translation API
+    - Cloud Run API
+    - Cloud Build API
+    - Container Registry API
+    - Artifact Registry API
+    - Firestore API
+    - Cloud Storage API
+    - AI Platform API
+    - Text-to-Speech API
+    - Cloud Translation API
 
 2. **Service Account**: `storycraft-service@PROJECT_ID.iam.gserviceaccount.com`
-   - Vertex AI User role
-   - Storage Object Admin role
-   - Datastore User role
-   - Text-to-Speech Service Agent role
-   - Cloud Translation User role
-   - Logging Writer role
-   - Monitoring Metric Writer role
-   - Cloud Trace Agent role
+    - Vertex AI User role
+    - Storage Object Admin role
+    - Datastore User role
+    - Text-to-Speech Service Agent role
+    - Cloud Translation User role
+    - Logging Writer role
+    - Monitoring Metric Writer role
+    - Cloud Trace Agent role
 
 3. **Cloud Storage Bucket**: `PROJECT_ID-storycraft-assets`
-   - CORS enabled for web access
-   - Lifecycle rule: 30-day retention
-   - Uniform bucket-level access
+    - CORS enabled for web access
+    - Lifecycle rule: 30-day retention
+    - Uniform bucket-level access
 
 4. **Firestore Database**: `storycraft-db`
-   - Native mode
-   - Composite index on scenarios collection (userId ASC, updatedAt DESC)
+    - Native mode
+    - Composite index on scenarios collection (userId ASC, updatedAt DESC)
 
 5. **Artifact Registry**: `storycraft` repository for Docker images
 
 6. **Cloud Run Service**: `storycraft`
-   - 2 CPU, 4Gi memory
-   - Auto-scaling 0-100 instances
-   - Public access (configurable)
+    - 2 CPU, 4Gi memory
+    - Auto-scaling 0-100 instances
+    - Public access (configurable)
 
 ### Environment Variables Set
 
@@ -146,6 +149,7 @@ docker push $REGISTRY_URI/storycraft:latest
 ### 3. Update Configuration
 
 Update `terraform.tfvars` with:
+
 - Actual container image URI
 - Cloud Run service URL for NextAuth
 
@@ -158,11 +162,13 @@ terraform apply
 ## Monitoring and Management
 
 ### View Logs
+
 ```bash
 gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=storycraft" --limit=50
 ```
 
 ### Update Application
+
 ```bash
 # Build new image
 docker build -t $REGISTRY_URI/storycraft:v2 ..
@@ -173,6 +179,7 @@ gcloud run deploy storycraft --image=$REGISTRY_URI/storycraft:v2 --region=us-cen
 ```
 
 ### Scale Service
+
 ```bash
 gcloud run services update storycraft --max-instances=50 --region=us-central1
 ```
@@ -229,6 +236,7 @@ gcloud services list --enabled
 ## Support
 
 For issues with the Terraform configuration or deployment, check:
+
 1. Terraform documentation: https://registry.terraform.io/providers/hashicorp/google
 2. Google Cloud documentation: https://cloud.google.com/docs
 3. Cloud Run documentation: https://cloud.google.com/run/docs

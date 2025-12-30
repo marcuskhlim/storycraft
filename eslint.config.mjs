@@ -1,16 +1,21 @@
-import { defineConfig } from "eslint/config";
 import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
 import nextTypescript from "eslint-config-next/typescript";
-
 import prettierPlugin from "eslint-plugin-prettier";
 import prettierConfig from "eslint-config-prettier";
 
+/** @type {import('eslint').Linter.Config[]} */
+const config = [
+    ...nextCoreWebVitals,
+    ...nextTypescript,
+    prettierConfig,
+    {
+        plugins: {
+            prettier: prettierPlugin,
+        },
+        rules: {
+            "prettier/prettier": ["error", { tabWidth: 4 }],
+        },
+    },
+];
 
-
-export default defineConfig([{
-    extends: [...nextCoreWebVitals, ...nextTypescript, ...prettierConfig],
-    plugins: [prettierPlugin],
-    rules: {
-        "prettier/prettier": "error"
-    }
-}]);
+export default config;

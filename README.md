@@ -1,6 +1,5 @@
 > ###### _This is not an officially supported Google product. This project is not eligible for the [Google Open Source Software Vulnerability Rewards Program](https://bughunters.google.com/open-source-security)._
 
-
 # StoryCraft
 
 An AI-powered video storyboard generation platform that transforms text descriptions into complete video narratives using Google's generative AI models. Create cinematic scenes, generate voiceovers, compose music, and export professional videos with a modern web interface.
@@ -59,6 +58,7 @@ storycraft/
 ```
 
 **Key Directories:**
+
 - [`app/actions/`](app/actions/) - Contains server actions for AI generation, video processing, and file management
 - [`app/components/editor/`](app/components/editor/) - Houses the sophisticated timeline editor with audio visualization and real-time preview
 - [`lib/`](lib/) - Core utilities including FFmpeg video processing, Google Cloud integrations, and AI model wrappers

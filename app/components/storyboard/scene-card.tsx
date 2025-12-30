@@ -1,14 +1,23 @@
-'use client'
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { Loader2, Pencil, RefreshCw, Upload, Video, Trash2, GripVertical, MessageCircle } from 'lucide-react'
-import { useRef, useState } from 'react'
-import { Scene, Scenario } from '../../types'
-import { EditSceneModal } from './edit-scene-modal'
-import { ConversationalEditModal } from './conversational-edit-modal'
-import { VideoPlayer } from "../video/video-player"
-import { GcsImage } from "../ui/gcs-image"
-import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button";
+import {
+    Loader2,
+    Pencil,
+    RefreshCw,
+    Upload,
+    Video,
+    Trash2,
+    GripVertical,
+    MessageCircle,
+} from "lucide-react";
+import { useRef, useState } from "react";
+import { Scene, Scenario } from "../../types";
+import { EditSceneModal } from "./edit-scene-modal";
+import { ConversationalEditModal } from "./conversational-edit-modal";
+import { VideoPlayer } from "../video/video-player";
+import { GcsImage } from "../ui/gcs-image";
+import { cn } from "@/lib/utils";
 
 interface SceneCardProps {
     scene: Scene;
@@ -21,7 +30,7 @@ interface SceneCardProps {
     onRemoveScene: () => void;
     isGenerating: boolean;
     canDelete: boolean;
-    displayMode?: 'image' | 'video';
+    displayMode?: "image" | "video";
     hideControls?: boolean;
     isDragOver?: boolean;
     onDragStart?: (e: React.DragEvent) => void;
@@ -41,7 +50,7 @@ export function SceneCard({
     onRemoveScene,
     isGenerating,
     canDelete,
-    displayMode = 'image',
+    displayMode = "image",
     hideControls = false,
     isDragOver = false,
     onDragStart,
@@ -49,26 +58,27 @@ export function SceneCard({
     onDragOver,
     onDrop,
 }: SceneCardProps) {
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-    const [isConversationalEditOpen, setIsConversationalEditOpen] = useState(false)
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isConversationalEditOpen, setIsConversationalEditOpen] =
+        useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleUploadClick = () => {
-        fileInputRef.current?.click()
-    }
+        fileInputRef.current?.click();
+    };
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0]
+        const file = event.target.files?.[0];
         if (file) {
-            onUploadImage(file)
+            onUploadImage(file);
         }
-    }
+    };
 
     return (
         <div
             className={cn(
-                "group relative rounded-[20px] bg-card border border-border/10 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1",
-                isDragOver && "ring-2 ring-primary bg-primary/5"
+                "group relative rounded-[20px] border border-border/10 bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md",
+                isDragOver && "bg-primary/5 ring-2 ring-primary",
             )}
             draggable
             onDragStart={onDragStart}
@@ -78,9 +88,9 @@ export function SceneCard({
         >
             {/* Helper for Dragging - only visible on hover */}
             {!hideControls && (
-                <div className="absolute top-3 left-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute left-3 top-3 z-20 opacity-0 transition-opacity group-hover:opacity-100">
                     <div
-                        className="bg-black/40 hover:bg-primary/80 text-white p-2 rounded-full cursor-grab active:cursor-grabbing backdrop-blur-md"
+                        className="cursor-grab rounded-full bg-black/40 p-2 text-white backdrop-blur-md hover:bg-primary/80 active:cursor-grabbing"
                         title="Drag to reorder"
                         onMouseDown={(e) => e.stopPropagation()}
                     >
@@ -90,32 +100,35 @@ export function SceneCard({
             )}
 
             {/* Media Area */}
-            <div className="relative w-full aspect-[16/9] overflow-hidden rounded-t-[20px] bg-muted/20">
+            <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-[20px] bg-muted/20">
                 {isGenerating && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 backdrop-blur-sm">
-                        <Loader2 className="h-8 w-8 text-white animate-spin" />
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                        <Loader2 className="h-8 w-8 animate-spin text-white" />
                     </div>
                 )}
 
-                {displayMode === 'video' && scene.videoUri ? (
-                    <VideoPlayer videoGcsUri={scene.videoUri} aspectRatio={scenario.aspectRatio} />
+                {displayMode === "video" && scene.videoUri ? (
+                    <VideoPlayer
+                        videoGcsUri={scene.videoUri}
+                        aspectRatio={scenario.aspectRatio}
+                    />
                 ) : (
                     <GcsImage
                         gcsUri={scene.imageGcsUri || null}
                         alt={`Scene ${sceneNumber}`}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
                 )}
 
                 {/* Overlay Actions */}
                 {!hideControls && (
-                    <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-between">
+                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/80 to-transparent p-3 opacity-0 transition-all duration-300 group-hover:opacity-100">
                         <div className="flex gap-2">
                             <Button
                                 size="icon"
                                 variant="secondary"
-                                className="h-8 w-8 rounded-full bg-white/20 hover:bg-white text-white hover:text-black backdrop-blur-md border-0"
+                                className="h-8 w-8 rounded-full border-0 bg-white/20 text-white backdrop-blur-md hover:bg-white hover:text-black"
                                 onClick={onRegenerateImage}
                                 disabled={isGenerating}
                                 title="Regenerate Image"
@@ -125,7 +138,7 @@ export function SceneCard({
                             <Button
                                 size="icon"
                                 variant="secondary"
-                                className="h-8 w-8 rounded-full bg-white/20 hover:bg-white text-white hover:text-black backdrop-blur-md border-0"
+                                className="h-8 w-8 rounded-full border-0 bg-white/20 text-white backdrop-blur-md hover:bg-white hover:text-black"
                                 onClick={handleUploadClick}
                                 disabled={isGenerating}
                                 title="Upload Image"
@@ -135,8 +148,10 @@ export function SceneCard({
                             <Button
                                 size="icon"
                                 variant="secondary"
-                                className="h-8 w-8 rounded-full bg-white/20 hover:bg-white text-white hover:text-black backdrop-blur-md border-0"
-                                onClick={() => setIsConversationalEditOpen(true)}
+                                className="h-8 w-8 rounded-full border-0 bg-white/20 text-white backdrop-blur-md hover:bg-white hover:text-black"
+                                onClick={() =>
+                                    setIsConversationalEditOpen(true)
+                                }
                                 disabled={isGenerating}
                                 title="Magic Edit"
                             >
@@ -148,7 +163,7 @@ export function SceneCard({
                             <Button
                                 size="icon"
                                 variant="secondary"
-                                className="h-8 w-8 rounded-full bg-primary/80 hover:bg-primary text-white border-0 shadow-sm"
+                                className="h-8 w-8 rounded-full border-0 bg-primary/80 text-white shadow-sm hover:bg-primary"
                                 onClick={onGenerateVideo}
                                 disabled={isGenerating}
                                 title="Generate Video"
@@ -159,7 +174,7 @@ export function SceneCard({
                                 <Button
                                     size="icon"
                                     variant="destructive"
-                                    className="h-8 w-8 rounded-full bg-red-500/80 hover:bg-red-600 text-white border-0"
+                                    className="h-8 w-8 rounded-full border-0 bg-red-500/80 text-white hover:bg-red-600"
                                     onClick={onRemoveScene}
                                     disabled={isGenerating}
                                     title="Delete Scene"
@@ -170,33 +185,39 @@ export function SceneCard({
                         </div>
                     </div>
                 )}
-                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept="image/*"
+                    className="hidden"
+                />
             </div>
 
             {/* Content Area */}
             <div className="p-5">
-                <div className="flex items-center justify-between mb-3">
-                    <span className="font-bold text-lg text-foreground px-3 py-1 bg-secondary/30 rounded-full text-secondary-foreground">
+                <div className="mb-3 flex items-center justify-between">
+                    <span className="rounded-full bg-secondary/30 px-3 py-1 text-lg font-bold text-foreground text-secondary-foreground">
                         Scene {sceneNumber}
                     </span>
                     <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setIsEditModalOpen(true)}
-                        className="text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-full px-3"
+                        className="rounded-full px-3 text-muted-foreground hover:bg-primary/5 hover:text-primary"
                     >
-                        <Pencil className="h-3.5 w-3.5 mr-2" />
+                        <Pencil className="mr-2 h-3.5 w-3.5" />
                         Edit
                     </Button>
                 </div>
 
                 {scene.errorMessage && (
-                    <div className="mb-3 p-2 bg-red-50 text-red-600 text-xs rounded-lg border border-red-100">
+                    <div className="mb-3 rounded-lg border border-red-100 bg-red-50 p-2 text-xs text-red-600">
                         {scene.errorMessage}
                     </div>
                 )}
 
-                <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
+                <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">
                     {scene.description}
                 </p>
             </div>
@@ -219,5 +240,5 @@ export function SceneCard({
                 onUpdate={onUpdate}
             />
         </div>
-    )
+    );
 }
