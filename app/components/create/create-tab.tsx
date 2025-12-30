@@ -15,6 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { BookOpen, Loader2, ChevronDown } from 'lucide-react'
 import { type Language } from '../../types'
 import { StyleSelector, type Style } from "./style-selector"
+import { LoadingMessages } from "@/app/components/ui/loading-messages"
 
 const LANGUAGES: Language[] = [
   { name: "Arabic (Generic)", code: "ar-XA" },
@@ -71,35 +72,35 @@ const validateDuration = (duration: number): number => {
 };
 
 const MODEL_OPTIONS = [
-  { 
-    label: "Scenario with Gemini 3.0 Pro Preview", 
-    modelName: "gemini-3-pro-preview", 
-    thinkingBudget: 0 
+  {
+    label: "Scenario with Gemini 3.0 Pro Preview",
+    modelName: "gemini-3-pro-preview",
+    thinkingBudget: 0
   },
-  { 
-    label: "Scenario with Gemini 3.0 Flash Preview", 
-    modelName: "gemini-3-flash-preview", 
-    thinkingBudget: 0 
+  {
+    label: "Scenario with Gemini 3.0 Flash Preview",
+    modelName: "gemini-3-flash-preview",
+    thinkingBudget: 0
   },
-  { 
-    label: "Scenario with Gemini 2.5 Flash", 
-    modelName: "gemini-2.5-flash", 
-    thinkingBudget: 0 
+  {
+    label: "Scenario with Gemini 2.5 Flash",
+    modelName: "gemini-2.5-flash",
+    thinkingBudget: 0
   },
-  { 
-    label: "Scenario with Gemini 2.5 Flash 💡", 
-    modelName: "gemini-2.5-flash", 
-    thinkingBudget: -1 
+  {
+    label: "Scenario with Gemini 2.5 Flash 💡",
+    modelName: "gemini-2.5-flash",
+    thinkingBudget: -1
   },
-  { 
-    label: "Scenario with Gemini 2.5 Pro", 
-    modelName: "gemini-2.5-pro", 
-    thinkingBudget: 0 
+  {
+    label: "Scenario with Gemini 2.5 Pro",
+    modelName: "gemini-2.5-pro",
+    thinkingBudget: 0
   },
-  { 
-    label: "Scenario with Gemini 2.5 Pro 💡", 
-    modelName: "gemini-2.5-pro", 
-    thinkingBudget: -1 
+  {
+    label: "Scenario with Gemini 2.5 Pro 💡",
+    modelName: "gemini-2.5-pro",
+    thinkingBudget: -1
   }
 ];
 
@@ -153,7 +154,8 @@ export function CreateTab({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-end items-center gap-4">
+        <LoadingMessages isLoading={isLoading} />
         <div className="flex">
           <Button
             onClick={handleGenerateClick}
@@ -294,19 +296,17 @@ export function CreateTab({
                   {ASPECT_RATIOS.map((ratio) => (
                     <div key={ratio.value} className="flex flex-col items-center space-y-1">
                       <div
-                        className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-colors ${
-                          aspectRatio === ratio.value
-                            ? 'bg-primary border-primary text-primary-foreground'
-                            : 'border-gray-300 bg-white hover:border-gray-400'
-                        }`}
+                        className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-colors ${aspectRatio === ratio.value
+                          ? 'bg-primary border-primary text-primary-foreground'
+                          : 'border-gray-300 bg-white hover:border-gray-400'
+                          }`}
                         onClick={() => setAspectRatio(ratio.value)}
                       >
                         <div
-                          className={`border-2 rounded-sm flex items-center justify-center transition-colors ${
-                            aspectRatio === ratio.value
-                              ? 'border-primary-foreground bg-primary-foreground'
-                              : 'border-gray-600 bg-gray-600'
-                          }`}
+                          className={`border-2 rounded-sm flex items-center justify-center transition-colors ${aspectRatio === ratio.value
+                            ? 'border-primary-foreground bg-primary-foreground'
+                            : 'border-gray-600 bg-gray-600'
+                            }`}
                           style={{
                             aspectRatio: ratio.value === '16:9' ? '16/9' : '9/16',
                             width: ratio.value === '16:9' ? '28px' : '16px',

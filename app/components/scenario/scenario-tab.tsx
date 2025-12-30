@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { GcsImage } from "../ui/gcs-image";
 import { deleteCharacterFromScenario, deleteSettingFromScenario, deletePropFromScenario } from "@/app/actions/modify-scenario";
+import { LoadingMessages } from "@/app/components/ui/loading-messages";
 
 interface ScenarioTabProps {
     scenario?: Scenario;
@@ -50,20 +51,20 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
     const [isMusicHovering, setIsMusicHovering] = useState(false);
     const [localGeneratingCharacters, setLocalGeneratingCharacters] = useState<Set<number>>(new Set());
     const [localGeneratingProps, setLocalGeneratingProps] = useState<Set<number>>(new Set());
-    
+
     // Helper functions to check if an item is in any loading state
     const isCharacterLoading = (index: number) => {
         return generatingCharacterImages?.has(index) || localGeneratingCharacters.has(index);
     };
-    
+
     const isSettingLoading = (index: number) => {
         return generatingSettingImages?.has(index) || localGeneratingSettings.has(index);
     };
-    
+
     const isPropLoading = (index: number) => {
         return generatingPropImages?.has(index) || localGeneratingProps.has(index);
     };
-    
+
     const scenarioRef = useRef<HTMLDivElement>(null);
     const characterEditingRefs = useRef<(HTMLDivElement | null)[]>([]);
     const characterFileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -510,7 +511,8 @@ export function ScenarioTab({ scenario, onGenerateStoryBoard, isLoading, onScena
         <div className="space-y-8">
             {scenario && (
                 <>
-                    <div className="flex justify-end">
+                    <div className="flex justify-end items-center gap-4">
+                        <LoadingMessages isLoading={isLoading} />
                         <Button
                             onClick={onGenerateStoryBoard}
                             disabled={isLoading}

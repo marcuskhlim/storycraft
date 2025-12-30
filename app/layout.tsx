@@ -1,12 +1,14 @@
-import { DM_Sans } from 'next/font/google'
+import { Roboto } from 'next/font/google'
 import ClientLayout from './client-layout'
 import './globals.css'
 
 import { SessionProvider as NextAuthSessionProvider } from 'next-auth/react'
 
-const dmSans = DM_Sans({ 
+const roboto = Roboto({
+  weight: ['300', '400', '500', '700'],
   subsets: ['latin'],
   display: 'swap',
+  variable: '--font-roboto',
 })
 
 export const metadata = {
@@ -20,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={dmSans.className}>
+    <html lang="en" className={roboto.className}>
       <body>
         <NextAuthSessionProvider>
           <ClientLayout>{children}</ClientLayout>

@@ -8,47 +8,49 @@ import { Grid, List, Loader2, Presentation, Video, ChevronLeft, ChevronRight, Pl
 import { useState, useEffect } from 'react'
 import { Scene, Scenario, ImagePrompt, VideoPrompt } from "../../types"
 import { SceneData } from './scene-data'
+import { SceneCard } from './scene-card'
 import { GcsImage } from '../ui/gcs-image'
 import { VideoPlayer } from '../video/video-player'
+import { LoadingMessages } from "@/app/components/ui/loading-messages"
 
 const VEO_MODEL_OPTIONS = [
-  { 
-    label: "Videos with Veo 3.1 Preview Fast 🔈", 
+  {
+    label: "Videos with Veo 3.1 Preview Fast 🔈",
     modelName: "veo-3.1-fast-generate-preview",
     generateAudio: true
   },
-  { 
-    label: "Videos with 3.1 Preview Fast", 
+  {
+    label: "Videos with 3.1 Preview Fast",
     modelName: "veo-3.1-fast-generate-preview",
     generateAudio: false
   },
-  { 
-    label: "Videos with Veo 3.1 🔈", 
+  {
+    label: "Videos with Veo 3.1 🔈",
     modelName: "veo-3.1-generate-preview",
     generateAudio: true
   },
-  { 
-    label: "Videos with 3.1", 
+  {
+    label: "Videos with 3.1",
     modelName: "veo-3.1-generate-preview",
     generateAudio: false
   },
-  { 
-    label: "Videos with Veo 3.0 Fast 🔈", 
+  {
+    label: "Videos with Veo 3.0 Fast 🔈",
     modelName: "veo-3.0-fast-generate-001",
     generateAudio: true
   },
-  { 
-    label: "Videos with Veo 3.0 Fast", 
+  {
+    label: "Videos with Veo 3.0 Fast",
     modelName: "veo-3.0-fast-generate-001",
     generateAudio: false
   },
-  { 
-    label: "Videos with Veo 3.0 🔈", 
+  {
+    label: "Videos with Veo 3.0 🔈",
     modelName: "veo-3.0-generate-001",
     generateAudio: true
   },
-  { 
-    label: "Videos with Veo 3.0", 
+  {
+    label: "Videos with Veo 3.0",
     modelName: "veo-3.0-generate-001",
     generateAudio: false
   }
@@ -236,7 +238,7 @@ export function StoryboardTab({
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {scenes.map((scene, index) => (
-              <SceneData
+              <SceneCard
                 key={index}
                 sceneNumber={index + 1}
                 scene={scene}
@@ -315,8 +317,8 @@ export function StoryboardTab({
                           }
                         }}
                         className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer select-none ${activeTabs[index] === 'general'
-                            ? 'border-primary text-primary'
-                            : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                          ? 'border-primary text-primary'
+                          : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                           }`}
                       >
                         General
@@ -332,8 +334,8 @@ export function StoryboardTab({
                           }
                         }}
                         className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer select-none ${activeTabs[index] === 'image'
-                            ? 'border-primary text-primary'
-                            : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                          ? 'border-primary text-primary'
+                          : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                           }`}
                       >
                         Image Prompt
@@ -349,8 +351,8 @@ export function StoryboardTab({
                           }
                         }}
                         className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors cursor-pointer select-none ${activeTabs[index] === 'video'
-                            ? 'border-primary text-primary'
-                            : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                          ? 'border-primary text-primary'
+                          : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                           }`}
                       >
                         Video Prompt
@@ -550,52 +552,55 @@ export function StoryboardTab({
             <Video className="h-4 w-4 text-muted-foreground" />
           </div>
         </div>
-        <div className="flex">
-          <Button
-            onClick={handleGenerateAllVideosClick}
-            disabled={isVideoLoading || scenes.length === 0 || generatingScenes.size > 0}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-r-none"
-          >
-            {isVideoLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating Videos...
-              </>
-            ) : (
-              <>
-                <Video className="mr-2 h-4 w-4" />
-                {selectedModel.label}
-              </>
-            )}
-          </Button>
-          <Popover open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="px-2 border-l-0 rounded-l-none bg-primary text-primary-foreground hover:bg-primary/90"
-                disabled={isVideoLoading || scenes.length === 0 || generatingScenes.size > 0}
-              >
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-0" align="end">
-              <div className="py-1">
-                {VEO_MODEL_OPTIONS.map((option, index) => (
-                  <button
-                    key={index}
-                    className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center"
-                    onClick={() => {
-                      setSelectedModel(option)
-                      setIsDropdownOpen(false)
-                    }}
-                  >
-                    <Video className="mr-2 h-4 w-4" />
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
+        <div className="flex items-center gap-4">
+          <LoadingMessages isLoading={isVideoLoading} />
+          <div className="flex">
+            <Button
+              onClick={handleGenerateAllVideosClick}
+              disabled={isVideoLoading || scenes.length === 0 || generatingScenes.size > 0}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-r-none"
+            >
+              {isVideoLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating Videos...
+                </>
+              ) : (
+                <>
+                  <Video className="mr-2 h-4 w-4" />
+                  {selectedModel.label}
+                </>
+              )}
+            </Button>
+            <Popover open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="px-2 border-l-0 rounded-l-none bg-primary text-primary-foreground hover:bg-primary/90"
+                  disabled={isVideoLoading || scenes.length === 0 || generatingScenes.size > 0}
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-0" align="end">
+                <div className="py-1">
+                  {VEO_MODEL_OPTIONS.map((option, index) => (
+                    <button
+                      key={index}
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center"
+                      onClick={() => {
+                        setSelectedModel(option)
+                        setIsDropdownOpen(false)
+                      }}
+                    >
+                      <Video className="mr-2 h-4 w-4" />
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
       </div>
 

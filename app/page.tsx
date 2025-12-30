@@ -1,11 +1,12 @@
 'use client'
 
-import { Stepper } from "@/components/ui/stepper"
+import { Stepper } from "@/components/ui/stepper" // Removing this might break if I don't remove it from imports
+// Actually I should remove it.
 import { useScenario } from '@/hooks/use-scenario'
 import { useTimeline } from '@/hooks/use-timeline'
 import { BookOpen, Film, LayoutGrid, Library, PenLine, Scissors } from 'lucide-react'
 import Image from 'next/image'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { generateScenario, generateStoryboard } from './actions/generate-scenes'
 import { exportMovieAction } from './actions/generate-video'
 import { exportVideoClient } from '@/lib/client-export'
@@ -16,12 +17,16 @@ import { CreateTab } from './components/create/create-tab'
 import { type Style } from "./components/create/style-selector"
 import { EditorTab } from './components/editor/editor-tab'
 import { ScenarioTab } from "./components/scenario/scenario-tab"
-import { StoriesTab } from './components/stories/stories-tab'
+// import { StoriesTab } from './components/stories/stories-tab' // No longer needed
 import { StoryboardTab } from './components/storyboard/storyboard-tab'
 import { UserProfile } from "./components/user-profile"
 import { VideoTab } from './components/video/video-tab'
 import { Scenario, Scene, TimelineLayer, type Language } from './types'
 import { regenerateCharacterAndScenarioFromText, regenerateCharacterAndScenarioFromImage, regenerateSettingAndScenarioFromImage, regenerateSettingAndScenarioFromText, regeneratePropAndScenarioFromImage, regeneratePropAndScenarioFromText } from "./actions/modify-scenario"
+import { Sidebar } from "./components/layout/sidebar"
+import { TopNav } from "./components/layout/top-nav"
+import { Button } from "@/components/ui/button"
+import { PanelLeft } from 'lucide-react'
 
 const styles: Style[] = [
   { name: "Photographic", image: "/styles/cinematic.jpg" },
@@ -64,8 +69,12 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [videoUri, setVideoUri] = useState<string | null>(null)
   const [vttUri, setVttUri] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<string>("stories")
+  const [activeTab, setActiveTab] = useState<string>("create")
   const [currentTime, setCurrentTime] = useState(0)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+
+  // Ref to track when we're loading a scenario from sidebar (to prevent auto-save with stale data)
+  const isLoadingScenarioRef = useRef(false)
 
   const GCS_VIDEOS_STORAGE_URI = process.env.GCS_VIDEOS_STORAGE_URI;
 
@@ -84,7 +93,13 @@ export default function Home() {
   }, [generatingCharacterImages]); // Log only when generatingCharacterImages changes
 
   // Auto-save scenario whenever it changes (debounced)
+  // Skip auto-save when loading a scenario from sidebar to prevent overwriting with stale data
   useEffect(() => {
+    if (isLoadingScenarioRef.current) {
+      // Reset the flag after skipping this save
+      isLoadingScenarioRef.current = false
+      return
+    }
     if (scenario && isAuthenticated) {
       console.log('Auto-saving scenario to Firestore...')
       saveScenarioDebounced(scenario, getCurrentScenarioId() || undefined)
@@ -764,11 +779,6 @@ export default function Home() {
 
   const steps = [
     {
-      id: "stories",
-      label: "Stories",
-      icon: Library
-    },
-    {
       id: "create",
       label: "Create",
       icon: PenLine
@@ -802,6 +812,9 @@ export default function Home() {
     if (scenarioId) {
       setCurrentScenarioId(scenarioId);
     }
+
+    // Mark that we're loading a scenario from sidebar to prevent auto-save with stale data
+    isLoadingScenarioRef.current = true
 
     // Load the existing scenario data
     setScenario(selectedScenario);
@@ -954,121 +967,152 @@ export default function Home() {
   };
 
   return (
-    <main className="container mx-auto p-8 min-h-screen bg-background flex flex-col">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-2">
-          <Image
-            src="/logo6.png"
-            alt="Storycraft"
-            width={32}
-            height={32}
-            className="h-8"
-          />
-          <h1 className="text-3xl font-bold text-primary ml-[-10px]">
-            StoryCraft
-          </h1>
+    <div className="flex h-screen bg-background font-sans overflow-hidden">
+      {/* Left Sidebar */}
+      <Sidebar
+        currentScenarioId={getCurrentScenarioId() || undefined}
+        onSelectScenario={handleSelectScenario}
+        onCreateNewStory={handleCreateNewStory}
+        isCollapsed={isSidebarCollapsed}
+        onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+      />
+
+      {/* Main Content Area */}
+      <main className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarCollapsed ? 'ml-[70px]' : 'ml-[280px]'}`}>
+        {/* Top Navigation Bar */}
+        <header className="h-16 border-b border-gray-200 flex items-center justify-between px-6 bg-card/50 backdrop-blur-sm sticky top-0 z-20">
+          <div className="flex items-center gap-4 w-1/3">
+            <div className="flex items-center gap-2 font-bold text-xl text-primary">
+              <Image src="/logo6.png" alt="StoryCraft Logo" width={32} height={32} className="rounded-lg" />
+              StoryCraft
+            </div>
+          </div>
+
+          <div className="flex-1 flex justify-center w-1/3">
+            <TopNav
+              steps={steps}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-4 w-1/3">
+            {activeTab === 'editor' && scenario && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => handleGenerateAllVideos(undefined, true, durationSeconds)}
+                  disabled={isVideoLoading || generatingScenes.size > 0}
+                >
+                  {isVideoLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Film className="w-4 h-4 mr-2" />
+                      Videos with Veo 3.1
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+            <UserProfile isCollapsed={false} />
+          </div>
+        </header>
+
+        {/* Content Body */}
+        <div className="flex-1 overflow-y-auto bg-muted/30 p-6">
+          <div className="max-w-7xl mx-auto space-y-6">
+            {activeTab === "create" && (
+              <CreateTab
+                name={name}
+                setName={setName}
+                pitch={pitch}
+                setPitch={setPitch}
+                numScenes={numScenes}
+                setNumScenes={setNumScenes}
+                style={style}
+                setStyle={setStyle}
+                aspectRatio={aspectRatio}
+                setAspectRatio={setAspectRatio}
+                durationSeconds={durationSeconds}
+                setDurationSeconds={setDurationSeconds}
+                language={language}
+                setLanguage={setLanguage}
+                isLoading={isLoading}
+                errorMessage={errorMessage}
+                onGenerate={(modelName, thinkingBudget) => handleGenerate(modelName, thinkingBudget)}
+                styles={styles}
+              />
+            )}
+
+            {activeTab === "scenario" && (
+              <ScenarioTab
+                scenario={scenario}
+                onGenerateStoryBoard={handleGenerateStoryBoard}
+                isLoading={isLoading}
+                onScenarioUpdate={handleScenarioUpdate}
+                onRegenerateCharacterImage={handleRegenerateCharacterImage}
+                onUploadCharacterImage={handleUploadCharacterImage}
+                generatingCharacterImages={generatingCharacterImages}
+                onRegenerateSettingImage={handleRegenerateSettingImage}
+                onUploadSettingImage={handleUploadSettingImage}
+                generatingSettingImages={generatingSettingImages}
+                onRegeneratePropImage={handleRegeneratePropImage}
+                onUploadPropImage={handleUploadPropImage}
+                generatingPropImages={generatingPropImages}
+              />
+            )}
+
+            {activeTab === "storyboard" && scenario && (
+              <StoryboardTab
+                scenario={scenario}
+                isVideoLoading={isVideoLoading}
+                generatingScenes={generatingScenes}
+                errorMessage={errorMessage}
+                onGenerateAllVideos={(model, generateAudio) => handleGenerateAllVideos(model, generateAudio)}
+                onUpdateScene={handleUpdateScene}
+                onRegenerateImage={handleRegenerateImage}
+                onGenerateVideo={handleGenerateVideo}
+                onUploadImage={handleUploadImage}
+                onAddScene={handleAddScene}
+                onRemoveScene={handleRemoveScene}
+                onReorderScenes={handleReorderScenes}
+              />
+            )}
+
+            {activeTab === "editor" && scenario && (
+              <EditorTab
+                scenario={scenario}
+                scenarioId={getCurrentScenarioId()}
+                currentTime={currentTime}
+                onTimeUpdate={setCurrentTime}
+                logoOverlay={logoOverlay}
+                setLogoOverlay={setLogoOverlay}
+                onLogoUpload={handleLogoUpload}
+                onLogoRemove={handleLogoRemove}
+                onExportMovie={handleExportMovie}
+                isExporting={isVideoLoading}
+                exportProgress={exportProgress}
+
+              />
+            )}
+
+            {!scenario && activeTab !== 'create' && (
+              <div className="flex flex-col items-center justify-center h-[50vh] text-muted-foreground">
+                <BookOpen className="w-12 h-12 mb-4 opacity-50" />
+                <p className="text-lg font-medium">Select a story from the sidebar or create a new one.</p>
+                <Button onClick={handleCreateNewStory} variant="link" className="mt-2">Create New Story</Button>
+              </div>
+            )}
+          </div>
+
         </div>
-        <UserProfile isCollapsed={false} />
-      </div>
-      <div className="flex-1 space-y-4">
-        <Stepper
-          steps={steps}
-          currentStep={activeTab}
-          onStepClick={setActiveTab}
-          className="mb-8"
-        />
-
-        {activeTab === "stories" && (
-          <StoriesTab
-            onSelectScenario={handleSelectScenario}
-            onCreateNewStory={handleCreateNewStory}
-          />
-        )}
-
-        {activeTab === "create" && (
-          <CreateTab
-            name={name}
-            setName={setName}
-            pitch={pitch}
-            setPitch={setPitch}
-            numScenes={numScenes}
-            setNumScenes={setNumScenes}
-            style={style}
-            setStyle={setStyle}
-            aspectRatio={aspectRatio}
-            setAspectRatio={setAspectRatio}
-            durationSeconds={durationSeconds}
-            setDurationSeconds={setDurationSeconds}
-            language={language}
-            setLanguage={setLanguage}
-            isLoading={isLoading}
-            errorMessage={errorMessage}
-            onGenerate={(modelName, thinkingBudget) => handleGenerate(modelName, thinkingBudget)}
-            styles={styles}
-          />
-        )}
-
-        {activeTab === "scenario" && (
-          <ScenarioTab
-            scenario={scenario}
-            onGenerateStoryBoard={handleGenerateStoryBoard}
-            isLoading={isLoading}
-            onScenarioUpdate={handleScenarioUpdate}
-            onRegenerateCharacterImage={handleRegenerateCharacterImage}
-            onUploadCharacterImage={handleUploadCharacterImage}
-            generatingCharacterImages={generatingCharacterImages}
-            onRegenerateSettingImage={handleRegenerateSettingImage}
-            onUploadSettingImage={handleUploadSettingImage}
-            generatingSettingImages={generatingSettingImages}
-            onRegeneratePropImage={handleRegeneratePropImage}
-            onUploadPropImage={handleUploadPropImage}
-            generatingPropImages={generatingPropImages}
-          />
-        )}
-
-        {activeTab === "storyboard" && scenario && (
-          <StoryboardTab
-            scenario={scenario}
-            isVideoLoading={isVideoLoading}
-            generatingScenes={generatingScenes}
-            errorMessage={errorMessage}
-            onGenerateAllVideos={(model, generateAudio) => handleGenerateAllVideos(model, generateAudio)}
-            onUpdateScene={handleUpdateScene}
-            onRegenerateImage={handleRegenerateImage}
-            onGenerateVideo={handleGenerateVideo}
-            onUploadImage={handleUploadImage}
-            onAddScene={handleAddScene}
-            onRemoveScene={handleRemoveScene}
-            onReorderScenes={handleReorderScenes}
-          />
-        )}
-
-        {activeTab === "editor" && scenario && (
-          <EditorTab
-            scenario={scenario}
-            scenarioId={getCurrentScenarioId()}
-            currentTime={currentTime}
-            onTimeUpdate={setCurrentTime}
-            logoOverlay={logoOverlay}
-            setLogoOverlay={setLogoOverlay}
-            onLogoUpload={handleLogoUpload}
-            onLogoRemove={handleLogoRemove}
-            onExportMovie={handleExportMovie}
-            isExporting={isVideoLoading}
-            exportProgress={exportProgress}
-          />
-        )}
-
-
-      </div>
-      <footer className="mt-auto pt-8">
-        <div className="flex items-center justify-center gap-2">
-          <p className="text-sm text-muted-foreground">
-            Made with ❤️ by @mblanc
-          </p>
-        </div>
-      </footer>
-    </main>
+      </main>
+    </div >
   )
 }
-

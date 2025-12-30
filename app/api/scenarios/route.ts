@@ -46,13 +46,13 @@ export async function POST(request: NextRequest) {
           voiceover: scene.voiceover || '',
           charactersPresent: scene.charactersPresent || [],
         }
-        
+
         // Only add optional fields if they have values
         if (scene.imageGcsUri) sceneData.imageGcsUri = scene.imageGcsUri
         if (typeof scene.videoUri === 'string') sceneData.videoUri = scene.videoUri
         if (typeof scene.voiceoverAudioUri === 'string') sceneData.voiceoverAudioUri = scene.voiceoverAudioUri
         if (scene.errorMessage) sceneData.errorMessage = scene.errorMessage
-        
+
         return sceneData
       })
     }
@@ -67,12 +67,16 @@ export async function POST(request: NextRequest) {
 
     if (scenarioDoc.exists) {
       // Update existing scenario
+      console.log('Updating scenario:', id)
+      console.log('Scenario data:', JSON.stringify(firestoreScenario, null, 2))
       await scenarioRef.update({
         ...firestoreScenario,
         updatedAt: Timestamp.now()
       })
     } else {
       // Create new scenario
+      console.log('Creating new scenario:', id)
+      console.log('Scenario data:', JSON.stringify(firestoreScenario, null, 2))
       await scenarioRef.set({
         ...firestoreScenario,
         createdAt: Timestamp.now(),
@@ -80,9 +84,9 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      scenarioId: id 
+    return NextResponse.json({
+      success: true,
+      scenarioId: id
     })
   } catch (error) {
     console.error('Error saving scenario:', error)
@@ -114,7 +118,7 @@ export async function GET(request: NextRequest) {
       }
 
       const scenarioData = scenarioDoc.data()
-      
+
       // Check if user owns this scenario
       if (scenarioData?.userId !== userId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
@@ -129,13 +133,13 @@ export async function GET(request: NextRequest) {
       const scenariosRef = firestore.collection('scenarios')
         .where('userId', '==', userId)
         .orderBy('updatedAt', 'desc')
-      
+
       const scenariosSnapshot = await scenariosRef.get()
       const scenarios = scenariosSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }))
-      
+
 
       return NextResponse.json({ scenarios })
     }
@@ -172,7 +176,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const scenarioData = scenarioDoc.data()
-    
+
     // Check if user owns this scenario
     if (scenarioData?.userId !== userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
