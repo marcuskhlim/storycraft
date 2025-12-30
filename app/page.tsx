@@ -973,7 +973,7 @@ export default function Home() {
     const steps = [
         {
             id: "create",
-            label: "Create",
+            label: "Pitch",
             icon: PenLine,
         },
         {
