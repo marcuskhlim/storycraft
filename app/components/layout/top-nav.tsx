@@ -34,7 +34,7 @@ export function TopNav({ steps, activeTab, onTabChange }: TopNavProps) {
                             disabled={step.disabled}
                             onClick={() => onTabChange(step.id)}
                             className={cn(
-                                "group relative flex items-center gap-2 rounded-full px-3 py-1 text-[13px] font-semibold transition-all duration-300",
+                                "group relative mx-0.5 flex items-center gap-2 rounded-full px-3 py-1 text-[13px] font-semibold transition-all duration-300",
                                 isActive
                                     ? "bg-blue-50 text-blue-600 shadow-[0_0_0_1px_rgba(59,130,246,0.1)]"
                                     : isCompleted

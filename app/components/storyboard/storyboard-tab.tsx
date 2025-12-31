@@ -609,7 +609,7 @@ export function StoryboardTab({
                             size="icon"
                             onClick={() => setViewMode("grid")}
                             className={cn(
-                                "hover:bg-accent hover:text-accent-foreground",
+                                "border-0 hover:bg-accent hover:text-accent-foreground",
                                 viewMode === "grid" &&
                                     "bg-accent text-accent-foreground",
                             )}
@@ -622,7 +622,7 @@ export function StoryboardTab({
                             size="icon"
                             onClick={() => setViewMode("list")}
                             className={cn(
-                                "hover:bg-accent hover:text-accent-foreground",
+                                "border-0 hover:bg-accent hover:text-accent-foreground",
                                 viewMode === "list" &&
                                     "bg-accent text-accent-foreground",
                             )}
@@ -635,7 +635,7 @@ export function StoryboardTab({
                             size="icon"
                             onClick={() => setViewMode("slideshow")}
                             className={cn(
-                                "hover:bg-accent hover:text-accent-foreground",
+                                "border-0 hover:bg-accent hover:text-accent-foreground",
                                 viewMode === "slideshow" &&
                                     "bg-accent text-accent-foreground",
                             )}
