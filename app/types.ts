@@ -59,6 +59,7 @@ export interface Scenario {
     }>;
     props: Array<{ name: string; description: string; imageGcsUri?: string }>;
     logoOverlay?: string;
+    styleImageUri?: string;
     scenes: Scene[];
 }
 

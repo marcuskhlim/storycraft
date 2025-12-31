@@ -1556,37 +1556,49 @@ export function EditorTab({
     };
 
     return (
-        <div className="space-y-8">
-            {/* Header with Export Movie button */}
-            <div className="flex items-center justify-end gap-4">
-                {isExporting && (
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <div className="h-2 w-24 overflow-hidden rounded-full bg-gray-200">
-                            <div
-                                className="h-full bg-primary transition-all duration-300"
-                                style={{ width: `${exportProgress}%` }}
-                            />
+        <div className="mx-auto max-w-5xl space-y-8 pb-10">
+            {/* Header section */}
+            <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                    <h2 className="text-3xl font-bold tracking-tight">
+                        Produce your movie
+                    </h2>
+                    <p className="text-muted-foreground">
+                        Finalize transitions, audio, and export your final
+                        video.
+                    </p>
+                </div>
+                <div className="flex items-center gap-4">
+                    {isExporting && (
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <div className="h-2 w-24 overflow-hidden rounded-full bg-gray-200">
+                                <div
+                                    className="h-full bg-primary transition-all duration-300"
+                                    style={{ width: `${exportProgress}%` }}
+                                />
+                            </div>
+                            <span>{exportProgress}%</span>
                         </div>
-                        <span>{exportProgress}%</span>
-                    </div>
-                )}
-                <Button
-                    onClick={() => onExportMovie(layers)}
-                    disabled={isExporting}
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                    {isExporting ? (
-                        <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Exporting Movie...
-                        </>
-                    ) : (
-                        <>
-                            <Film className="mr-2 h-4 w-4" />
-                            Export Movie
-                        </>
                     )}
-                </Button>
+                    <Button
+                        size="lg"
+                        onClick={() => onExportMovie(layers)}
+                        disabled={isExporting}
+                        className="rounded-2xl bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+                    >
+                        {isExporting ? (
+                            <>
+                                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                Exporting...
+                            </>
+                        ) : (
+                            <>
+                                <Film className="mr-2 h-5 w-5" />
+                                Export Movie
+                            </>
+                        )}
+                    </Button>
+                </div>
             </div>
 
             {/* Video Preview - Using MediabunnyPlayer */}

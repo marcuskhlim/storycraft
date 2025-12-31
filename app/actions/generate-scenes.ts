@@ -29,6 +29,7 @@ export async function generateScenario(
     language: Language,
     modelName: string = "gemini-2.5-flash",
     thinkingBudget: number = 0,
+    styleImageUri?: string,
 ): Promise<Scenario> {
     try {
         const prompt = getScenarioPrompt(pitch, numScenes, style, language);
@@ -73,6 +74,7 @@ export async function generateScenario(
                     name: language.name,
                     code: language.code,
                 },
+                styleImageUri: styleImageUri,
             };
 
             logger.debug(JSON.stringify(scenario, null, 4));

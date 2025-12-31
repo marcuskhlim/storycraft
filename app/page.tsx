@@ -34,11 +34,11 @@ import { Button } from "@/components/ui/button";
 import { useSettings } from "@/hooks/use-settings";
 
 const styles: Style[] = [
-    { name: "Photographic", image: "/styles/cinematic.jpg" },
-    { name: "2D Animation", image: "/styles/2d.jpg" },
-    { name: "Anime", image: "/styles/anime.jpg" },
-    { name: "3D Animation", image: "/styles/3d.jpg" },
-    { name: "Claymation Animation", image: "/styles/claymation.jpg" },
+    { name: "Photographic", image: "/styles/photographic_v2.png" },
+    { name: "2D Animation", image: "/styles/2d.png" },
+    { name: "Anime", image: "/styles/anime.png" },
+    { name: "3D Animation", image: "/styles/3d.png" },
+    { name: "Claymation", image: "/styles/claymation.png" },
 ];
 
 const DEFAULT_LANGUAGE: Language = {
@@ -60,6 +60,7 @@ export default function Home() {
     const [aspectRatio, setAspectRatio] = useState("16:9");
     const [durationSeconds, setDurationSeconds] = useState(8);
     const [language, setLanguage] = useState<Language>(DEFAULT_LANGUAGE);
+    const [styleImageUri, setStyleImageUri] = useState<string | null>(null);
     const [logoOverlay, setLogoOverlay] = useState<string | null>(null);
     const [, setIsUploading] = useState(false);
     const [numScenes, setNumScenes] = useState(6);
@@ -166,6 +167,7 @@ export default function Home() {
                 language,
                 targetModel,
                 targetBudget,
+                styleImageUri || undefined,
             );
             setScenario(scenario);
             if (logoOverlay) {
@@ -1278,6 +1280,8 @@ export default function Home() {
                                 errorMessage={errorMessage}
                                 onGenerate={() => handleGenerate()}
                                 styles={styles}
+                                styleImageUri={styleImageUri}
+                                setStyleImageUri={setStyleImageUri}
                             />
                         )}
 

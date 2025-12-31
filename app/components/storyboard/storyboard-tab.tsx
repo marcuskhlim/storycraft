@@ -600,99 +600,109 @@ export function StoryboardTab({
     };
 
     return (
-        <div className="space-y-8">
+        <div className="mx-auto max-w-5xl space-y-8 pb-10">
+            {/* Header section */}
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <div className="flex gap-2">
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => setViewMode("grid")}
-                            className={cn(
-                                "border-0 hover:bg-accent hover:text-accent-foreground",
-                                viewMode === "grid" &&
-                                    "bg-accent text-accent-foreground",
-                            )}
-                        >
-                            <Grid className="h-4 w-4" />
-                            <span className="sr-only">Grid view</span>
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => setViewMode("list")}
-                            className={cn(
-                                "border-0 hover:bg-accent hover:text-accent-foreground",
-                                viewMode === "list" &&
-                                    "bg-accent text-accent-foreground",
-                            )}
-                        >
-                            <List className="h-4 w-4" />
-                            <span className="sr-only">List view</span>
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => setViewMode("slideshow")}
-                            className={cn(
-                                "border-0 hover:bg-accent hover:text-accent-foreground",
-                                viewMode === "slideshow" &&
-                                    "bg-accent text-accent-foreground",
-                            )}
-                        >
-                            <Presentation className="h-4 w-4" />
-                            <span className="sr-only">Slideshow view</span>
-                        </Button>
-                    </div>
-
-                    {/* Display Mode Slider */}
-                    <div className="ml-4 flex items-center gap-2">
-                        <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                        <div
-                            className="relative h-6 w-8 cursor-pointer rounded-full bg-muted"
-                            onClick={() =>
-                                setDisplayMode(
-                                    displayMode === "image" ? "video" : "image",
-                                )
-                            }
-                        >
-                            <div
-                                className={cn(
-                                    "absolute top-1 h-4 w-4 rounded-full bg-primary transition-transform duration-200",
-                                    displayMode === "video"
-                                        ? "translate-x-3"
-                                        : "translate-x-1",
-                                )}
-                            />
-                        </div>
-                        <Video className="h-4 w-4 text-muted-foreground" />
-                    </div>
+                <div className="space-y-1">
+                    <h2 className="text-3xl font-bold tracking-tight">
+                        Visualize your story
+                    </h2>
+                    <p className="text-muted-foreground">
+                        Review scenes and generate the actual video clips.
+                    </p>
                 </div>
                 <div className="flex items-center gap-4">
-                    <LoadingMessages isLoading={isVideoLoading} />
-                    <div className="flex">
-                        <Button
-                            onClick={handleGenerateAllVideosClick}
-                            disabled={
-                                isVideoLoading ||
-                                scenes.length === 0 ||
-                                generatingScenes.size > 0
-                            }
-                            className="rounded-2xl bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
-                        >
-                            {isVideoLoading ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Generating Videos...
-                                </>
-                            ) : (
-                                <>
-                                    <Video className="mr-2 h-4 w-4" />
-                                    Generate Videos
-                                </>
-                            )}
-                        </Button>
+                    <div className="mr-8 flex items-center gap-2">
+                        <div className="flex gap-1">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => setViewMode("grid")}
+                                className={cn(
+                                    "h-8 w-8 border-0 hover:bg-accent hover:text-accent-foreground",
+                                    viewMode === "grid" &&
+                                        "bg-accent text-accent-foreground",
+                                )}
+                            >
+                                <Grid className="h-4 w-4" />
+                                <span className="sr-only">Grid view</span>
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => setViewMode("list")}
+                                className={cn(
+                                    "h-8 w-8 border-0 hover:bg-accent hover:text-accent-foreground",
+                                    viewMode === "list" &&
+                                        "bg-accent text-accent-foreground",
+                                )}
+                            >
+                                <List className="h-4 w-4" />
+                                <span className="sr-only">List view</span>
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => setViewMode("slideshow")}
+                                className={cn(
+                                    "h-8 w-8 border-0 hover:bg-accent hover:text-accent-foreground",
+                                    viewMode === "slideshow" &&
+                                        "bg-accent text-accent-foreground",
+                                )}
+                            >
+                                <Presentation className="h-4 w-4" />
+                                <span className="sr-only">Slideshow view</span>
+                            </Button>
+                        </div>
+
+                        {/* Display Mode Slider */}
+                        <div className="ml-2 flex items-center gap-2">
+                            <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                            <div
+                                className="relative h-5 w-8 cursor-pointer rounded-full bg-muted"
+                                onClick={() =>
+                                    setDisplayMode(
+                                        displayMode === "image"
+                                            ? "video"
+                                            : "image",
+                                    )
+                                }
+                            >
+                                <div
+                                    className={cn(
+                                        "absolute top-0.5 h-4 w-4 rounded-full bg-primary transition-transform duration-200",
+                                        displayMode === "video"
+                                            ? "translate-x-3.5"
+                                            : "translate-x-0.5",
+                                    )}
+                                />
+                            </div>
+                            <Video className="h-4 w-4 text-muted-foreground" />
+                        </div>
                     </div>
+                    <LoadingMessages isLoading={isVideoLoading} />
+                    <Button
+                        size="lg"
+                        onClick={handleGenerateAllVideosClick}
+                        disabled={
+                            isVideoLoading ||
+                            scenes.length === 0 ||
+                            generatingScenes.size > 0
+                        }
+                        className="rounded-2xl bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+                    >
+                        {isVideoLoading ? (
+                            <>
+                                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                Generating...
+                            </>
+                        ) : (
+                            <>
+                                <Video className="mr-2 h-5 w-5" />
+                                Generate Videos
+                            </>
+                        )}
+                    </Button>
                 </div>
             </div>
 

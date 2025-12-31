@@ -692,26 +692,39 @@ export function ScenarioTab({
     return (
         <div className="space-y-8">
             {scenario && (
-                <>
-                    <div className="flex items-center justify-end gap-4">
-                        <LoadingMessages isLoading={isLoading} />
-                        <Button
-                            onClick={onGenerateStoryBoard}
-                            disabled={isLoading}
-                            className="rounded-2xl bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
-                        >
-                            {isLoading ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Generating Storyboard...
-                                </>
-                            ) : (
-                                <>
-                                    <LayoutGrid className="mr-2 h-4 w-4" />
-                                    Generate Storyboard
-                                </>
-                            )}
-                        </Button>
+                <div className="mx-auto max-w-5xl space-y-8 pb-10">
+                    {/* Header section */}
+                    <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                            <h2 className="text-3xl font-bold tracking-tight">
+                                Review your scenario
+                            </h2>
+                            <p className="text-muted-foreground">
+                                Refine the characters, settings, and story
+                                details.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <LoadingMessages isLoading={isLoading} />
+                            <Button
+                                size="lg"
+                                onClick={onGenerateStoryBoard}
+                                disabled={isLoading}
+                                className="rounded-2xl bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                        Generating...
+                                    </>
+                                ) : (
+                                    <>
+                                        <LayoutGrid className="mr-2 h-5 w-5" />
+                                        Generate Storyboard
+                                    </>
+                                )}
+                            </Button>
+                        </div>
                     </div>
                     <div className="mx-auto max-w-4xl space-y-4">
                         <div className="col-span-1">
@@ -1329,7 +1342,7 @@ export function ScenarioTab({
                             )}
                         </div>
                     </div>
-                </>
+                </div>
             )}
         </div>
     );
