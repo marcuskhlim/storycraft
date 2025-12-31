@@ -24,7 +24,6 @@ export function TopNav({ steps, activeTab, onTabChange }: TopNavProps) {
                 const isActive = activeTab === step.id;
                 const isCompleted = index < activeIndex;
                 const isFirst = index === 0;
-                const isLast = index === steps.length - 1;
 
                 return (
                     <div key={step.id} className="flex items-center">

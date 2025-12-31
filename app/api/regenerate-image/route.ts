@@ -14,9 +14,10 @@ import { createCollage } from "@/app/actions/resize-image";
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { prompt, scenario } = body as {
+        const { prompt, scenario, modelName } = body as {
             prompt: ImagePrompt;
             scenario: Scenario;
+            modelName?: string;
         };
 
         if (!prompt) {
@@ -100,6 +101,7 @@ export async function POST(request: NextRequest) {
                             aspectRatio: scenario.aspectRatio,
                         },
                     },
+                    modelName,
                 );
             } else {
                 const collageUri = await createCollage(
@@ -122,6 +124,7 @@ export async function POST(request: NextRequest) {
                             aspectRatio: scenario.aspectRatio,
                         },
                     },
+                    modelName,
                 );
             }
             return NextResponse.json(result);

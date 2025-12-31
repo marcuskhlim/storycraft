@@ -1,12 +1,10 @@
 "use server";
 
 import { generateContent, generateImage } from "@/lib/gemini";
-import { generateImageRest } from "@/lib/imagen";
 import { z } from "zod";
 import yaml from "js-yaml";
 import logger from "../logger";
 import { createPartFromText, createPartFromUri } from "@google/genai";
-import { getRAIUserMessage } from "@/lib/rai";
 
 // Shared types
 export interface Character {
@@ -93,6 +91,8 @@ async function updateScenarioText(
     newName: string,
     newDescription: string,
     entityType: "character" | "setting" | "prop" = "character",
+    modelName: string = "gemini-2.5-flash",
+    thinkingBudget: number = 0,
 ): Promise<string> {
     const text = await generateContent(
         `Update the following scenario to reflect ${entityType} changes. The ${entityType} previously named "${oldName}" is now named "${newName}" with the following updated description: "${newDescription}".
@@ -108,7 +108,14 @@ INSTRUCTIONS:
 5. Keep the scenario length similar to the original
 
 Return ONLY the updated scenario text, no additional formatting or explanations.`,
-        geminiConfig,
+        {
+            ...geminiConfig,
+            thinkingConfig: {
+                includeThoughts: false,
+                thinkingBudget,
+            },
+        },
+        modelName,
     );
 
     return text!.trim();
@@ -142,6 +149,7 @@ Return ONLY the updated scenario text, no additional formatting or explanations.
 async function generateCharacterImage(
     description: string,
     style: string,
+    modelName: string = "gemini-3-pro-image-preview",
 ): Promise<string> {
     const orderedPrompt = {
         style,
@@ -149,74 +157,101 @@ async function generateCharacterImage(
         description,
     };
 
-    const imageResult = await generateImageRest(
-        yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }),
-        "1:1",
-        true,
+    const imageResult = await generateImage(
+        [
+            createPartFromText(
+                yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }),
+            ),
+        ],
+        {
+            responseModalities: ["IMAGE"],
+            candidateCount: 1,
+            imageConfig: {
+                aspectRatio: "1:1",
+            },
+        },
+        modelName,
     );
 
-    if (imageResult.predictions[0].raiFilteredReason) {
-        throw new Error(
-            `Image generation failed: ${getRAIUserMessage(imageResult.predictions[0].raiFilteredReason)}`,
-        );
+    if (!imageResult.success) {
+        throw new Error(`Image generation failed: ${imageResult.errorMessage}`);
     }
 
-    return imageResult.predictions[0].gcsUri;
+    return imageResult.imageGcsUri!;
 }
 
 async function generateSettingImage(
     description: string,
     style: string,
     aspectRatio: string = "16:9",
+    modelName: string = "gemini-3-pro-image-preview",
 ): Promise<string> {
     const orderedPrompt = {
         style,
         shot_type: "Wide Shot",
         description,
     };
-    const imageResult = await generateImageRest(
-        yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }),
-        aspectRatio,
-        true,
+    const imageResult = await generateImage(
+        [
+            createPartFromText(
+                yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }),
+            ),
+        ],
+        {
+            responseModalities: ["IMAGE"],
+            candidateCount: 1,
+            imageConfig: {
+                aspectRatio: aspectRatio,
+            },
+        },
+        modelName,
     );
 
-    if (imageResult.predictions[0].raiFilteredReason) {
-        throw new Error(
-            `Image generation failed: ${getRAIUserMessage(imageResult.predictions[0].raiFilteredReason)}`,
-        );
+    if (!imageResult.success) {
+        throw new Error(`Image generation failed: ${imageResult.errorMessage}`);
     }
 
-    return imageResult.predictions[0].gcsUri;
+    return imageResult.imageGcsUri!;
 }
 
 async function generatePropImage(
     description: string,
     style: string,
+    modelName: string = "gemini-3-pro-image-preview",
 ): Promise<string> {
     const orderedPrompt = {
         style,
         shot_type: "Close Shot",
         description,
     };
-    const imageResult = await generateImageRest(
-        yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }),
-        "1:1",
-        true,
+    const imageResult = await generateImage(
+        [
+            createPartFromText(
+                yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }),
+            ),
+        ],
+        {
+            responseModalities: ["IMAGE"],
+            candidateCount: 1,
+            imageConfig: {
+                aspectRatio: "1:1",
+            },
+        },
+        modelName,
     );
 
-    if (imageResult.predictions[0].raiFilteredReason) {
-        throw new Error(
-            `Image generation failed: ${getRAIUserMessage(imageResult.predictions[0].raiFilteredReason)}`,
-        );
+    if (!imageResult.success) {
+        throw new Error(`Image generation failed: ${imageResult.errorMessage}`);
     }
 
-    return imageResult.predictions[0].gcsUri;
+    return imageResult.imageGcsUri!;
 }
 
 async function styleImage(
     imageGcsUri: string,
     description: string,
     style: string,
+    modelName: string = "gemini-3-pro-image-preview",
 ): Promise<string> {
     const orderedPrompt = {
         style: style,
@@ -225,10 +260,17 @@ async function styleImage(
         description: description,
     };
     const prompt = yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 });
-    const result = await generateImage([
-        createPartFromUri(imageGcsUri, "image/png"),
-        createPartFromText(prompt),
-    ]);
+    const result = await generateImage(
+        [
+            createPartFromUri(imageGcsUri, "image/png"),
+            createPartFromText(prompt),
+        ],
+        {
+            responseModalities: ["IMAGE"],
+            candidateCount: 1,
+        },
+        modelName,
+    );
     return result.imageGcsUri!;
 }
 
@@ -309,12 +351,16 @@ export async function regenerateCharacterAndScenarioFromText(
     newCharacterName: string,
     newCharacterDescription: string,
     style: string,
+    llmModel: string = "gemini-2.5-flash",
+    thinkingBudget: number = 0,
+    imageModel: string = "gemini-3-pro-image-preview",
 ): Promise<ScenarioUpdateResult> {
     try {
         // Generate new character image
         const newImageGcsUri = await generateCharacterImage(
             newCharacterDescription,
             style,
+            imageModel,
         );
 
         // Update scenario text
@@ -324,6 +370,8 @@ export async function regenerateCharacterAndScenarioFromText(
             newCharacterName,
             newCharacterDescription,
             "character",
+            llmModel,
+            thinkingBudget,
         );
 
         return {
@@ -348,6 +396,9 @@ export async function regenerateCharacterAndScenarioFromImage(
     imageGcsUri: string,
     allCharacters: Character[],
     style: string,
+    llmModel: string = "gemini-2.5-flash",
+    thinkingBudget: number = 0,
+    imageModel: string = "gemini-3-pro-image-preview",
 ): Promise<ScenarioUpdateResult> {
     try {
         const characterListText = allCharacters
@@ -387,9 +438,14 @@ Return both the updated scenario (maintaining all characters) and the updated de
             ],
             {
                 ...geminiConfig,
+                thinkingConfig: {
+                    includeThoughts: false,
+                    thinkingBudget,
+                },
                 responseMimeType: "application/json",
                 responseSchema: z.toJSONSchema(CharacterScenarioUpdateSchema),
             },
+            llmModel,
         );
 
         const characterScenarioUpdate = CharacterScenarioUpdateSchema.parse(
@@ -399,6 +455,7 @@ Return both the updated scenario (maintaining all characters) and the updated de
             imageGcsUri,
             characterScenarioUpdate.updatedCharacter.description,
             style,
+            imageModel,
         );
 
         return {
@@ -423,6 +480,9 @@ export async function regenerateSettingAndScenarioFromText(
     newSettingDescription: string,
     style: string,
     aspectRatio: string = "16:9",
+    llmModel: string = "gemini-2.5-flash",
+    thinkingBudget: number = 0,
+    imageModel: string = "gemini-3-pro-image-preview",
 ): Promise<ScenarioUpdateResult> {
     try {
         // Generate new character image
@@ -430,6 +490,7 @@ export async function regenerateSettingAndScenarioFromText(
             newSettingDescription,
             style,
             aspectRatio,
+            imageModel,
         );
 
         // Update scenario text
@@ -439,6 +500,8 @@ export async function regenerateSettingAndScenarioFromText(
             newSettingName,
             newSettingDescription,
             "setting",
+            llmModel,
+            thinkingBudget,
         );
 
         logger.debug(updatedScenario);
@@ -463,12 +526,16 @@ export async function regeneratePropAndScenarioFromText(
     newPropName: string,
     newPropDescription: string,
     style: string,
+    llmModel: string = "gemini-2.5-flash",
+    thinkingBudget: number = 0,
+    imageModel: string = "gemini-3-pro-image-preview",
 ): Promise<ScenarioUpdateResult> {
     try {
         // Generate new character image
         const newImageGcsUri = await generatePropImage(
             newPropDescription,
             style,
+            imageModel,
         );
 
         // Update scenario text
@@ -478,6 +545,8 @@ export async function regeneratePropAndScenarioFromText(
             newPropName,
             newPropDescription,
             "prop",
+            llmModel,
+            thinkingBudget,
         );
 
         logger.debug(updatedScenario);
@@ -503,6 +572,9 @@ export async function regenerateSettingAndScenarioFromImage(
     imageGcsUri: string,
     allSettings: Setting[],
     style: string,
+    llmModel: string = "gemini-2.5-flash",
+    thinkingBudget: number = 0,
+    imageModel: string = "gemini-3-pro-image-preview",
 ): Promise<ScenarioUpdateResult> {
     try {
         const settingListText = allSettings
@@ -540,9 +612,14 @@ Return both the updated scenario (maintaining all settings) and the updated desc
             ],
             {
                 ...geminiConfig,
+                thinkingConfig: {
+                    includeThoughts: false,
+                    thinkingBudget,
+                },
                 responseMimeType: "application/json",
                 responseSchema: z.toJSONSchema(SettingScenarioUpdateSchema),
             },
+            llmModel,
         );
 
         const settingScenarioUpdate = SettingScenarioUpdateSchema.parse(
@@ -552,6 +629,7 @@ Return both the updated scenario (maintaining all settings) and the updated desc
             imageGcsUri,
             settingScenarioUpdate.updatedSetting.description,
             style,
+            imageModel,
         );
 
         return {
@@ -576,6 +654,9 @@ export async function regeneratePropAndScenarioFromImage(
     imageGcsUri: string,
     allProps: Prop[],
     style: string,
+    llmModel: string = "gemini-2.5-flash",
+    thinkingBudget: number = 0,
+    imageModel: string = "gemini-3-pro-image-preview",
 ): Promise<ScenarioUpdateResult> {
     try {
         const propListText = allProps
@@ -613,9 +694,14 @@ Return both the updated scenario (maintaining all props) and the updated descrip
             ],
             {
                 ...geminiConfig,
+                thinkingConfig: {
+                    includeThoughts: false,
+                    thinkingBudget,
+                },
                 responseMimeType: "application/json",
                 responseSchema: z.toJSONSchema(PropScenarioUpdateSchema),
             },
+            llmModel,
         );
 
         const propScenarioUpdate = PropScenarioUpdateSchema.parse(
@@ -625,6 +711,7 @@ Return both the updated scenario (maintaining all props) and the updated descrip
             imageGcsUri,
             propScenarioUpdate.updatedProp.description,
             style,
+            imageModel,
         );
 
         return {

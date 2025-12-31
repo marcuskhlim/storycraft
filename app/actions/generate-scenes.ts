@@ -244,6 +244,8 @@ export async function generateStoryboard(
     numScenes: number,
     style: string,
     language: Language,
+    modelName: string = "gemini-2.5-flash",
+    thinkingBudget: number = 0,
 ): Promise<Scenario> {
     logger.debug("Create a storyboard");
     logger.debug(scenario.scenario);
@@ -255,14 +257,18 @@ export async function generateStoryboard(
         };
 
         const prompt = getScenesPrompt(scenario, numScenes, style, language);
-        const text = await generateContent(prompt, {
-            thinkingConfig: {
-                includeThoughts: false,
-                thinkingBudget: -1,
+        const text = await generateContent(
+            prompt,
+            {
+                thinkingConfig: {
+                    includeThoughts: false,
+                    thinkingBudget: thinkingBudget,
+                },
+                responseMimeType: "application/json",
+                responseSchema: storyboardSchema,
             },
-            responseMimeType: "application/json",
-            responseSchema: storyboardSchema,
-        });
+            modelName,
+        );
         logger.debug(text);
 
         if (!text) {

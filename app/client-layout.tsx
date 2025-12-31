@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { SettingsProvider } from "@/hooks/use-settings";
 
 export default function ClientLayout({
     children,
@@ -15,7 +16,7 @@ export default function ClientLayout({
 
     return (
         <QueryClientProvider client={queryClient}>
-            {children}
+            <SettingsProvider>{children}</SettingsProvider>
         </QueryClientProvider>
     );
 }

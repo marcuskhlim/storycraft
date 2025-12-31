@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,12 +10,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
-import { BookOpen, Loader2, ChevronDown } from "lucide-react";
+import { BookOpen, Loader2 } from "lucide-react";
 import { type Language } from "../../types";
 import { StyleSelector, type Style } from "./style-selector";
 import { LoadingMessages } from "@/app/components/ui/loading-messages";
@@ -79,39 +73,6 @@ const validateDuration = (duration: number): number => {
         : 8;
 };
 
-const MODEL_OPTIONS = [
-    {
-        label: "Scenario with Gemini 3.0 Pro Preview",
-        modelName: "gemini-3-pro-preview",
-        thinkingBudget: 0,
-    },
-    {
-        label: "Scenario with Gemini 3.0 Flash Preview",
-        modelName: "gemini-3-flash-preview",
-        thinkingBudget: 0,
-    },
-    {
-        label: "Scenario with Gemini 2.5 Flash",
-        modelName: "gemini-2.5-flash",
-        thinkingBudget: 0,
-    },
-    {
-        label: "Scenario with Gemini 2.5 Flash 💡",
-        modelName: "gemini-2.5-flash",
-        thinkingBudget: -1,
-    },
-    {
-        label: "Scenario with Gemini 2.5 Pro",
-        modelName: "gemini-2.5-pro",
-        thinkingBudget: 0,
-    },
-    {
-        label: "Scenario with Gemini 2.5 Pro 💡",
-        modelName: "gemini-2.5-pro",
-        thinkingBudget: -1,
-    },
-];
-
 interface CreateTabProps {
     name: string;
     setName: (name: string) => void;
@@ -129,7 +90,7 @@ interface CreateTabProps {
     setLanguage: (language: Language) => void;
     isLoading: boolean;
     errorMessage: string | null;
-    onGenerate: (modelName: string, thinkingBudget: number) => Promise<void>;
+    onGenerate: () => Promise<void>;
     styles: Style[];
 }
 
@@ -153,11 +114,8 @@ export function CreateTab({
     onGenerate,
     styles,
 }: CreateTabProps) {
-    const [selectedModel, setSelectedModel] = useState(MODEL_OPTIONS[0]);
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-
     const handleGenerateClick = () => {
-        onGenerate(selectedModel.modelName, selectedModel.thinkingBudget);
+        onGenerate();
     };
 
     return (
@@ -172,7 +130,7 @@ export function CreateTab({
                             pitch.trim() === "" ||
                             name.trim() === ""
                         }
-                        className="rounded-r-none bg-primary text-primary-foreground hover:bg-primary/90"
+                        className="rounded-2xl bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
                     >
                         {isLoading ? (
                             <>
@@ -182,45 +140,10 @@ export function CreateTab({
                         ) : (
                             <>
                                 <BookOpen className="mr-2 h-4 w-4" />
-                                {selectedModel.label}
+                                Generate Scenario
                             </>
                         )}
                     </Button>
-                    <Popover
-                        open={isDropdownOpen}
-                        onOpenChange={setIsDropdownOpen}
-                    >
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant="outline"
-                                className="rounded-l-none border-l-0 bg-primary px-2 text-primary-foreground hover:bg-primary/90"
-                                disabled={
-                                    isLoading ||
-                                    pitch.trim() === "" ||
-                                    name.trim() === ""
-                                }
-                            >
-                                <ChevronDown className="h-4 w-4" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-80 p-0" align="end">
-                            <div className="py-1">
-                                {MODEL_OPTIONS.map((option, index) => (
-                                    <button
-                                        key={index}
-                                        className="flex w-full items-center px-4 py-2 text-left text-sm hover:bg-gray-100"
-                                        onClick={() => {
-                                            setSelectedModel(option);
-                                            setIsDropdownOpen(false);
-                                        }}
-                                    >
-                                        <BookOpen className="mr-2 h-4 w-4" />
-                                        {option.label}
-                                    </button>
-                                ))}
-                            </div>
-                        </PopoverContent>
-                    </Popover>
                 </div>
             </div>
             <div className="mx-auto max-w-xl">

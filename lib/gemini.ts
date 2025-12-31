@@ -69,6 +69,7 @@ export async function generateImage(
         responseModalities: ["IMAGE"],
         candidateCount: 1,
     },
+    model: string = "gemini-3-pro-image-preview",
 ): Promise<GenerateNanoBananaImageResponse> {
     logger.debug(JSON.stringify(prompt, null, 2));
 
@@ -83,7 +84,6 @@ export async function generateImage(
                 location: "global",
             });
 
-            const model = "gemini-3-pro-image-preview";
             logger.debug("Generate Image : " + model);
             const response = await ai.models.generateContent({
                 model,

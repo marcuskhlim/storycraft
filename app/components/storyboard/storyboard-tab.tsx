@@ -2,11 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import {
     Grid,
@@ -18,7 +13,6 @@ import {
     ChevronRight,
     Plus,
     Image as ImageIcon,
-    ChevronDown,
 } from "lucide-react";
 import { useState } from "react";
 import { Scene, Scenario, ImagePrompt, VideoPrompt } from "../../types";
@@ -27,49 +21,6 @@ import { SceneCard } from "./scene-card";
 import { GcsImage } from "../ui/gcs-image";
 import { VideoPlayer } from "../video/video-player";
 import { LoadingMessages } from "@/app/components/ui/loading-messages";
-
-const VEO_MODEL_OPTIONS = [
-    {
-        label: "Videos with Veo 3.1 Preview Fast 🔈",
-        modelName: "veo-3.1-fast-generate-preview",
-        generateAudio: true,
-    },
-    {
-        label: "Videos with 3.1 Preview Fast",
-        modelName: "veo-3.1-fast-generate-preview",
-        generateAudio: false,
-    },
-    {
-        label: "Videos with Veo 3.1 🔈",
-        modelName: "veo-3.1-generate-preview",
-        generateAudio: true,
-    },
-    {
-        label: "Videos with 3.1",
-        modelName: "veo-3.1-generate-preview",
-        generateAudio: false,
-    },
-    {
-        label: "Videos with Veo 3.0 Fast 🔈",
-        modelName: "veo-3.0-fast-generate-001",
-        generateAudio: true,
-    },
-    {
-        label: "Videos with Veo 3.0 Fast",
-        modelName: "veo-3.0-fast-generate-001",
-        generateAudio: false,
-    },
-    {
-        label: "Videos with Veo 3.0 🔈",
-        modelName: "veo-3.0-generate-001",
-        generateAudio: true,
-    },
-    {
-        label: "Videos with Veo 3.0",
-        modelName: "veo-3.0-generate-001",
-        generateAudio: false,
-    },
-];
 
 function ImagePromptDisplay({ imagePrompt }: { imagePrompt: ImagePrompt }) {
     return (
@@ -177,10 +128,7 @@ interface StoryboardTabProps {
     isVideoLoading: boolean;
     generatingScenes: Set<number>;
     errorMessage: string | null;
-    onGenerateAllVideos: (
-        model: string,
-        generateAudio: boolean,
-    ) => Promise<void>;
+    onGenerateAllVideos: () => Promise<void>;
     onUpdateScene: (index: number, updatedScene: Scene) => void;
     onRegenerateImage: (index: number) => Promise<void>;
     onGenerateVideo: (index: number) => Promise<void>;
@@ -208,16 +156,11 @@ export function StoryboardTab({
     const [viewMode, setViewMode] = useState<ViewMode>("grid");
     const [displayMode, setDisplayMode] = useState<DisplayMode>("image");
     const [currentSlide, setCurrentSlide] = useState(0);
-    const [selectedModel, setSelectedModel] = useState(VEO_MODEL_OPTIONS[0]);
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     console.log(JSON.stringify(scenario, null, 2));
 
     const handleGenerateAllVideosClick = () => {
-        onGenerateAllVideos(
-            selectedModel.modelName,
-            selectedModel.generateAudio,
-        );
+        onGenerateAllVideos();
     };
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
     const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -735,7 +678,7 @@ export function StoryboardTab({
                                 scenes.length === 0 ||
                                 generatingScenes.size > 0
                             }
-                            className="rounded-r-none bg-primary text-primary-foreground hover:bg-primary/90"
+                            className="rounded-2xl bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
                         >
                             {isVideoLoading ? (
                                 <>
@@ -745,45 +688,10 @@ export function StoryboardTab({
                             ) : (
                                 <>
                                     <Video className="mr-2 h-4 w-4" />
-                                    {selectedModel.label}
+                                    Generate Videos
                                 </>
                             )}
                         </Button>
-                        <Popover
-                            open={isDropdownOpen}
-                            onOpenChange={setIsDropdownOpen}
-                        >
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    className="rounded-l-none border-l-0 bg-primary px-2 text-primary-foreground hover:bg-primary/90"
-                                    disabled={
-                                        isVideoLoading ||
-                                        scenes.length === 0 ||
-                                        generatingScenes.size > 0
-                                    }
-                                >
-                                    <ChevronDown className="h-4 w-4" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-80 p-0" align="end">
-                                <div className="py-1">
-                                    {VEO_MODEL_OPTIONS.map((option, index) => (
-                                        <button
-                                            key={index}
-                                            className="flex w-full items-center px-4 py-2 text-left text-sm hover:bg-gray-100"
-                                            onClick={() => {
-                                                setSelectedModel(option);
-                                                setIsDropdownOpen(false);
-                                            }}
-                                        >
-                                            <Video className="mr-2 h-4 w-4" />
-                                            {option.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </PopoverContent>
-                        </Popover>
                     </div>
                 </div>
             </div>

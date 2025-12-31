@@ -698,7 +698,7 @@ export function ScenarioTab({
                         <Button
                             onClick={onGenerateStoryBoard}
                             disabled={isLoading}
-                            className="bg-primary text-primary-foreground hover:bg-primary/90"
+                            className="rounded-2xl bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
                         >
                             {isLoading ? (
                                 <>
@@ -708,7 +708,7 @@ export function ScenarioTab({
                             ) : (
                                 <>
                                     <LayoutGrid className="mr-2 h-4 w-4" />
-                                    Storyboard with 🍌
+                                    Generate Storyboard
                                 </>
                             )}
                         </Button>

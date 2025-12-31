@@ -31,6 +31,7 @@ import {
 import { Sidebar } from "./components/layout/sidebar";
 import { TopNav } from "./components/layout/top-nav";
 import { Button } from "@/components/ui/button";
+import { useSettings } from "@/hooks/use-settings";
 
 const styles: Style[] = [
     { name: "Photographic", image: "/styles/cinematic.jpg" },
@@ -101,6 +102,9 @@ export default function Home() {
     // Timeline persistence
     const { resetTimeline } = useTimeline();
 
+    // Global settings
+    const { settings } = useSettings();
+
     useEffect(() => {
         console.log("generatingScenes (in useEffect):", generatingScenes);
     }, [generatingScenes]); // Log only when generatingScenes changes
@@ -139,9 +143,15 @@ export default function Home() {
     ]);
 
     const handleGenerate = async (
-        modelName: string = "gemini-2.5-flash",
-        thinkingBudget: number = 0,
+        modelName?: string,
+        thinkingBudget?: number,
     ) => {
+        const targetModel = modelName || settings.llmModel;
+        const targetBudget =
+            thinkingBudget !== undefined
+                ? thinkingBudget
+                : settings.thinkingBudget;
+
         if (pitch.trim() === "" || numScenes < 1) return;
         setIsLoading(true);
         setErrorMessage(null);
@@ -154,8 +164,8 @@ export default function Home() {
                 aspectRatio,
                 durationSeconds,
                 language,
-                modelName,
-                thinkingBudget,
+                targetModel,
+                targetBudget,
             );
             setScenario(scenario);
             if (logoOverlay) {
@@ -189,6 +199,7 @@ export default function Home() {
                 body: JSON.stringify({
                     prompt: scene.imagePrompt,
                     scenario: scenario,
+                    modelName: settings.imageModel,
                 }),
             });
 
@@ -249,6 +260,9 @@ export default function Home() {
                     name,
                     description,
                     style,
+                    settings.llmModel,
+                    settings.thinkingBudget,
+                    settings.imageModel,
                 );
 
             // Update the character with the new image AND the updated description
@@ -301,6 +315,9 @@ export default function Home() {
                     description,
                     style,
                     scenario.aspectRatio,
+                    settings.llmModel,
+                    settings.thinkingBudget,
+                    settings.imageModel,
                 );
 
             // Update the setting with the new image AND the updated description
@@ -351,6 +368,9 @@ export default function Home() {
                     name,
                     description,
                     style,
+                    settings.llmModel,
+                    settings.thinkingBudget,
+                    settings.imageModel,
                 );
 
             // Update the prop with the new image AND the updated description
@@ -420,9 +440,15 @@ export default function Home() {
     };
 
     const handleGenerateAllVideos = async (
-        model: string = "veo-3.0-generate-001",
-        generateAudio: boolean = true,
+        model?: string,
+        generateAudio?: boolean,
     ) => {
+        const targetModel = model || settings.videoModel;
+        const targetAudio =
+            generateAudio !== undefined
+                ? generateAudio
+                : settings.generateAudio;
+
         if (!scenario) return;
         setErrorMessage(null);
         console.log("[Client] Generating videos for all scenes - START");
@@ -450,8 +476,8 @@ export default function Home() {
                             scenario: scenario,
                             language: scenario?.language,
                             aspectRatio: scenario?.aspectRatio,
-                            model,
-                            generateAudio,
+                            model: targetModel,
+                            generateAudio: targetAudio,
                             durationSeconds: scenario?.durationSeconds,
                         }),
                     });
@@ -501,6 +527,8 @@ export default function Home() {
                 numScenes,
                 style,
                 language,
+                settings.llmModel,
+                settings.thinkingBudget,
             );
             setScenario(scenarioWithStoryboard);
             setActiveTab("storyboard"); // Switch to storyboard tab after successful generation
@@ -534,6 +562,8 @@ export default function Home() {
                     scenario: scenario,
                     language: scenario?.language,
                     aspectRatio: scenario?.aspectRatio,
+                    model: settings.videoModel,
+                    generateAudio: settings.generateAudio,
                     durationSeconds: scenario?.durationSeconds,
                 }),
             });
@@ -696,11 +726,14 @@ export default function Home() {
             );
             const result = await regenerateSettingAndScenarioFromImage(
                 scenario.scenario,
-                setting.name,
-                setting.description,
+                scenario.settings[settingIndex].name,
+                scenario.settings[settingIndex].description,
                 resizedImageGcsUri,
                 scenario.settings,
                 style,
+                settings.llmModel,
+                settings.thinkingBudget,
+                settings.imageModel,
             );
             console.log(
                 "regenerateSettingAndScenarioFromImage completed successfully",
@@ -777,11 +810,14 @@ export default function Home() {
             );
             const result = await regeneratePropAndScenarioFromImage(
                 scenario.scenario,
-                prop.name,
-                prop.description,
+                scenario.props[propIndex].name,
+                scenario.props[propIndex].description,
                 resizedImageGcsUri,
                 scenario.props,
                 style,
+                settings.llmModel,
+                settings.thinkingBudget,
+                settings.imageModel,
             );
             console.log(
                 "regeneratePropAndScenarioFromImage completed successfully",
@@ -863,12 +899,15 @@ export default function Home() {
             );
             const result = await regenerateCharacterAndScenarioFromImage(
                 scenario.scenario,
-                character.name,
-                character.description,
-                character.voice || "",
+                scenario.characters[characterIndex].name,
+                scenario.characters[characterIndex].description,
+                scenario.characters[characterIndex].voice || "",
                 resizedImageGcsUri,
                 scenario.characters,
                 style,
+                settings.llmModel,
+                settings.thinkingBudget,
+                settings.imageModel,
             );
             console.log(
                 "regenerateCharacterAndScenarioFromImage completed successfully",
@@ -1212,34 +1251,6 @@ export default function Home() {
                     </div>
 
                     <div className="flex w-1/3 items-center justify-end gap-4">
-                        {activeTab === "editor" && scenario && (
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    variant="default"
-                                    size="sm"
-                                    className="rounded-full"
-                                    onClick={() =>
-                                        handleGenerateAllVideos(undefined, true)
-                                    }
-                                    disabled={
-                                        isVideoLoading ||
-                                        generatingScenes.size > 0
-                                    }
-                                >
-                                    {isVideoLoading ? (
-                                        <>
-                                            <div className="mr-2 h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
-                                            Generating...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Film className="mr-2 h-4 w-4" />
-                                            Videos with Veo 3.1
-                                        </>
-                                    )}
-                                </Button>
-                            </div>
-                        )}
                         <UserProfile isCollapsed={false} />
                     </div>
                 </header>
@@ -1265,9 +1276,7 @@ export default function Home() {
                                 setLanguage={setLanguage}
                                 isLoading={isLoading}
                                 errorMessage={errorMessage}
-                                onGenerate={(modelName, thinkingBudget) =>
-                                    handleGenerate(modelName, thinkingBudget)
-                                }
+                                onGenerate={() => handleGenerate()}
                                 styles={styles}
                             />
                         )}
@@ -1308,11 +1317,8 @@ export default function Home() {
                                 isVideoLoading={isVideoLoading}
                                 generatingScenes={generatingScenes}
                                 errorMessage={errorMessage}
-                                onGenerateAllVideos={(model, generateAudio) =>
-                                    handleGenerateAllVideos(
-                                        model,
-                                        generateAudio,
-                                    )
+                                onGenerateAllVideos={() =>
+                                    handleGenerateAllVideos()
                                 }
                                 onUpdateScene={handleUpdateScene}
                                 onRegenerateImage={handleRegenerateImage}

@@ -49,6 +49,8 @@ export async function POST(req: Request): Promise<Response> {
 
     try {
         logger.debug("Generating videos in parallel...");
+        logger.debug(`model: ${model}`);
+        logger.debug(`generateAudio: ${generateAudio}`);
         logger.debug(`scenes: ${scenes}`);
         logger.debug(`durationSeconds: ${durationSeconds}`);
 
