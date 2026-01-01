@@ -3,8 +3,9 @@ import {
     MARKER_INTERVAL,
 } from "../constants/editor-constants";
 import { formatTime } from "../utils/editor-utils";
+import { memo } from "react";
 
-export function TimelineMarkers() {
+export const TimelineMarkers = memo(function TimelineMarkers() {
     return (
         <div className="absolute left-0 right-0 top-0 flex h-6 justify-between text-xs text-gray-500">
             {Array.from({
@@ -19,4 +20,4 @@ export function TimelineMarkers() {
             ))}
         </div>
     );
-}
+});

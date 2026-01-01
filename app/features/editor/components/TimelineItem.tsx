@@ -7,6 +7,7 @@ import { X } from "lucide-react";
 import { VideoThumbnail } from "./video-thumbnail";
 import { AudioWaveform } from "./audio-wave-form";
 import { TIMELINE_DURATION, CLIP_PADDING } from "../constants/editor-constants";
+import { memo } from "react";
 
 interface TimelineItemProps {
     item: TimelineItemType;
@@ -24,7 +25,7 @@ interface TimelineItemProps {
     onRemove: () => void;
 }
 
-export function TimelineItem({
+export const TimelineItem = memo(function TimelineItem({
     item,
     layer,
     isSelected,
@@ -122,4 +123,4 @@ export function TimelineItem({
             </div>
         </div>
     );
-}
+});

@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, memo } from "react";
 import { TimelineLayer as TimelineLayerType } from "@/app/types";
 import { TimelineMarkers } from "./TimelineMarkers";
 import { TimelinePlayhead } from "./TimelinePlayhead";
@@ -20,7 +20,7 @@ interface TimelineEditorProps {
     onOpenMusicDialog: () => void;
 }
 
-export function TimelineEditor({
+export const TimelineEditor = memo(function TimelineEditor({
     layers,
     setLayers,
     currentTime,
@@ -140,4 +140,4 @@ export function TimelineEditor({
             </div>
         </div>
     );
-}
+});

@@ -245,129 +245,45 @@ export function EditorTab() {
             isInitializingRef.current = true;
 
             try {
+                let initialLayers: TimelineLayer[] = [];
+
                 if (scenarioId && isAuthenticated) {
                     const savedLayers = await loadTimeline(scenarioId);
                     if (savedLayers && savedLayers.length > 0) {
                         clientLogger.info(
                             "Loaded saved timeline from Firestore",
                         );
-                        const resolvedLayers =
-                            await resolveLayerUrls(savedLayers);
-                        setLayers(resolvedLayers);
-                        lastSavedLayersRef.current =
-                            JSON.stringify(resolvedLayers);
+                        initialLayers = savedLayers;
+                        setLayers(initialLayers);
                         setIsTimelineLoaded(true);
+
+                        // Resolve URLs progressively
+                        await resolveLayerUrlsProgressively(initialLayers);
                         isInitializingRef.current = false;
                         return;
                     }
                 }
 
                 clientLogger.info("Initializing timeline from scenario");
-                const initialLayers = await initializeLayersFromScenario();
+                initialLayers = createInitialLayersStructure();
                 setLayers(initialLayers);
                 setIsTimelineLoaded(true);
+
+                // Resolve URLs progressively
+                await resolveLayerUrlsProgressively(initialLayers);
             } catch (error) {
                 clientLogger.error("Error initializing timeline:", error);
-                const initialLayers = await initializeLayersFromScenario();
+                const initialLayers = createInitialLayersStructure();
                 setLayers(initialLayers);
                 setIsTimelineLoaded(true);
+                await resolveLayerUrlsProgressively(initialLayers);
             } finally {
                 isInitializingRef.current = false;
             }
         };
 
-        const resolveLayerUrls = async (
-            savedLayers: TimelineLayer[],
-        ): Promise<TimelineLayer[]> => {
-            const resolvedLayers = JSON.parse(
-                JSON.stringify(savedLayers),
-            ) as TimelineLayer[];
-            const videoLayer = resolvedLayers.find(
-                (layer) => layer.id === "videos",
-            );
-            const voiceoverLayer = resolvedLayers.find(
-                (layer) => layer.id === "voiceovers",
-            );
-            const musicLayer = resolvedLayers.find(
-                (layer) => layer.id === "music",
-            );
-
-            if (videoLayer) {
-                for (let i = 0; i < videoLayer.items.length; i++) {
-                    const item = videoLayer.items[i];
-                    const sceneIndex = parseInt(item.id.replace("video-", ""));
-                    const scene = scenario?.scenes?.[sceneIndex];
-                    if (scene?.videoUri) {
-                        try {
-                            const result = await getDynamicImageUrl(
-                                scene.videoUri,
-                            );
-                            if (result?.url) {
-                                item.content = result.url;
-                                if (!item.metadata?.originalDuration) {
-                                    const originalDuration =
-                                        await getVideoDuration(
-                                            result.url,
-                                            SCENE_DURATION,
-                                        );
-                                    item.metadata = {
-                                        ...item.metadata,
-                                        originalDuration,
-                                    };
-                                }
-                            }
-                        } catch (error) {
-                            clientLogger.error(
-                                `Error resolving video URL for item ${item.id}:`,
-                                error,
-                            );
-                        }
-                    }
-                }
-            }
-
-            if (voiceoverLayer) {
-                for (const item of voiceoverLayer.items) {
-                    const sceneIndex = parseInt(
-                        item.id.replace("voiceover-", ""),
-                    );
-                    const scene = scenario?.scenes?.[sceneIndex];
-                    if (scene?.voiceoverAudioUri) {
-                        try {
-                            const result = await getDynamicImageUrl(
-                                scene.voiceoverAudioUri,
-                            );
-                            if (result?.url) item.content = result.url;
-                        } catch (error) {
-                            clientLogger.error(
-                                `Error resolving voiceover URL for item ${item.id}:`,
-                                error,
-                            );
-                        }
-                    }
-                }
-            }
-
-            if (
-                musicLayer &&
-                musicLayer.items.length > 0 &&
-                scenario?.musicUrl
-            ) {
-                try {
-                    const result = await getDynamicImageUrl(scenario.musicUrl);
-                    if (result?.url) musicLayer.items[0].content = result.url;
-                } catch (error) {
-                    clientLogger.error("Error resolving music URL:", error);
-                }
-            }
-
-            return resolvedLayers;
-        };
-
-        const initializeLayersFromScenario = async (): Promise<
-            TimelineLayer[]
-        > => {
-            const initialLayers: TimelineLayer[] = [
+        const createInitialLayersStructure = (): TimelineLayer[] => {
+            return [
                 {
                     id: "videos",
                     name: "Videos",
@@ -391,108 +307,180 @@ export function EditorTab() {
                 },
                 { id: "music", name: "Music", type: "music", items: [] },
             ];
+        };
 
-            const videoLayer = initialLayers.find(
-                (layer) => layer.id === "videos",
-            )!;
-            const voiceoverLayer = initialLayers.find(
-                (layer) => layer.id === "voiceovers",
-            )!;
-            const musicLayer = initialLayers.find(
-                (layer) => layer.id === "music",
-            )!;
+        const resolveLayerUrlsProgressively = async (
+            baseLayers: TimelineLayer[],
+        ) => {
+            // Create a deep copy to work with
+            const workingLayers = JSON.parse(
+                JSON.stringify(baseLayers),
+            ) as TimelineLayer[];
 
-            const videoScenes = scenario?.scenes || [];
-            for (let i = 0; i < videoScenes.length; i++) {
-                const scene = videoScenes[i];
-                if (scene.videoUri) {
-                    try {
-                        const result = await getDynamicImageUrl(scene.videoUri);
-                        if (result?.url && videoLayer.items[i]) {
-                            videoLayer.items[i].content = result.url;
-                            const originalDuration = await getVideoDuration(
-                                result.url,
-                                SCENE_DURATION,
+            // 1. Resolve Videos
+            const videoLayer = workingLayers.find((l) => l.id === "videos");
+            if (videoLayer) {
+                for (let i = 0; i < videoLayer.items.length; i++) {
+                    const item = videoLayer.items[i];
+                    const sceneIndex = parseInt(item.id.replace("video-", ""));
+                    const scene = scenario?.scenes?.[sceneIndex];
+
+                    if (scene?.videoUri && !item.content) {
+                        try {
+                            const result = await getDynamicImageUrl(
+                                scene.videoUri,
                             );
-                            videoLayer.items[i].metadata = {
-                                ...videoLayer.items[i].metadata,
-                                originalDuration,
-                                trimStart: 0,
-                            };
+                            if (result?.url) {
+                                item.content = result.url;
+                                if (!item.metadata?.originalDuration) {
+                                    const originalDuration =
+                                        await getVideoDuration(
+                                            result.url,
+                                            SCENE_DURATION,
+                                        );
+                                    item.metadata = {
+                                        ...item.metadata,
+                                        originalDuration,
+                                        trimStart: 0,
+                                    };
+                                }
+                                // Update state after each video is resolved
+                                setLayers(
+                                    JSON.parse(JSON.stringify(workingLayers)),
+                                );
+                            }
+                        } catch (error) {
+                            clientLogger.error(
+                                `Error resolving video URL for item ${item.id}:`,
+                                error,
+                            );
                         }
-                    } catch (error) {
-                        clientLogger.error(
-                            `Error resolving video URL for scene ${i}:`,
-                            error,
-                        );
                     }
                 }
             }
 
-            const voiceoverItems: TimelineItem[] = [];
-            const voiceScenes = scenario?.scenes || [];
-            for (let i = 0; i < voiceScenes.length; i++) {
-                const scene = voiceScenes[i];
-                if (scene.voiceoverAudioUri) {
+            // 2. Resolve Voiceovers
+            const voiceoverLayer = workingLayers.find(
+                (l) => l.id === "voiceovers",
+            );
+            if (voiceoverLayer) {
+                // If it's a fresh initialization from scenario, we need to populate voiceover items
+                if (voiceoverLayer.items.length === 0) {
+                    const voiceScenes = scenario?.scenes || [];
+                    for (let i = 0; i < voiceScenes.length; i++) {
+                        const scene = voiceScenes[i];
+                        if (scene.voiceoverAudioUri) {
+                            try {
+                                const result = await getDynamicImageUrl(
+                                    scene.voiceoverAudioUri,
+                                );
+                                if (result?.url) {
+                                    const duration = await getAudioDuration(
+                                        result.url,
+                                        SCENE_DURATION,
+                                    );
+                                    voiceoverLayer.items.push({
+                                        id: `voiceover-${i}`,
+                                        startTime: i * SCENE_DURATION,
+                                        duration,
+                                        content: result.url,
+                                        type: "voiceover",
+                                        metadata: {
+                                            originalDuration: duration,
+                                            trimStart: 0,
+                                        },
+                                    });
+                                    // Update state after each voiceover is resolved
+                                    setLayers(
+                                        JSON.parse(
+                                            JSON.stringify(workingLayers),
+                                        ),
+                                    );
+                                }
+                            } catch (error) {
+                                clientLogger.error(
+                                    `Error resolving voiceover for scene ${i}:`,
+                                    error,
+                                );
+                            }
+                        }
+                    }
+                } else {
+                    // Just resolve URLs for existing items
+                    for (const item of voiceoverLayer.items) {
+                        const sceneIndex = parseInt(
+                            item.id.replace("voiceover-", ""),
+                        );
+                        const scene = scenario?.scenes?.[sceneIndex];
+                        if (scene?.voiceoverAudioUri && !item.content) {
+                            try {
+                                const result = await getDynamicImageUrl(
+                                    scene.voiceoverAudioUri,
+                                );
+                                if (result?.url) {
+                                    item.content = result.url;
+                                    setLayers(
+                                        JSON.parse(
+                                            JSON.stringify(workingLayers),
+                                        ),
+                                    );
+                                }
+                            } catch (error) {
+                                clientLogger.error(
+                                    `Error resolving voiceover URL for item ${item.id}:`,
+                                    error,
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 3. Resolve Music
+            const musicLayer = workingLayers.find((l) => l.id === "music");
+            if (musicLayer && scenario?.musicUrl) {
+                if (
+                    musicLayer.items.length === 0 ||
+                    !musicLayer.items[0].content
+                ) {
                     try {
                         const result = await getDynamicImageUrl(
-                            scene.voiceoverAudioUri,
+                            scenario.musicUrl,
                         );
                         if (result?.url) {
-                            const duration = await getAudioDuration(
-                                result.url,
-                                SCENE_DURATION,
+                            if (musicLayer.items.length === 0) {
+                                const duration = await getAudioDuration(
+                                    result.url,
+                                    SCENE_DURATION,
+                                );
+                                musicLayer.items = [
+                                    {
+                                        id: "background-music",
+                                        startTime: 0,
+                                        duration,
+                                        content: result.url,
+                                        type: "music",
+                                        metadata: {
+                                            originalDuration: duration,
+                                            trimStart: 0,
+                                        },
+                                    },
+                                ];
+                            } else {
+                                musicLayer.items[0].content = result.url;
+                            }
+                            setLayers(
+                                JSON.parse(JSON.stringify(workingLayers)),
                             );
-                            voiceoverItems.push({
-                                id: `voiceover-${i}`,
-                                startTime: i * SCENE_DURATION,
-                                duration,
-                                content: result.url,
-                                type: "voiceover",
-                                metadata: {
-                                    originalDuration: duration,
-                                    trimStart: 0,
-                                },
-                            });
                         }
                     } catch (error) {
-                        clientLogger.error(
-                            `Error resolving voiceover for scene ${i}:`,
-                            error,
-                        );
+                        clientLogger.error("Error resolving music URL:", error);
                     }
                 }
             }
-            voiceoverLayer.items = voiceoverItems;
 
-            if (scenario?.musicUrl) {
-                try {
-                    const result = await getDynamicImageUrl(scenario.musicUrl);
-                    if (result?.url) {
-                        const duration = await getAudioDuration(
-                            result.url,
-                            SCENE_DURATION,
-                        );
-                        musicLayer.items = [
-                            {
-                                id: "background-music",
-                                startTime: 0,
-                                duration,
-                                content: result.url,
-                                type: "music",
-                                metadata: {
-                                    originalDuration: duration,
-                                    trimStart: 0,
-                                },
-                            },
-                        ];
-                    }
-                } catch (error) {
-                    clientLogger.error("Error resolving music:", error);
-                }
-            }
-
-            return initialLayers;
+            // Final sync of the last saved layers to prevent immediate auto-save
+            lastSavedLayersRef.current = JSON.stringify(workingLayers);
         };
 
         initializeTimeline();

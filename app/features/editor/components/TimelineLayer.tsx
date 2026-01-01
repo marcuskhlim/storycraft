@@ -5,6 +5,7 @@ import {
 import { TimelineItem } from "./TimelineItem";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { memo } from "react";
 
 interface TimelineLayerProps {
     layer: TimelineLayerType;
@@ -31,7 +32,7 @@ interface TimelineLayerProps {
     onOpenMusicDialog: () => void;
 }
 
-export function TimelineLayer({
+export const TimelineLayer = memo(function TimelineLayer({
     layer,
     selectedItem,
     isDragging,
@@ -185,4 +186,4 @@ export function TimelineLayer({
             </div>
         </div>
     );
-}
+});

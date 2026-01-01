@@ -3,8 +3,9 @@
 import { cn } from "@/lib/utils/utils";
 import { Check } from "lucide-react";
 import { useTopNavActions } from "@/app/features/shared/hooks/use-topnav-actions";
+import { memo } from "react";
 
-export function TopNav() {
+export const TopNav = memo(function TopNav() {
     const {
         steps,
         activeTab,
@@ -63,4 +64,4 @@ export function TopNav() {
             })}
         </nav>
     );
-}
+});

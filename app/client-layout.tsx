@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { useAuthSync } from "@/app/features/shared/hooks/use-auth";
+import { Toaster } from "sonner";
 import { SettingsProvider } from "@/app/features/shared/hooks/use-settings";
 import { ErrorBoundary } from "@/app/features/shared/components/error-boundary";
 
@@ -35,7 +36,10 @@ function ClientLayoutContent({ children }: { children: React.ReactNode }) {
 
     return (
         <SettingsProvider>
-            <ErrorBoundary>{children}</ErrorBoundary>
+            <ErrorBoundary>
+                {children}
+                <Toaster position="top-right" richColors />
+            </ErrorBoundary>
         </SettingsProvider>
     );
 }

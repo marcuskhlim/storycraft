@@ -27,8 +27,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { memo } from "react";
+import { toast } from "sonner";
 
-export function Sidebar() {
+export const Sidebar = memo(function Sidebar() {
     const { settings, updateSettings } = useSettings();
     const { scenarios, isLoading, loadScenario, setCurrentScenarioId } =
         useScenario();
@@ -75,6 +77,7 @@ export function Sidebar() {
                 handleSelectScenario(appScenario, scenario.id);
             }
         } catch (error) {
+            toast.error("Failed to load scenario details");
             console.error("Error loading fresh scenario:", error);
             // Fallback to cached data if fetch fails
             const appScenario: Scenario = {
@@ -357,4 +360,4 @@ export function Sidebar() {
             </div>
         </aside>
     );
-}
+});

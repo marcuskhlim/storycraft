@@ -4,11 +4,42 @@ import { useScenario } from "@/app/features/scenario/hooks/use-scenario";
 import { BookOpen } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 
 import { CreateTab } from "@/app/features/create/components/create-tab";
-import { EditorTab } from "@/app/features/editor/components/editor-tab";
-import { ScenarioTab } from "@/app/features/scenario/components/scenario-tab";
-import { StoryboardTab } from "@/app/features/storyboard/components/storyboard-tab";
+import { TabSkeleton } from "@/app/features/shared/components/tab-skeleton";
+
+const EditorTab = dynamic(
+    () =>
+        import("@/app/features/editor/components/editor-tab").then(
+            (mod) => mod.EditorTab,
+        ),
+    {
+        loading: () => <TabSkeleton />,
+        ssr: false,
+    },
+);
+
+const ScenarioTab = dynamic(
+    () =>
+        import("@/app/features/scenario/components/scenario-tab").then(
+            (mod) => mod.ScenarioTab,
+        ),
+    {
+        loading: () => <TabSkeleton />,
+    },
+);
+
+const StoryboardTab = dynamic(
+    () =>
+        import("@/app/features/storyboard/components/storyboard-tab").then(
+            (mod) => mod.StoryboardTab,
+        ),
+    {
+        loading: () => <TabSkeleton />,
+    },
+);
+
 import { UserProfile } from "@/app/features/shared/components/user-profile";
 import { Sidebar } from "@/app/features/shared/components/layout/sidebar";
 import { TopNav } from "@/app/features/shared/components/layout/top-nav";

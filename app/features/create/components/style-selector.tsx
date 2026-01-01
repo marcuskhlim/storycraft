@@ -18,6 +18,7 @@ import {
     getSignedUrlAction,
 } from "@/app/features/shared/actions/storageActions";
 import { useEffect } from "react";
+import { toast } from "sonner";
 
 export interface Style {
     name: string;
@@ -81,6 +82,7 @@ export function StyleSelector({
             };
             reader.readAsDataURL(file);
         } catch (error) {
+            toast.error("Error uploading style image");
             console.error("Error uploading style image:", error);
         } finally {
             setIsUploading(false);

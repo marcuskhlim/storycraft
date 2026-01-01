@@ -3,9 +3,9 @@
 import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import { getDynamicImageUrl } from "@/app/features/shared/actions/upload-to-gcs";
-import { Loader2 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, memo } from "react";
 import { clientLogger } from "@/lib/utils/client-logger";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface GcsImageProps {
     gcsUri: string | null;
@@ -13,16 +13,18 @@ interface GcsImageProps {
     className?: string;
     fill?: boolean;
     sizes?: string;
+    priority?: boolean;
 }
 
 const isDevelopment = process.env.NODE_ENV === "development";
 
-export function GcsImage({
+export const GcsImage = memo(function GcsImage({
     gcsUri,
     alt,
     className,
     fill = true,
     sizes,
+    priority = false,
 }: GcsImageProps) {
     const { data: imageData, isLoading } = useQuery({
         queryKey: ["image", gcsUri],
@@ -58,24 +60,19 @@ export function GcsImage({
 
     if (isLoading) {
         return (
-            <div className={`relative h-full w-full bg-gray-100 ${className}`}>
-                <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/30">
-                    <Loader2 className="h-12 w-12 animate-spin text-white" />
-                </div>
-                <Image
-                    src="/placeholder.svg"
-                    alt={`Loading ${alt}`}
-                    className={className}
-                    fill={fill}
-                    sizes={sizes}
-                />
+            <div
+                className={`relative h-full w-full overflow-hidden ${className}`}
+            >
+                <Skeleton className="absolute inset-0 h-full w-full" />
             </div>
         );
     }
 
     if (!imageUrl) {
         return (
-            <div className={`relative h-full w-full bg-gray-100 ${className}`}>
+            <div
+                className={`relative h-full w-full overflow-hidden bg-muted ${className}`}
+            >
                 <Image
                     src="/placeholder.svg"
                     alt={alt}
@@ -93,14 +90,16 @@ export function GcsImage({
     }
 
     return (
-        <div className={`relative h-full w-full bg-black ${className}`}>
+        <div
+            className={`relative h-full w-full overflow-hidden bg-black ${className}`}
+        >
             <Image
                 src={imageUrl}
                 alt={alt}
                 className={className}
                 fill={fill}
                 sizes={sizes}
-                priority
+                priority={priority}
                 onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.src = "/placeholder.svg";
@@ -109,4 +108,4 @@ export function GcsImage({
             />
         </div>
     );
-}
+});

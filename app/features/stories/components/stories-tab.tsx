@@ -13,6 +13,7 @@ import { useAuth } from "@/app/features/shared/hooks/use-auth";
 import { BookOpen, Calendar, Clock, Play, Plus, Trash2 } from "lucide-react";
 import { Scenario } from "@/app/types";
 import { GcsImage } from "@/app/features/shared/components/ui/gcs-image";
+import { toast } from "sonner";
 
 interface StoriesTabProps {
     onSelectScenario: (scenario: Scenario, scenarioId?: string) => void;
@@ -66,7 +67,9 @@ export function StoriesTab({
     const handleDeleteScenario = async (scenarioId: string) => {
         try {
             await deleteScenario(scenarioId);
+            toast.success("Story deleted successfully");
         } catch (err) {
+            toast.error("Failed to delete story");
             console.error("Error deleting scenario:", err);
         }
     };
