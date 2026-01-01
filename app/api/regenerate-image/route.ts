@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateImageRest } from "@/lib/imagen";
-import { imagePromptToString } from "@/lib/prompt-utils";
+import { generateImageRest } from "@/lib/api/imagen";
+import { imagePromptToString } from "@/lib/utils/prompt-utils";
 import { Scenario, ImagePrompt } from "@/app/types";
 import yaml from "js-yaml";
 import { createPartFromUri, createPartFromText } from "@google/genai";
-import { generateImage } from "@/lib/gemini";
+import { generateImage } from "@/lib/api/gemini";
 import logger from "@/app/logger";
-import { getRAIUserMessage } from "@/lib/rai";
-import { createCollage } from "@/app/actions/resize-image";
+import { getRAIUserMessage } from "@/lib/utils/rai";
+import { createCollage } from "@/app/features/storyboard/actions/resize-image";
 
 //export const runtime = 'nodejs';
 

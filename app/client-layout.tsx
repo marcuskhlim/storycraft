@@ -2,9 +2,9 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
-import { SettingsProvider } from "@/hooks/use-settings";
-import { ErrorBoundary } from "./components/error-boundary";
+import { useAuth } from "@/app/features/shared/hooks/use-auth";
+import { SettingsProvider } from "@/app/features/shared/hooks/use-settings";
+import { ErrorBoundary } from "@/app/features/shared/components/error-boundary";
 
 export default function ClientLayout({
     children,

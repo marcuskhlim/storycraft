@@ -1,9 +1,9 @@
 import { Scene, Scenario } from "@/app/types";
-import { videoPromptToString } from "@/lib/prompt-utils";
-import { generateSceneVideo, waitForOperation } from "@/lib/veo";
+import { videoPromptToString } from "@/lib/utils/prompt-utils";
+import { generateSceneVideo, waitForOperation } from "@/lib/api/veo";
 
 import logger from "@/app/logger";
-import { getRAIUserMessage } from "@/lib/rai";
+import { getRAIUserMessage } from "@/lib/utils/rai";
 
 const USE_COSMO = process.env.USE_COSMO === "true";
 const GCS_VIDEOS_STORAGE_URI = process.env.GCS_VIDEOS_STORAGE_URI;

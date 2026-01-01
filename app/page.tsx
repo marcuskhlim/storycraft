@@ -1,24 +1,24 @@
 "use client";
 
-import { useScenario } from "@/hooks/use-scenario";
-import { useTimeline } from "@/hooks/use-timeline";
+import { useScenario } from "@/app/features/scenario/hooks/use-scenario";
+import { useTimeline } from "@/app/features/editor/hooks/use-timeline";
 import { BookOpen, LayoutGrid, PenLine, Scissors } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef } from "react";
 import {
     generateScenario,
     generateStoryboard,
-} from "./actions/generate-scenes";
-import { exportVideoClient } from "@/lib/client-export";
-import { clientLogger } from "@/lib/client-logger";
+} from "@/app/features/scenario/actions/generate-scenes";
+import { exportVideoClient } from "@/lib/utils/client-export";
+import { clientLogger } from "@/lib/utils/client-logger";
 
-import { resizeImage } from "./actions/resize-image";
-import { CreateTab } from "./components/create/create-tab";
-import { type Style } from "./components/create/style-selector";
-import { EditorTab } from "./components/editor/editor-tab";
-import { ScenarioTab } from "./components/scenario/scenario-tab";
-import { StoryboardTab } from "./components/storyboard/storyboard-tab";
-import { UserProfile } from "./components/user-profile";
+import { resizeImage } from "@/app/features/storyboard/actions/resize-image";
+import { CreateTab } from "@/app/features/create/components/create-tab";
+import { type Style } from "@/app/features/create/components/style-selector";
+import { EditorTab } from "@/app/features/editor/components/editor-tab";
+import { ScenarioTab } from "@/app/features/scenario/components/scenario-tab";
+import { StoryboardTab } from "@/app/features/storyboard/components/storyboard-tab";
+import { UserProfile } from "@/app/features/shared/components/user-profile";
 import { Scenario, Scene, TimelineLayer, type Language } from "./types";
 import {
     regenerateCharacterAndScenarioFromText,
@@ -27,15 +27,15 @@ import {
     regenerateSettingAndScenarioFromText,
     regeneratePropAndScenarioFromImage,
     regeneratePropAndScenarioFromText,
-} from "./actions/modify-scenario";
-import { Sidebar } from "./components/layout/sidebar";
-import { TopNav } from "./components/layout/top-nav";
+} from "@/app/features/scenario/actions/modify-scenario";
+import { Sidebar } from "@/app/features/shared/components/layout/sidebar";
+import { TopNav } from "@/app/features/shared/components/layout/top-nav";
 import { Button } from "@/components/ui/button";
-import { useSettings } from "@/hooks/use-settings";
+import { useSettings } from "@/app/features/shared/hooks/use-settings";
 
-import { useScenarioStore } from "@/stores/useScenarioStore";
-import { useLoadingStore } from "@/stores/useLoadingStore";
-import { useEditorStore } from "@/stores/useEditorStore";
+import { useScenarioStore } from "@/app/features/scenario/stores/useScenarioStore";
+import { useLoadingStore } from "@/app/features/shared/stores/useLoadingStore";
+import { useEditorStore } from "@/app/features/editor/stores/useEditorStore";
 
 const styles: Style[] = [
     { name: "Photographic", image: "/styles/photographic_v2.png" },
