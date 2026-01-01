@@ -6,7 +6,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export interface MusicParams {
     description: string;
@@ -30,6 +30,13 @@ export function MusicSelectionDialog({
     const [description, setDescription] = useState<string>(
         currentParams.description,
     );
+
+    // Sync state with props when currentParams.description changes or dialog opens
+    useEffect(() => {
+        if (isOpen) {
+            setDescription(currentParams.description);
+        }
+    }, [currentParams.description, isOpen]);
 
     const handleGenerate = () => {
         if (description.trim()) {
