@@ -24,42 +24,9 @@ import { clientLogger } from "@/lib/utils/client-logger";
 
 import { useScenarioStore } from "@/app/features/scenario/stores/useScenarioStore";
 import { useLoadingStore } from "@/app/features/shared/stores/useLoadingStore";
+import { useScenarioActions } from "@/app/features/scenario/hooks/use-scenario-actions";
 
-interface ScenarioTabProps {
-    onGenerateStoryBoard: () => void;
-    onRegenerateCharacterImage: (
-        characterIndex: number,
-        name: string,
-        description: string,
-        voice: string,
-    ) => Promise<void>;
-    onUploadCharacterImage: (
-        characterIndex: number,
-        file: File,
-    ) => Promise<void>;
-    onRegenerateSettingImage: (
-        settingIndex: number,
-        name: string,
-        description: string,
-    ) => Promise<void>;
-    onUploadSettingImage: (settingIndex: number, file: File) => Promise<void>;
-    onRegeneratePropImage: (
-        propIndex: number,
-        name: string,
-        description: string,
-    ) => Promise<void>;
-    onUploadPropImage: (propIndex: number, file: File) => Promise<void>;
-}
-
-export function ScenarioTab({
-    onGenerateStoryBoard,
-    onRegenerateCharacterImage,
-    onUploadCharacterImage,
-    onRegenerateSettingImage,
-    onUploadSettingImage,
-    onRegeneratePropImage,
-    onUploadPropImage,
-}: ScenarioTabProps) {
+export function ScenarioTab() {
     const { scenario, setScenario } = useScenarioStore();
     const {
         scenario: isLoading,
@@ -67,6 +34,16 @@ export function ScenarioTab({
         settings: generatingSettingImages,
         props: generatingPropImages,
     } = useLoadingStore();
+
+    const {
+        handleGenerateStoryBoard,
+        handleRegenerateCharacterImage,
+        handleUploadCharacterImage,
+        handleRegenerateSettingImage,
+        handleUploadSettingImage,
+        handleRegeneratePropImage,
+        handleUploadPropImage,
+    } = useScenarioActions();
 
     const [isEditing, setIsEditing] = useState(false);
     const [editedScenario, setEditedScenario] = useState(
@@ -471,8 +448,8 @@ export function ScenarioTab({
         event: React.ChangeEvent<HTMLInputElement>,
     ) => {
         const file = event.target.files?.[0];
-        if (file && onUploadCharacterImage) {
-            await onUploadCharacterImage(index, file);
+        if (file) {
+            await handleUploadCharacterImage(index, file);
         }
     };
 
@@ -485,8 +462,8 @@ export function ScenarioTab({
         event: React.ChangeEvent<HTMLInputElement>,
     ) => {
         const file = event.target.files?.[0];
-        if (file && onUploadSettingImage) {
-            await onUploadSettingImage(index, file);
+        if (file) {
+            await handleUploadSettingImage(index, file);
         }
     };
 
@@ -499,8 +476,8 @@ export function ScenarioTab({
         event: React.ChangeEvent<HTMLInputElement>,
     ) => {
         const file = event.target.files?.[0];
-        if (file && onUploadPropImage) {
-            await onUploadPropImage(index, file);
+        if (file) {
+            await handleUploadPropImage(index, file);
         }
     };
 
@@ -700,7 +677,7 @@ export function ScenarioTab({
                             <LoadingMessages isLoading={isLoading} />
                             <Button
                                 size="lg"
-                                onClick={onGenerateStoryBoard}
+                                onClick={handleGenerateStoryBoard}
                                 disabled={isLoading}
                                 className="rounded-2xl bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
                             >
@@ -782,7 +759,7 @@ export function ScenarioTab({
                                             size="icon"
                                             className="bg-black/50 hover:bg-blue-500 hover:text-white"
                                             onClick={() =>
-                                                onRegenerateCharacterImage?.(
+                                                handleRegenerateCharacterImage(
                                                     index,
                                                     character.name,
                                                     character.description,
@@ -984,7 +961,7 @@ export function ScenarioTab({
                                             size="icon"
                                             className="bg-black/50 hover:bg-blue-500 hover:text-white"
                                             onClick={() =>
-                                                onRegeneratePropImage?.(
+                                                handleRegeneratePropImage(
                                                     index,
                                                     prop.name,
                                                     prop.description,
@@ -1158,7 +1135,7 @@ export function ScenarioTab({
                                             size="icon"
                                             className="bg-black/50 hover:bg-blue-500 hover:text-white"
                                             onClick={() =>
-                                                onRegenerateSettingImage?.(
+                                                handleRegenerateSettingImage(
                                                     index,
                                                     setting.name,
                                                     setting.description,

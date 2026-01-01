@@ -15,7 +15,7 @@ import {
     Image as ImageIcon,
 } from "lucide-react";
 import { useState } from "react";
-import { Scene, ImagePrompt, VideoPrompt } from "@/app/types";
+import { ImagePrompt, VideoPrompt } from "@/app/types";
 import { SceneData } from "./scene-data";
 import { SceneCard } from "./scene-card";
 import { GcsImage } from "@/app/features/shared/components/ui/gcs-image";
@@ -122,34 +122,26 @@ function VideoPromptDisplay({ videoPrompt }: { videoPrompt: VideoPrompt }) {
 
 import { useScenarioStore } from "@/app/features/scenario/stores/useScenarioStore";
 import { useLoadingStore } from "@/app/features/shared/stores/useLoadingStore";
+import { useStoryboardActions } from "@/app/features/storyboard/hooks/use-storyboard-actions";
 
 type ViewMode = "grid" | "list" | "slideshow";
 type DisplayMode = "image" | "video";
 
-interface StoryboardTabProps {
-    onGenerateAllVideos: () => Promise<void>;
-    onUpdateScene: (index: number, updatedScene: Scene) => void;
-    onRegenerateImage: (index: number) => Promise<void>;
-    onGenerateVideo: (index: number) => Promise<void>;
-    onUploadImage: (index: number, file: File) => Promise<void>;
-    onAddScene: () => void;
-    onRemoveScene: (index: number) => void;
-    onReorderScenes: (fromIndex: number, toIndex: number) => void;
-}
-
-export function StoryboardTab({
-    onGenerateAllVideos,
-    onUpdateScene,
-    onRegenerateImage,
-    onGenerateVideo,
-    onUploadImage,
-    onAddScene,
-    onRemoveScene,
-    onReorderScenes,
-}: StoryboardTabProps) {
+export function StoryboardTab() {
     const { scenario, errorMessage } = useScenarioStore();
     const { video: isVideoLoading, scenes: generatingScenes } =
         useLoadingStore();
+
+    const {
+        handleRegenerateImage,
+        handleGenerateAllVideos,
+        handleGenerateVideo,
+        handleUpdateScene,
+        handleUploadImage,
+        handleAddScene,
+        handleRemoveScene,
+        handleReorderScenes,
+    } = useStoryboardActions();
 
     const [viewMode, setViewMode] = useState<ViewMode>("grid");
     const [displayMode, setDisplayMode] = useState<DisplayMode>("image");
@@ -163,7 +155,7 @@ export function StoryboardTab({
     const scenes = scenario.scenes;
 
     const handleGenerateAllVideosClick = () => {
-        onGenerateAllVideos();
+        handleGenerateAllVideos();
     };
 
     // No need for effects to sync these states - handle clamping at usage time and defaulting at usage time
@@ -205,7 +197,7 @@ export function StoryboardTab({
     const handleDrop = (index: number) => (e: React.DragEvent) => {
         e.preventDefault();
         if (draggedIndex !== null && draggedIndex !== index) {
-            onReorderScenes(draggedIndex, index);
+            handleReorderScenes(draggedIndex, index);
         }
         setDraggedIndex(null);
         setDragOverIndex(null);
@@ -223,16 +215,18 @@ export function StoryboardTab({
                                 scene={scene}
                                 scenario={scenario}
                                 onUpdate={(updatedScene) =>
-                                    onUpdateScene(index, updatedScene)
+                                    handleUpdateScene(index, updatedScene)
                                 }
                                 onRegenerateImage={() =>
-                                    onRegenerateImage(index)
+                                    handleRegenerateImage(index)
                                 }
-                                onGenerateVideo={() => onGenerateVideo(index)}
+                                onGenerateVideo={() =>
+                                    handleGenerateVideo(index)
+                                }
                                 onUploadImage={(file) =>
-                                    onUploadImage(index, file)
+                                    handleUploadImage(index, file)
                                 }
-                                onRemoveScene={() => onRemoveScene(index)}
+                                onRemoveScene={() => handleRemoveScene(index)}
                                 isGenerating={generatingScenes.has(index)}
                                 canDelete={scenes.length > 1}
                                 displayMode={displayMode}
@@ -246,7 +240,7 @@ export function StoryboardTab({
                         {/* Add Scene Card */}
                         <Card
                             className="cursor-pointer overflow-hidden border-2 border-dashed transition-colors hover:bg-accent/50"
-                            onClick={() => onAddScene()}
+                            onClick={() => handleAddScene()}
                         >
                             <div className="flex h-full flex-col">
                                 <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden bg-muted/30">
@@ -277,19 +271,22 @@ export function StoryboardTab({
                                         scene={scene}
                                         scenario={scenario}
                                         onUpdate={(updatedScene) =>
-                                            onUpdateScene(index, updatedScene)
+                                            handleUpdateScene(
+                                                index,
+                                                updatedScene,
+                                            )
                                         }
                                         onRegenerateImage={() =>
-                                            onRegenerateImage(index)
+                                            handleRegenerateImage(index)
                                         }
                                         onGenerateVideo={() =>
-                                            onGenerateVideo(index)
+                                            handleGenerateVideo(index)
                                         }
                                         onUploadImage={(file) =>
-                                            onUploadImage(index, file)
+                                            handleUploadImage(index, file)
                                         }
                                         onRemoveScene={() =>
-                                            onRemoveScene(index)
+                                            handleRemoveScene(index)
                                         }
                                         isGenerating={generatingScenes.has(
                                             index,
@@ -448,7 +445,7 @@ export function StoryboardTab({
                             <div className="w-1/3">
                                 <Card
                                     className="cursor-pointer overflow-hidden border-2 border-dashed transition-colors hover:bg-accent/50"
-                                    onClick={() => onAddScene()}
+                                    onClick={() => handleAddScene()}
                                 >
                                     <div className="flex h-full flex-col">
                                         <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden bg-muted/30">
@@ -580,7 +577,7 @@ export function StoryboardTab({
                             <div className="flex justify-center">
                                 <Button
                                     variant="outline"
-                                    onClick={() => onAddScene()}
+                                    onClick={() => handleAddScene()}
                                     className="border-2 border-dashed hover:bg-accent"
                                 >
                                     <Plus className="mr-2 h-4 w-4" />

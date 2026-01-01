@@ -7,6 +7,8 @@ import { useScenario } from "@/app/features/scenario/hooks/use-scenario";
 import { useAuth } from "@/app/features/shared/hooks/use-auth";
 import { Scenario } from "@/app/types";
 import { cn } from "@/lib/utils/utils";
+import { useScenarioStore } from "@/app/features/scenario/stores/useScenarioStore";
+import { useSidebarActions } from "@/app/features/shared/hooks/use-sidebar-actions";
 import {
     useSettings,
     LLM_OPTIONS,
@@ -28,23 +30,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 
-interface SidebarProps {
-    currentScenarioId?: string;
-    onSelectScenario: (scenario: Scenario, scenarioId?: string) => void;
-    onCreateNewStory: () => void;
-    isCollapsed: boolean;
-    onToggle: () => void;
-    refreshTrigger?: number; // Increment this to trigger a refresh of the scenarios list
-}
-
-export function Sidebar({
-    currentScenarioId,
-    onSelectScenario,
-    onCreateNewStory,
-    isCollapsed,
-    onToggle,
-    refreshTrigger,
-}: SidebarProps) {
+export function Sidebar() {
     const { settings, updateSettings } = useSettings();
     const {
         scenarios,
@@ -53,7 +39,17 @@ export function Sidebar({
         loadScenario,
         setCurrentScenarioId,
     } = useScenario();
+    const { scenario: currentScenario } = useScenarioStore();
     const { session } = useAuth();
+    const {
+        handleSelectScenario,
+        handleCreateNewStory,
+        toggleSidebar,
+        isCollapsed,
+        refreshTrigger,
+    } = useSidebarActions();
+
+    const currentScenarioId = currentScenario?.id;
 
     // Refresh scenarios when refreshTrigger changes
     useEffect(() => {
@@ -74,10 +70,11 @@ export function Sidebar({
             const freshScenario = await loadScenario(scenario.id);
 
             if (freshScenario) {
-                onSelectScenario(freshScenario, scenario.id);
+                handleSelectScenario(freshScenario, scenario.id);
             } else {
                 // Fallback to cached data if fetch fails
                 const appScenario: Scenario = {
+                    id: scenario.id,
                     name: scenario.name,
                     pitch: scenario.pitch,
                     scenario: scenario.scenario,
@@ -86,7 +83,7 @@ export function Sidebar({
                     durationSeconds: scenario.durationSeconds || 8,
                     genre: scenario.genre,
                     mood: scenario.mood,
-                    music: scenario.music,
+                    music: scenario.mood,
                     language: scenario.language,
                     characters: scenario.characters || [],
                     props: scenario.props || [],
@@ -95,12 +92,13 @@ export function Sidebar({
                     musicUrl: scenario.musicUrl,
                     logoOverlay: scenario.logoOverlay,
                 };
-                onSelectScenario(appScenario, scenario.id);
+                handleSelectScenario(appScenario, scenario.id);
             }
         } catch (error) {
             console.error("Error loading fresh scenario:", error);
             // Fallback to cached data if fetch fails
             const appScenario: Scenario = {
+                id: scenario.id,
                 name: scenario.name,
                 pitch: scenario.pitch,
                 scenario: scenario.scenario,
@@ -109,7 +107,7 @@ export function Sidebar({
                 durationSeconds: scenario.durationSeconds || 8,
                 genre: scenario.genre,
                 mood: scenario.mood,
-                music: scenario.music,
+                music: scenario.mood,
                 language: scenario.language,
                 characters: scenario.characters || [],
                 props: scenario.props || [],
@@ -118,7 +116,7 @@ export function Sidebar({
                 musicUrl: scenario.musicUrl,
                 logoOverlay: scenario.logoOverlay,
             };
-            onSelectScenario(appScenario, scenario.id);
+            handleSelectScenario(appScenario, scenario.id);
         }
     };
 
@@ -135,7 +133,7 @@ export function Sidebar({
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={onToggle}
+                        onClick={toggleSidebar}
                         className="text-muted-foreground hover:text-foreground"
                         title={
                             isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"
@@ -148,7 +146,7 @@ export function Sidebar({
 
             <div className="overflow-hidden px-3 py-4">
                 <Button
-                    onClick={onCreateNewStory}
+                    onClick={handleCreateNewStory}
                     className={cn(
                         "h-12 w-full justify-start overflow-hidden rounded-2xl bg-primary p-0 text-primary-foreground shadow-sm transition-all duration-300 hover:bg-primary/90",
                     )}

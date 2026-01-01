@@ -18,20 +18,19 @@ import { useLoadingStore } from "@/app/features/shared/stores/useLoadingStore";
 import { useEditorStore } from "@/app/features/editor/stores/useEditorStore";
 import { TimelineEditor } from "./TimelineEditor";
 import { getAudioDuration, getVideoDuration } from "../utils/editor-utils";
+import { useEditorActions } from "@/app/features/editor/hooks/use-editor-actions";
 
-interface EditorTabProps {
-    scenarioId: string | null;
-    onExportMovie: (layers: TimelineLayer[]) => Promise<void>;
-}
-
-export function EditorTab({ scenarioId, onExportMovie }: EditorTabProps) {
+export function EditorTab() {
     const { scenario, logoOverlay } = useScenarioStore();
+    const scenarioId = scenario?.id || null;
     const { video: isExporting } = useLoadingStore();
     const {
         currentTime,
         exportProgress,
         setCurrentTime: onTimeUpdate,
     } = useEditorStore();
+
+    const { handleExportMovie } = useEditorActions();
 
     const SCENE_DURATION = scenario?.durationSeconds || 8;
 
@@ -566,7 +565,7 @@ export function EditorTab({ scenarioId, onExportMovie }: EditorTabProps) {
                     )}
                     <Button
                         size="lg"
-                        onClick={() => onExportMovie(layers)}
+                        onClick={() => handleExportMovie(layers)}
                         disabled={isExporting}
                         className="rounded-2xl bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
                     >

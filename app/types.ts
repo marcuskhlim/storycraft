@@ -35,6 +35,7 @@ export interface Scene {
 }
 
 export interface Scenario {
+    id?: string;
     name: string;
     pitch: string;
     scenario: string;

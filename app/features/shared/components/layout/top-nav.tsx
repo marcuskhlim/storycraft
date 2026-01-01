@@ -2,20 +2,14 @@
 
 import { cn } from "@/lib/utils/utils";
 import { Check } from "lucide-react";
+import { useTopNavActions } from "@/app/features/shared/hooks/use-topnav-actions";
 
-interface Step {
-    id: string;
-    label: string;
-    disabled?: boolean;
-}
-
-interface TopNavProps {
-    steps: Step[];
-    activeTab: string;
-    onTabChange: (id: string) => void;
-}
-
-export function TopNav({ steps, activeTab, onTabChange }: TopNavProps) {
+export function TopNav() {
+    const {
+        steps,
+        activeTab,
+        handleTabChange: onTabChange,
+    } = useTopNavActions();
     const activeIndex = steps.findIndex((s) => s.id === activeTab);
 
     return (

@@ -79,15 +79,19 @@ const ASPECT_RATIOS = [
     { name: "9:16", value: "9:16", icon: Smartphone },
 ];
 
+const styles: Style[] = [
+    { name: "Photographic", image: "/styles/photographic_v2.png" },
+    { name: "2D Animation", image: "/styles/2d.png" },
+    { name: "Anime", image: "/styles/anime.png" },
+    { name: "3D Animation", image: "/styles/3d.png" },
+    { name: "Claymation", image: "/styles/claymation.png" },
+];
+
 import { useScenarioStore } from "@/app/features/scenario/stores/useScenarioStore";
 import { useLoadingStore } from "@/app/features/shared/stores/useLoadingStore";
+import { useCreateActions } from "@/app/features/create/hooks/use-create-actions";
 
-interface CreateTabProps {
-    onGenerate: () => Promise<void>;
-    styles: Style[];
-}
-
-export function CreateTab({ onGenerate, styles }: CreateTabProps) {
+export function CreateTab() {
     const {
         name,
         pitch,
@@ -102,6 +106,7 @@ export function CreateTab({ onGenerate, styles }: CreateTabProps) {
     } = useScenarioStore();
 
     const { scenario: isLoading } = useLoadingStore();
+    const { handleGenerateScenario } = useCreateActions();
 
     const totalLength = numScenes * durationSeconds;
 
@@ -132,7 +137,7 @@ export function CreateTab({ onGenerate, styles }: CreateTabProps) {
                     <LoadingMessages isLoading={isLoading} />
                     <Button
                         size="lg"
-                        onClick={onGenerate}
+                        onClick={() => handleGenerateScenario()}
                         disabled={
                             isLoading ||
                             pitch.trim() === "" ||
