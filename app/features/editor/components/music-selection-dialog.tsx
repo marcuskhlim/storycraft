@@ -31,6 +31,7 @@ export function MusicSelectionDialog({
         <Dialog open={isOpen} onOpenChange={onClose}>
             <MusicSelectionDialogContent
                 key={isOpen ? "open" : "closed"}
+                isOpen={isOpen}
                 onClose={onClose}
                 onMusicGenerate={onMusicGenerate}
                 isGenerating={isGenerating}

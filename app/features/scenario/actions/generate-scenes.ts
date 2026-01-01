@@ -26,6 +26,8 @@ import {
     generateStoryboardSchema,
 } from "@/app/schemas";
 
+import { DEFAULT_SETTINGS } from "@/lib/ai-config";
+
 export async function generateScenario(
     name: string,
     pitch: string,
@@ -34,8 +36,8 @@ export async function generateScenario(
     aspectRatio: string,
     durationSeconds: number,
     language: Language,
-    modelName: string = "gemini-2.5-flash",
-    thinkingBudget: number = 0,
+    modelName: string = DEFAULT_SETTINGS.llmModel,
+    thinkingBudget: number = DEFAULT_SETTINGS.thinkingBudget,
     styleImageUri?: string,
 ): Promise<Scenario> {
     try {
@@ -266,8 +268,8 @@ export async function generateStoryboard(
     numScenes: number,
     style: string,
     language: Language,
-    modelName: string = "gemini-2.5-flash",
-    thinkingBudget: number = 0,
+    modelName: string = DEFAULT_SETTINGS.llmModel,
+    thinkingBudget: number = DEFAULT_SETTINGS.thinkingBudget,
 ): Promise<Scenario> {
     logger.debug("Create a storyboard");
     logger.debug(scenario.scenario);

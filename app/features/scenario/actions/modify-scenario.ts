@@ -17,6 +17,8 @@ import {
     regenerateSettingTextSchema,
 } from "@/app/schemas";
 
+import { DEFAULT_SETTINGS } from "@/lib/ai-config";
+
 // Shared types
 export interface Character {
     name: string;
@@ -102,8 +104,8 @@ async function updateScenarioText(
     newName: string,
     newDescription: string,
     entityType: "character" | "setting" | "prop" = "character",
-    modelName: string = "gemini-2.5-flash",
-    thinkingBudget: number = 0,
+    modelName: string = DEFAULT_SETTINGS.llmModel,
+    thinkingBudget: number = DEFAULT_SETTINGS.thinkingBudget,
 ): Promise<string> {
     const text = await generateContent(
         `Update the following scenario to reflect ${entityType} changes. The ${entityType} previously named "${oldName}" is now named "${newName}" with the following updated description: "${newDescription}".
@@ -160,7 +162,7 @@ Return ONLY the updated scenario text, no additional formatting or explanations.
 async function generateCharacterImage(
     description: string,
     style: string,
-    modelName: string = "gemini-3-pro-image-preview",
+    modelName: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<string> {
     const orderedPrompt = {
         style,
@@ -195,7 +197,7 @@ async function generateSettingImage(
     description: string,
     style: string,
     aspectRatio: string = "16:9",
-    modelName: string = "gemini-3-pro-image-preview",
+    modelName: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<string> {
     const orderedPrompt = {
         style,
@@ -228,7 +230,7 @@ async function generateSettingImage(
 async function generatePropImage(
     description: string,
     style: string,
-    modelName: string = "gemini-3-pro-image-preview",
+    modelName: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<string> {
     const orderedPrompt = {
         style,
@@ -262,7 +264,7 @@ async function styleImage(
     imageGcsUri: string,
     description: string,
     style: string,
-    modelName: string = "gemini-3-pro-image-preview",
+    modelName: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<string> {
     const orderedPrompt = {
         style: style,
@@ -369,9 +371,9 @@ export async function regenerateCharacterAndScenarioFromText(
     newCharacterName: string,
     newCharacterDescription: string,
     style: string,
-    llmModel: string = "gemini-2.5-flash",
-    thinkingBudget: number = 0,
-    imageModel: string = "gemini-3-pro-image-preview",
+    llmModel: string = DEFAULT_SETTINGS.llmModel,
+    thinkingBudget: number = DEFAULT_SETTINGS.thinkingBudget,
+    imageModel: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<ScenarioUpdateResult> {
     try {
         regenerateCharacterTextSchema.parse({
@@ -425,9 +427,9 @@ export async function regenerateCharacterAndScenarioFromImage(
     imageGcsUri: string,
     allCharacters: Character[],
     style: string,
-    llmModel: string = "gemini-2.5-flash",
-    thinkingBudget: number = 0,
-    imageModel: string = "gemini-3-pro-image-preview",
+    llmModel: string = DEFAULT_SETTINGS.llmModel,
+    thinkingBudget: number = DEFAULT_SETTINGS.thinkingBudget,
+    imageModel: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<ScenarioUpdateResult> {
     try {
         regenerateCharacterImageSchema.parse({
@@ -522,9 +524,9 @@ export async function regenerateSettingAndScenarioFromText(
     newSettingDescription: string,
     style: string,
     aspectRatio: string = "16:9",
-    llmModel: string = "gemini-2.5-flash",
-    thinkingBudget: number = 0,
-    imageModel: string = "gemini-3-pro-image-preview",
+    llmModel: string = DEFAULT_SETTINGS.llmModel,
+    thinkingBudget: number = DEFAULT_SETTINGS.thinkingBudget,
+    imageModel: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<ScenarioUpdateResult> {
     try {
         regenerateSettingTextSchema.parse({
@@ -580,9 +582,9 @@ export async function regeneratePropAndScenarioFromText(
     newPropName: string,
     newPropDescription: string,
     style: string,
-    llmModel: string = "gemini-2.5-flash",
-    thinkingBudget: number = 0,
-    imageModel: string = "gemini-3-pro-image-preview",
+    llmModel: string = DEFAULT_SETTINGS.llmModel,
+    thinkingBudget: number = DEFAULT_SETTINGS.thinkingBudget,
+    imageModel: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<ScenarioUpdateResult> {
     try {
         regeneratePropTextSchema.parse({
@@ -637,9 +639,9 @@ export async function regenerateSettingAndScenarioFromImage(
     imageGcsUri: string,
     allSettings: Setting[],
     style: string,
-    llmModel: string = "gemini-2.5-flash",
-    thinkingBudget: number = 0,
-    imageModel: string = "gemini-3-pro-image-preview",
+    llmModel: string = DEFAULT_SETTINGS.llmModel,
+    thinkingBudget: number = DEFAULT_SETTINGS.thinkingBudget,
+    imageModel: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<ScenarioUpdateResult> {
     try {
         regenerateSettingImageSchema.parse({
@@ -731,9 +733,9 @@ export async function regeneratePropAndScenarioFromImage(
     imageGcsUri: string,
     allProps: Prop[],
     style: string,
-    llmModel: string = "gemini-2.5-flash",
-    thinkingBudget: number = 0,
-    imageModel: string = "gemini-3-pro-image-preview",
+    llmModel: string = DEFAULT_SETTINGS.llmModel,
+    thinkingBudget: number = DEFAULT_SETTINGS.thinkingBudget,
+    imageModel: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<ScenarioUpdateResult> {
     try {
         regeneratePropImageSchema.parse({

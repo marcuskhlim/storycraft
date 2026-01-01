@@ -1,6 +1,7 @@
 import { GoogleAuth } from "google-auth-library";
 import logger from "@/app/logger";
 import { getRAIUserMessage } from "@/lib/utils/rai";
+import { DEFAULT_SETTINGS } from "@/lib/ai-config";
 
 const LOCATION = process.env.LOCATION;
 const PROJECT_ID = process.env.PROJECT_ID;
@@ -40,7 +41,7 @@ async function getAccessToken(): Promise<string> {
 
 async function checkOperation(
     operationName: string,
-    model: string = "veo-3.0-generate-001",
+    model: string = DEFAULT_SETTINGS.videoModel,
 ): Promise<GenerateVideoResponse> {
     const token = await getAccessToken();
 
@@ -67,7 +68,7 @@ async function checkOperation(
 
 export async function waitForOperation(
     operationName: string,
-    model: string = "veo-3.0-generate-001",
+    model: string = DEFAULT_SETTINGS.videoModel,
 ): Promise<GenerateVideoResponse> {
     const checkInterval = 2000; // Interval for checking operation status (in milliseconds)
 
@@ -106,8 +107,8 @@ export async function generateSceneVideo(
     prompt: string,
     imageGcsUri: string,
     aspectRatio: string = "16:9",
-    model: string = "veo-3.0-generate-001",
-    generateAudio: boolean = true,
+    model: string = DEFAULT_SETTINGS.videoModel,
+    generateAudio: boolean = DEFAULT_SETTINGS.generateAudio,
     durationSeconds: number = 8,
 ): Promise<string> {
     const token = await getAccessToken();

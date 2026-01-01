@@ -4,6 +4,7 @@ import { generateSceneVideo, waitForOperation } from "@/lib/api/veo";
 
 import logger from "@/app/logger";
 import { getRAIUserMessage } from "@/lib/utils/rai";
+import { DEFAULT_SETTINGS } from "@/lib/ai-config";
 
 const USE_COSMO = process.env.USE_COSMO === "true";
 const GCS_VIDEOS_STORAGE_URI = process.env.GCS_VIDEOS_STORAGE_URI;
@@ -90,15 +91,17 @@ export async function POST(req: Request): Promise<Response> {
                         promptString,
                         scene.imageGcsUri!,
                         aspectRatio,
-                        model || "veo-3.0-generate-001",
-                        generateAudio !== false,
+                        model || DEFAULT_SETTINGS.videoModel,
+                        generateAudio !== undefined
+                            ? generateAudio
+                            : DEFAULT_SETTINGS.generateAudio,
                         durationSeconds,
                     );
                     logger.debug(`Operation started for scene ${index + 1}`);
 
                     const generateVideoResponse = await waitForOperation(
                         operationName,
-                        model || "veo-3.0-generate-001",
+                        model || DEFAULT_SETTINGS.videoModel,
                     );
                     logger.debug(
                         `Video generation completed for scene ${index + 1}`,

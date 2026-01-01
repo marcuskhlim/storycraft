@@ -9,12 +9,18 @@ import logger from "@/app/logger";
 import { getRAIUserMessage } from "@/lib/utils/rai";
 import { createCollage } from "@/app/features/storyboard/actions/resize-image";
 
+import { DEFAULT_SETTINGS } from "@/lib/ai-config";
+
 //export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { prompt, scenario, modelName } = body as {
+        const {
+            prompt,
+            scenario,
+            modelName = DEFAULT_SETTINGS.imageModel,
+        } = body as {
             prompt: ImagePrompt;
             scenario: Scenario;
             modelName?: string;

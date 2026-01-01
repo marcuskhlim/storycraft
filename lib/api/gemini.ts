@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from "uuid";
 import { uploadImage } from "@/lib/storage/storage";
 import logger from "@/app/logger";
 import { env } from "@/lib/utils/env";
+import { DEFAULT_SETTINGS } from "@/lib/ai-config";
 
 const PROJECT_ID = env.PROJECT_ID;
 
@@ -26,7 +27,7 @@ export async function generateContent(
         },
         responseMimeType: "application/json",
     },
-    model: string = "gemini-3-pro-preview",
+    model: string = DEFAULT_SETTINGS.llmModel,
 ): Promise<string | undefined> {
     logger.debug("Generate content : " + model);
     if (
@@ -70,7 +71,7 @@ export async function generateImage(
         responseModalities: ["IMAGE"],
         candidateCount: 1,
     },
-    model: string = "gemini-3-pro-image-preview",
+    model: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<GenerateNanoBananaImageResponse> {
     logger.debug(JSON.stringify(prompt, null, 2));
 
