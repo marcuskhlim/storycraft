@@ -55,7 +55,11 @@ export class ErrorBoundary extends Component<Props, State> {
                                 "An unexpected error occurred in this section of the application."}
                         </p>
                     </div>
-                    <Button onClick={handleReset} variant="outline" size="sm">
+                    <Button
+                        onClick={this.handleReset}
+                        variant="outline"
+                        size="sm"
+                    >
                         Try again
                     </Button>
                 </div>
@@ -64,8 +68,4 @@ export class ErrorBoundary extends Component<Props, State> {
 
         return this.props.children;
     }
-}
-
-function handleReset() {
-    window.location.reload();
 }
