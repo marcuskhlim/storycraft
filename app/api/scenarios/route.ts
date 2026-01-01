@@ -3,6 +3,7 @@ import { firestore } from "@/lib/firestore";
 import { auth } from "@/auth";
 import { Timestamp } from "@google-cloud/firestore";
 import { Scene } from "@/app/types";
+import logger from "@/app/logger";
 
 export async function POST(request: NextRequest) {
     try {
@@ -82,10 +83,9 @@ export async function POST(request: NextRequest) {
 
         if (scenarioDoc.exists) {
             // Update existing scenario
-            console.log("Updating scenario:", id);
-            console.log(
-                "Scenario data:",
-                JSON.stringify(firestoreScenario, null, 2),
+            logger.info(`Updating scenario: ${id}`);
+            logger.debug(
+                `Scenario data: ${JSON.stringify(firestoreScenario, null, 2)}`,
             );
             await scenarioRef.update({
                 ...firestoreScenario,
@@ -93,10 +93,9 @@ export async function POST(request: NextRequest) {
             });
         } else {
             // Create new scenario
-            console.log("Creating new scenario:", id);
-            console.log(
-                "Scenario data:",
-                JSON.stringify(firestoreScenario, null, 2),
+            logger.info(`Creating new scenario: ${id}`);
+            logger.debug(
+                `Scenario data: ${JSON.stringify(firestoreScenario, null, 2)}`,
             );
             await scenarioRef.set({
                 ...firestoreScenario,
@@ -110,7 +109,7 @@ export async function POST(request: NextRequest) {
             scenarioId: id,
         });
     } catch (error) {
-        console.error("Error saving scenario:", error);
+        logger.error(`Error saving scenario: ${error}`);
         return NextResponse.json(
             { error: "Failed to save scenario" },
             { status: 500 },
@@ -176,7 +175,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ scenarios });
         }
     } catch (error) {
-        console.error("Error fetching scenarios:", error);
+        logger.error(`Error fetching scenarios: ${error}`);
         return NextResponse.json(
             { error: "Failed to fetch scenarios" },
             { status: 500 },
@@ -231,7 +230,7 @@ export async function DELETE(request: NextRequest) {
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error("Error deleting scenario:", error);
+        logger.error(`Error deleting scenario: ${error}`);
         return NextResponse.json(
             { error: "Failed to delete scenario" },
             { status: 500 },

@@ -10,6 +10,7 @@ import {
     generateStoryboard,
 } from "./actions/generate-scenes";
 import { exportVideoClient } from "@/lib/client-export";
+import { clientLogger } from "@/lib/client-logger";
 
 import { resizeImage } from "./actions/resize-image";
 import { saveImageToPublic } from "./actions/upload-image";
@@ -106,17 +107,6 @@ export default function Home() {
     // Global settings
     const { settings } = useSettings();
 
-    useEffect(() => {
-        console.log("generatingScenes (in useEffect):", generatingScenes);
-    }, [generatingScenes]); // Log only when generatingScenes changes
-
-    useEffect(() => {
-        console.log(
-            "generatingCharacterImages (in useEffect):",
-            generatingCharacterImages,
-        );
-    }, [generatingCharacterImages]); // Log only when generatingCharacterImages changes
-
     // Auto-save scenario whenever it changes (debounced)
     // Skip auto-save when loading a scenario from sidebar to prevent overwriting with stale data
     useEffect(() => {
@@ -126,7 +116,6 @@ export default function Home() {
             return;
         }
         if (scenario && isAuthenticated) {
-            console.log("Auto-saving scenario to Firestore...");
             saveScenarioDebounced(
                 scenario,
                 getCurrentScenarioId() || undefined,
@@ -409,8 +398,8 @@ export default function Home() {
         setIsVideoLoading(true);
         setErrorMessage(null);
         try {
-            console.log("Export Movie Client Side");
-            console.log(layers);
+            clientLogger.log("Export Movie Client Side");
+            clientLogger.log(layers);
 
             const blob = await exportVideoClient(layers, (progress) => {
                 setExportProgress(progress);
@@ -453,7 +442,7 @@ export default function Home() {
 
         if (!scenario) return;
         setErrorMessage(null);
-        console.log("[Client] Generating videos for all scenes - START");
+        clientLogger.log("[Client] Generating videos for all scenes - START");
         setGeneratingScenes(new Set(scenario?.scenes.map((_, i) => i)));
 
         // Reset timeline when regenerating videos so EditorTab reinitializes from fresh scenario
@@ -461,7 +450,7 @@ export default function Home() {
         if (scenarioId) {
             try {
                 await resetTimeline(scenarioId);
-                console.log("Timeline reset for video regeneration");
+                clientLogger.log("Timeline reset for video regeneration");
             } catch (error) {
                 console.error("Failed to reset timeline:", error);
             }
@@ -518,7 +507,7 @@ export default function Home() {
     };
 
     const handleGenerateStoryBoard = async () => {
-        console.log("Generating storyboard");
+        clientLogger.log("Generating storyboard");
 
         if (!scenario) return;
         setIsLoading(true);
@@ -554,7 +543,7 @@ export default function Home() {
             // Single scene generation logic remains the same
             setGeneratingScenes((prev) => new Set([...prev, index]));
             const scene = scenario.scenes[index];
-            console.log("scene", scene);
+            clientLogger.log("scene", scene);
 
             const response = await fetch("/api/videos", {
                 method: "POST",
@@ -628,7 +617,7 @@ export default function Home() {
                 };
             });
         } finally {
-            console.log(`[Client] Generating video done`);
+            clientLogger.log(`[Client] Generating video done`);
             setGeneratingScenes((prev) => {
                 const updated = new Set(prev);
                 updated.delete(index); // Remove index from generatingScenes
@@ -700,7 +689,10 @@ export default function Home() {
     ) => {
         if (!scenario) return;
 
-        console.log("Starting setting image upload for index:", settingIndex);
+        clientLogger.log(
+            "Starting setting image upload for index:",
+            settingIndex,
+        );
         setErrorMessage(null);
         setGeneratingSettingImages((prev) => new Set(prev).add(settingIndex));
 
@@ -722,7 +714,7 @@ export default function Home() {
             const resizedImageGcsUri = await resizeImage(imageBase64);
 
             const setting = scenario.settings[settingIndex];
-            console.log(
+            clientLogger.log(
                 "Calling regenerateSettingAndScenarioFromImage for setting:",
                 setting.name,
             );
@@ -737,7 +729,7 @@ export default function Home() {
                 settings.thinkingBudget,
                 settings.imageModel,
             );
-            console.log(
+            clientLogger.log(
                 "regenerateSettingAndScenarioFromImage completed successfully",
             );
 
@@ -769,7 +761,7 @@ export default function Home() {
                     : "An unknown error occurred while uploading the setting image",
             );
         } finally {
-            console.log(
+            clientLogger.log(
                 "Finishing setting image upload for index:",
                 settingIndex,
             );
@@ -784,7 +776,7 @@ export default function Home() {
     const handleUploadPropImage = async (propIndex: number, file: File) => {
         if (!scenario) return;
 
-        console.log("Starting prop image upload for index:", propIndex);
+        clientLogger.log("Starting prop image upload for index:", propIndex);
         setErrorMessage(null);
         setGeneratingPropImages((prev) => new Set(prev).add(propIndex));
 
@@ -806,7 +798,7 @@ export default function Home() {
             const resizedImageGcsUri = await resizeImage(imageBase64);
 
             const prop = scenario.props[propIndex];
-            console.log(
+            clientLogger.log(
                 "Calling regeneratePropAndScenarioFromImage for prop:",
                 prop.name,
             );
@@ -821,7 +813,7 @@ export default function Home() {
                 settings.thinkingBudget,
                 settings.imageModel,
             );
-            console.log(
+            clientLogger.log(
                 "regeneratePropAndScenarioFromImage completed successfully",
             );
 
@@ -853,7 +845,10 @@ export default function Home() {
                     : "An unknown error occurred while uploading the prop image",
             );
         } finally {
-            console.log("Finishing prop image upload for index:", propIndex);
+            clientLogger.log(
+                "Finishing prop image upload for index:",
+                propIndex,
+            );
             setGeneratingPropImages((prev) => {
                 const newSet = new Set(prev);
                 newSet.delete(propIndex);
@@ -868,7 +863,7 @@ export default function Home() {
     ) => {
         if (!scenario) return;
 
-        console.log(
+        clientLogger.log(
             "Starting character image upload for index:",
             characterIndex,
         );
@@ -895,7 +890,7 @@ export default function Home() {
             const resizedImageGcsUri = await resizeImage(imageBase64);
 
             const character = scenario.characters[characterIndex];
-            console.log(
+            clientLogger.log(
                 "Calling regenerateCharacterAndScenarioFromImage for character:",
                 character.name,
             );
@@ -911,7 +906,7 @@ export default function Home() {
                 settings.thinkingBudget,
                 settings.imageModel,
             );
-            console.log(
+            clientLogger.log(
                 "regenerateCharacterAndScenarioFromImage completed successfully",
             );
 
@@ -944,7 +939,7 @@ export default function Home() {
                     : "An unknown error occurred while uploading the character image",
             );
         } finally {
-            console.log(
+            clientLogger.log(
                 "Finishing character image upload for index:",
                 characterIndex,
             );
@@ -982,7 +977,7 @@ export default function Home() {
             const imagePath = await saveImageToPublic(base64String, file.name);
 
             // Update state with the path to the saved image
-            console.log(imagePath);
+            clientLogger.log(imagePath);
             setLogoOverlay(imagePath);
 
             // Update scenario's logoOverlay if it exists
@@ -1009,7 +1004,7 @@ export default function Home() {
         });
     };
 
-    // console.log("Component rendered");
+    // clientLogger.log("Component rendered");
 
     const steps = [
         {
