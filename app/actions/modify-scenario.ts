@@ -5,6 +5,17 @@ import { z } from "zod";
 import yaml from "js-yaml";
 import logger from "../logger";
 import { createPartFromText, createPartFromUri } from "@google/genai";
+import {
+    deleteCharacterSchema,
+    deletePropSchema,
+    deleteSettingSchema,
+    regenerateCharacterImageSchema,
+    regenerateCharacterTextSchema,
+    regeneratePropImageSchema,
+    regeneratePropTextSchema,
+    regenerateSettingImageSchema,
+    regenerateSettingTextSchema,
+} from "@/app/schemas";
 
 // Shared types
 export interface Character {
@@ -280,6 +291,11 @@ export async function deleteCharacterFromScenario(
     oldDescription: string,
 ): Promise<ScenarioUpdateResult> {
     try {
+        deleteCharacterSchema.parse({
+            currentScenario,
+            oldName,
+            oldDescription,
+        });
         // Update scenario text
         const updatedScenario = await deleteFromScenarioText(
             currentScenario,
@@ -303,6 +319,7 @@ export async function deleteSettingFromScenario(
     oldDescription: string,
 ): Promise<ScenarioUpdateResult> {
     try {
+        deleteSettingSchema.parse({ currentScenario, oldName, oldDescription });
         const updatedScenario = await deleteFromScenarioText(
             currentScenario,
             oldName,
@@ -325,6 +342,7 @@ export async function deletePropFromScenario(
     oldDescription: string,
 ): Promise<ScenarioUpdateResult> {
     try {
+        deletePropSchema.parse({ currentScenario, oldName, oldDescription });
         const updatedScenario = await deleteFromScenarioText(
             currentScenario,
             oldName,
@@ -356,6 +374,17 @@ export async function regenerateCharacterAndScenarioFromText(
     imageModel: string = "gemini-3-pro-image-preview",
 ): Promise<ScenarioUpdateResult> {
     try {
+        regenerateCharacterTextSchema.parse({
+            currentScenario,
+            oldCharacterName,
+            newCharacterName,
+            newCharacterDescription,
+            style,
+            llmModel,
+            thinkingBudget,
+            imageModel,
+        });
+
         // Generate new character image
         const newImageGcsUri = await generateCharacterImage(
             newCharacterDescription,
@@ -401,6 +430,19 @@ export async function regenerateCharacterAndScenarioFromImage(
     imageModel: string = "gemini-3-pro-image-preview",
 ): Promise<ScenarioUpdateResult> {
     try {
+        regenerateCharacterImageSchema.parse({
+            currentScenario,
+            characterName,
+            currentCharacterDescription,
+            currentCharacterVoice,
+            imageGcsUri,
+            allCharacters,
+            style,
+            llmModel,
+            thinkingBudget,
+            imageModel,
+        });
+
         const characterListText = allCharacters
             .map((char) => `- ${char.name}: ${char.description}`)
             .join("\n");
@@ -485,6 +527,18 @@ export async function regenerateSettingAndScenarioFromText(
     imageModel: string = "gemini-3-pro-image-preview",
 ): Promise<ScenarioUpdateResult> {
     try {
+        regenerateSettingTextSchema.parse({
+            currentScenario,
+            oldSettingName,
+            newSettingName,
+            newSettingDescription,
+            style,
+            aspectRatio,
+            llmModel,
+            thinkingBudget,
+            imageModel,
+        });
+
         // Generate new character image
         const newImageGcsUri = await generateSettingImage(
             newSettingDescription,
@@ -531,6 +585,17 @@ export async function regeneratePropAndScenarioFromText(
     imageModel: string = "gemini-3-pro-image-preview",
 ): Promise<ScenarioUpdateResult> {
     try {
+        regeneratePropTextSchema.parse({
+            currentScenario,
+            oldPropName,
+            newPropName,
+            newPropDescription,
+            style,
+            llmModel,
+            thinkingBudget,
+            imageModel,
+        });
+
         // Generate new character image
         const newImageGcsUri = await generatePropImage(
             newPropDescription,
@@ -577,6 +642,18 @@ export async function regenerateSettingAndScenarioFromImage(
     imageModel: string = "gemini-3-pro-image-preview",
 ): Promise<ScenarioUpdateResult> {
     try {
+        regenerateSettingImageSchema.parse({
+            currentScenario,
+            settingName,
+            currentSettingDescription,
+            imageGcsUri,
+            allSettings,
+            style,
+            llmModel,
+            thinkingBudget,
+            imageModel,
+        });
+
         const settingListText = allSettings
             .map((setting) => `- ${setting.name}: ${setting.description}`)
             .join("\n");
@@ -659,6 +736,18 @@ export async function regeneratePropAndScenarioFromImage(
     imageModel: string = "gemini-3-pro-image-preview",
 ): Promise<ScenarioUpdateResult> {
     try {
+        regeneratePropImageSchema.parse({
+            currentScenario,
+            propName,
+            currentPropDescription,
+            imageGcsUri,
+            allProps,
+            style,
+            llmModel,
+            thinkingBudget,
+            imageModel,
+        });
+
         const propListText = allProps
             .map((prop) => `- ${prop.name}: ${prop.description}`)
             .join("\n");

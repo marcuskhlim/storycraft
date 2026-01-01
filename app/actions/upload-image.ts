@@ -3,12 +3,15 @@
 import fs from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
+import { saveImageToPublicSchema } from "@/app/schemas";
 
 export async function saveImageToPublic(
     base64String: string,
     originalFilename: string,
 ): Promise<string> {
     try {
+        saveImageToPublicSchema.parse({ base64String, originalFilename });
+
         // Extract the file extension from the original filename
         const fileExtension = path.extname(originalFilename).toLowerCase();
 

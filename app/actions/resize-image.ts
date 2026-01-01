@@ -5,12 +5,14 @@ import { uploadImage, gcsUriToSharp } from "@/lib/storage";
 import sharp from "sharp";
 import { v4 as uuidv4 } from "uuid";
 import logger from "../logger";
+import { createCollageSchema, resizeImageSchema } from "@/app/schemas";
 
 export async function resizeImage(
     base64Image: string,
     width: number = 1920,
     height: number = 1080,
 ): Promise<string> {
+    resizeImageSchema.parse({ base64Image, width, height });
     logger.debug("Resizing image");
     try {
         // Remove data URL prefix if present
@@ -62,6 +64,7 @@ export async function createCollage(
     props: Array<{ name: string; description: string; imageGcsUri?: string }>,
     aspectRatio: string,
 ): Promise<string> {
+    createCollageSchema.parse({ characters, props, aspectRatio });
     // Calculate canvas dimensions based on aspect ratio
     let canvasWidth: number, canvasHeight: number;
 

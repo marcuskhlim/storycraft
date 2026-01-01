@@ -430,7 +430,7 @@ export function CreateTab({
 
                             <div className="flex items-center justify-between border-t pt-4">
                                 <span className="text-sm text-muted-foreground">
-                                    Estimated Total Length
+                                    Total Length
                                 </span>
                                 <div className="flex items-center gap-2 text-lg font-bold">
                                     <Clock className="h-5 w-5 text-[#0EA5E9]" />

@@ -2,7 +2,7 @@
 
 import { useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getDynamicImageUrl } from "@/app/actions/storageActions";
+import { getDynamicImageUrl } from "@/app/actions/upload-to-gcs";
 import { Loader2 } from "lucide-react";
 
 interface VideoPlayerProps {

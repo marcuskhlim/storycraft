@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
-import { getDynamicImageUrl } from "@/app/actions/storageActions";
+import { getDynamicImageUrl } from "@/app/actions/upload-to-gcs";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 

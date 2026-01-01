@@ -2,8 +2,10 @@
 
 import { generateMusicRest } from "@/lib/lyria";
 import logger from "../logger";
+import { generateMusicSchema } from "@/app/schemas";
 
 export async function generateMusic(prompt: string): Promise<string> {
+    generateMusicSchema.parse({ prompt });
     logger.debug("Generating music");
     try {
         const musicUrl = await generateMusicRest(prompt);

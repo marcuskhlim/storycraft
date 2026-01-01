@@ -3,6 +3,7 @@
 import { exportMovie as exportMovieFFMPEG } from "@/lib/ffmpeg";
 import { TimelineLayer } from "../types";
 import logger from "../logger";
+import { exportMovieSchema } from "@/app/schemas";
 
 export async function exportMovieAction(
     layers: Array<TimelineLayer>,
@@ -11,6 +12,7 @@ export async function exportMovieAction(
     | { success: false; error: string }
 > {
     try {
+        exportMovieSchema.parse({ layers });
         logger.debug("Exporting movie...");
         const { videoUrl, vttUrl } = await exportMovieFFMPEG(layers);
         logger.debug(`videoUrl: ${videoUrl}`);

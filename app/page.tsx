@@ -2,7 +2,7 @@
 
 import { useScenario } from "@/hooks/use-scenario";
 import { useTimeline } from "@/hooks/use-timeline";
-import { BookOpen, Film, LayoutGrid, PenLine, Scissors } from "lucide-react";
+import { BookOpen, LayoutGrid, PenLine, Scissors } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
 import {

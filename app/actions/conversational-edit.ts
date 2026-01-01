@@ -3,6 +3,7 @@
 import { generateImage } from "@/lib/gemini";
 import { createPartFromText, createPartFromUri } from "@google/genai";
 import logger from "@/app/logger";
+import { conversationalEditSchema } from "@/app/schemas";
 
 interface ConversationalEditParams {
     imageGcsUri: string;
@@ -17,13 +18,13 @@ interface ConversationalEditResult {
     errorMessage?: string;
 }
 
-export async function conversationalEdit({
-    imageGcsUri,
-    instruction,
-    sceneNumber,
-    scenarioId,
-}: ConversationalEditParams): Promise<ConversationalEditResult> {
+export async function conversationalEdit(
+    params: ConversationalEditParams,
+): Promise<ConversationalEditResult> {
+    const { imageGcsUri, instruction, sceneNumber, scenarioId } = params;
     try {
+        conversationalEditSchema.parse(params);
+
         logger.info(
             `Starting conversational edit for scene ${sceneNumber} in scenario ${scenarioId}`,
         );
@@ -52,7 +53,7 @@ export async function conversationalEdit({
         }
     } catch (error) {
         logger.error(
-            `Error in conversational edit for scene ${sceneNumber}:`,
+            `Error in conversational edit for scene ${params.sceneNumber}:`,
             error,
         );
         return {

@@ -20,6 +20,7 @@
     * specify model when generating content
     * specify aspectRatio when generatingImage
     * refactor regenerate-image
+    * refactor scenario edit
     * resize scenes images
     * fix scene action full character description
     * Review Scene data:
@@ -29,7 +30,7 @@
 # TODO:
 
     * add images to conversational edit (e.g. add this logo onto ...)
-    * linter and prettier format
+    ✅ linter and prettier format
     * Editor:
         ✅ shorten move clips
         * refactor editor and data model

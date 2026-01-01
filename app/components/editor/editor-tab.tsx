@@ -10,7 +10,7 @@ import { MediabunnyPlayer } from "./mediabunny-player";
 import { MusicParams, MusicSelectionDialog } from "./music-selection-dialog";
 import { VideoThumbnail } from "./video-thumbnail";
 import { Voice, VoiceSelectionDialog } from "./voice-selection-dialog";
-import { getDynamicImageUrl } from "@/app/actions/storageActions";
+import { getDynamicImageUrl } from "@/app/actions/upload-to-gcs";
 import { useTimeline } from "@/hooks/use-timeline";
 import { generateVoiceover } from "@/app/actions/generate-voiceover";
 import { generateMusic } from "@/app/actions/generate-music";

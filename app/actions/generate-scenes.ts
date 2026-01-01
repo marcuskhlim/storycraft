@@ -18,6 +18,10 @@ import { Scenario, Language } from "../types";
 import logger from "../logger";
 import { createCollage, resizeImage } from "./resize-image";
 import { gcsUriToBase64 } from "@/lib/storage";
+import {
+    generateScenarioSchema,
+    generateStoryboardSchema,
+} from "@/app/schemas";
 
 export async function generateScenario(
     name: string,
@@ -32,6 +36,19 @@ export async function generateScenario(
     styleImageUri?: string,
 ): Promise<Scenario> {
     try {
+        generateScenarioSchema.parse({
+            name,
+            pitch,
+            numScenes,
+            style,
+            aspectRatio,
+            durationSeconds,
+            language,
+            modelName,
+            thinkingBudget,
+            styleImageUri,
+        });
+
         const prompt = getScenarioPrompt(pitch, numScenes, style, language);
         logger.debug("Create a scenario");
         const text = await generateContent(
@@ -252,6 +269,15 @@ export async function generateStoryboard(
     logger.debug("Create a storyboard");
     logger.debug(scenario.scenario);
     try {
+        generateStoryboardSchema.parse({
+            scenario,
+            numScenes,
+            style,
+            language,
+            modelName,
+            thinkingBudget,
+        });
+
         // Create a new scenario object to ensure proper serialization
         const newScenario: Scenario = {
             ...scenario,

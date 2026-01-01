@@ -3,6 +3,7 @@
 import { tts } from "@/lib/tts";
 import { Language } from "../types";
 import logger from "../logger";
+import { generateVoiceoverSchema } from "@/app/schemas";
 
 export async function generateVoiceover(
     scenes: Array<{
@@ -11,6 +12,7 @@ export async function generateVoiceover(
     language: Language,
     voiceName?: string,
 ): Promise<string[]> {
+    generateVoiceoverSchema.parse({ scenes, language, voiceName });
     logger.debug(`Generating voiceover with voice: ${voiceName || "default"}`);
     try {
         const speachAudioFiles = await Promise.all(

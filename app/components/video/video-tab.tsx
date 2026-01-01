@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { VideoPlayer } from "./video-player";
 import { Download, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { getDynamicImageUrl } from "@/app/actions/storageActions";
+import { getDynamicImageUrl } from "@/app/actions/upload-to-gcs";
 
 interface VideoTabProps {
     videoGcsUri: string | null;

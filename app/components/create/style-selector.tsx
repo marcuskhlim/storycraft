@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
     uploadStyleImageToGCS,
     getSignedUrlAction,
-} from "@/app/actions/upload-to-gcs";
+} from "@/app/actions/storageActions";
 import { useEffect } from "react";
 
 export interface Style {
