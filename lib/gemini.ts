@@ -7,8 +7,9 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { uploadImage } from "@/lib/storage";
 import logger from "@/app/logger";
+import { env } from "@/lib/env";
 
-const PROJECT_ID = process.env.PROJECT_ID;
+const PROJECT_ID = env.PROJECT_ID;
 
 const ai = new GoogleGenAI({
     vertexai: true,
@@ -80,7 +81,7 @@ export async function generateImage(
         try {
             const ai = new GoogleGenAI({
                 vertexai: true,
-                project: process.env.PROJECT_ID,
+                project: env.PROJECT_ID,
                 location: "global",
             });
 
