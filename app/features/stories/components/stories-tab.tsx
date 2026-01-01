@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
 import {
     Card,
     CardContent,
@@ -24,35 +23,19 @@ export function StoriesTab({
     onSelectScenario,
     onCreateNewStory,
 }: StoriesTabProps) {
-    const [scenarios, setScenarios] = useState<
-        (Scenario & { id: string; updatedAt?: unknown })[]
-    >([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const { loadUserScenarios, setCurrentScenarioId } = useScenario();
+    const {
+        scenarios,
+        isLoading,
+        error,
+        loadUserScenarios,
+        setCurrentScenarioId,
+        deleteScenario,
+    } = useScenario();
     const { session } = useAuth();
 
-    const loadScenarios = useCallback(async () => {
-        try {
-            setLoading(true);
-            setError(null);
-            const userScenarios = await loadUserScenarios();
-            setScenarios(userScenarios);
-        } catch (err) {
-            setError("Failed to load your stories");
-            console.error("Error loading scenarios:", err);
-        } finally {
-            setLoading(false);
-        }
-    }, [loadUserScenarios]);
+    const handleSelectScenario = (scenario: Scenario & { id?: string }) => {
+        if (!scenario.id) return;
 
-    useEffect(() => {
-        if (session?.user?.id) {
-            loadScenarios();
-        }
-    }, [session?.user?.id, loadScenarios]);
-
-    const handleSelectScenario = (scenario: Scenario & { id: string }) => {
         // Set the current scenario ID for future saves
         setCurrentScenarioId(scenario.id);
 
@@ -80,21 +63,11 @@ export function StoriesTab({
         onSelectScenario(appScenario, scenario.id);
     };
 
-    const deleteScenario = async (scenarioId: string) => {
+    const handleDeleteScenario = async (scenarioId: string) => {
         try {
-            const response = await fetch(`/api/scenarios?id=${scenarioId}`, {
-                method: "DELETE",
-            });
-
-            if (!response.ok) {
-                throw new Error("Failed to delete scenario");
-            }
-
-            // Refresh the list
-            await loadScenarios();
+            await deleteScenario(scenarioId);
         } catch (err) {
             console.error("Error deleting scenario:", err);
-            setError("Failed to delete story");
         }
     };
 
@@ -137,7 +110,7 @@ export function StoriesTab({
         );
     }
 
-    if (loading) {
+    if (isLoading) {
         return (
             <div className="py-12 text-center">
                 <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
@@ -151,9 +124,9 @@ export function StoriesTab({
             <div className="py-12 text-center">
                 <div className="mb-4 text-red-500">
                     <BookOpen className="mx-auto mb-2 h-12 w-12" />
-                    <p>{error}</p>
+                    <p>Failed to load your stories</p>
                 </div>
-                <Button onClick={loadScenarios} variant="outline">
+                <Button onClick={() => loadUserScenarios()} variant="outline">
                     Try Again
                 </Button>
             </div>
@@ -191,7 +164,11 @@ export function StoriesTab({
                         <Plus className="mr-2 h-4 w-4" />
                         Create New Story
                     </Button>
-                    <Button onClick={loadScenarios} variant="outline" size="sm">
+                    <Button
+                        onClick={() => loadUserScenarios()}
+                        variant="outline"
+                        size="sm"
+                    >
                         Refresh
                     </Button>
                 </div>
@@ -266,7 +243,7 @@ export function StoriesTab({
                                                 "Are you sure you want to delete this story?",
                                             )
                                         ) {
-                                            deleteScenario(scenario.id);
+                                            handleDeleteScenario(scenario.id);
                                         }
                                     }}
                                     className="text-muted-foreground hover:text-destructive"

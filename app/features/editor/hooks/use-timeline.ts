@@ -2,10 +2,20 @@ import { useCallback, useRef } from "react";
 import { useAuth } from "@/app/features/shared/hooks/use-auth";
 import type { TimelineLayer } from "@/app/types";
 import { clientLogger } from "@/lib/utils/client-logger";
+import {
+    useSaveTimelineMutation,
+    useResetTimelineMutation,
+    TIMELINE_KEYS,
+} from "./use-timeline-query";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function useTimeline() {
     const { session } = useAuth();
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const queryClient = useQueryClient();
+
+    const saveMutation = useSaveTimelineMutation();
+    const resetMutation = useResetTimelineMutation();
 
     const saveTimeline = useCallback(
         async (scenarioId: string, layers: TimelineLayer[]) => {
@@ -17,24 +27,17 @@ export function useTimeline() {
             }
 
             try {
-                const response = await fetch("/api/timeline", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ scenarioId, layers }),
+                const result = await saveMutation.mutateAsync({
+                    scenarioId,
+                    layers,
                 });
-
-                if (!response.ok) {
-                    throw new Error("Failed to save timeline");
-                }
-
-                const result = await response.json();
                 return result.timelineId;
             } catch (error) {
-                clientLogger.error("Error saving timeline:", error);
+                // Error is already logged in the mutation hook
                 throw error;
             }
         },
-        [session?.user?.id],
+        [session?.user?.id, saveMutation],
     );
 
     const saveTimelineDebounced = useCallback(
@@ -67,6 +70,14 @@ export function useTimeline() {
             }
 
             try {
+                // Try to get from cache first
+                const cachedData = queryClient.getQueryData<TimelineLayer[]>(
+                    TIMELINE_KEYS.detail(scenarioId),
+                );
+                if (cachedData) {
+                    return cachedData;
+                }
+
                 const response = await fetch(
                     `/api/timeline?scenarioId=${scenarioId}`,
                 );
@@ -79,13 +90,23 @@ export function useTimeline() {
                 }
 
                 const { timeline } = await response.json();
-                return timeline?.layers || null;
+                const layers = timeline?.layers || null;
+
+                // Seed the cache
+                if (layers) {
+                    queryClient.setQueryData(
+                        TIMELINE_KEYS.detail(scenarioId),
+                        layers,
+                    );
+                }
+
+                return layers;
             } catch (error) {
                 clientLogger.error("Error loading timeline:", error);
                 return null;
             }
         },
-        [session?.user?.id],
+        [session?.user?.id, queryClient],
     );
 
     const resetTimeline = useCallback(
@@ -98,22 +119,13 @@ export function useTimeline() {
             }
 
             try {
-                const response = await fetch(
-                    `/api/timeline?scenarioId=${scenarioId}`,
-                    {
-                        method: "DELETE",
-                    },
-                );
-
-                if (!response.ok) {
-                    throw new Error("Failed to reset timeline");
-                }
+                await resetMutation.mutateAsync(scenarioId);
             } catch (error) {
-                clientLogger.error("Error resetting timeline:", error);
+                // Error is already logged in the mutation hook
                 throw error;
             }
         },
-        [session?.user?.id],
+        [session?.user?.id, resetMutation],
     );
 
     // Cancel any pending debounced save
@@ -131,5 +143,6 @@ export function useTimeline() {
         resetTimeline,
         cancelPendingSave,
         isAuthenticated: !!session?.user?.id,
+        isSaving: saveMutation.isPending,
     };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Plus, BookOpen, PanelLeft, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useScenario } from "@/app/features/scenario/hooks/use-scenario";
@@ -46,31 +46,14 @@ export function Sidebar({
     refreshTrigger,
 }: SidebarProps) {
     const { settings, updateSettings } = useSettings();
-    const [scenarios, setScenarios] = useState<(Scenario & { id: string })[]>(
-        [],
-    );
-    const { loadUserScenarios, loadScenario, setCurrentScenarioId } =
-        useScenario();
+    const {
+        scenarios,
+        isLoading,
+        loadUserScenarios,
+        loadScenario,
+        setCurrentScenarioId,
+    } = useScenario();
     const { session } = useAuth();
-    const [isLoading, setIsLoading] = useState(true);
-
-    const loadScenarios = useCallback(async () => {
-        try {
-            setIsLoading(true);
-            const userScenarios = await loadUserScenarios();
-            setScenarios(userScenarios);
-        } catch (err) {
-            console.error("Error loading scenarios:", err);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [loadUserScenarios]);
-
-    useEffect(() => {
-        if (session?.user?.id) {
-            loadScenarios();
-        }
-    }, [session?.user?.id, loadScenarios]);
 
     // Refresh scenarios when refreshTrigger changes
     useEffect(() => {
@@ -79,9 +62,9 @@ export function Sidebar({
             refreshTrigger !== undefined &&
             refreshTrigger > 0
         ) {
-            loadScenarios();
+            loadUserScenarios();
         }
-    }, [refreshTrigger, session?.user?.id, loadScenarios]);
+    }, [refreshTrigger, session?.user?.id, loadUserScenarios]);
 
     const handleSelect = async (scenario: Scenario & { id: string }) => {
         setCurrentScenarioId(scenario.id);

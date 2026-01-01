@@ -2,11 +2,29 @@ import { useCallback, useRef } from "react";
 import { useAuth } from "@/app/features/shared/hooks/use-auth";
 import type { Scenario } from "@/app/types";
 import { clientLogger } from "@/lib/utils/client-logger";
+import {
+    useSaveScenarioMutation,
+    useDeleteScenarioMutation,
+    useScenarios,
+    SCENARIO_KEYS,
+    ScenarioWithId,
+} from "./use-scenarios-query";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function useScenario() {
     const { session } = useAuth();
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const currentScenarioIdRef = useRef<string | null>(null);
+    const queryClient = useQueryClient();
+
+    const saveMutation = useSaveScenarioMutation();
+    const deleteMutation = useDeleteScenarioMutation();
+    const {
+        data: scenarios = [] as ScenarioWithId[],
+        refetch: refetchScenarios,
+        isLoading,
+        error,
+    } = useScenarios();
 
     const saveScenario = useCallback(
         async (scenario: Scenario, scenarioId?: string) => {
@@ -18,22 +36,10 @@ export function useScenario() {
             }
 
             try {
-                const response = await fetch("/api/scenarios", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        scenario,
-                        scenarioId: scenarioId || currentScenarioIdRef.current,
-                    }),
+                const result = await saveMutation.mutateAsync({
+                    scenario,
+                    scenarioId: scenarioId || currentScenarioIdRef.current,
                 });
-
-                if (!response.ok) {
-                    throw new Error("Failed to save scenario");
-                }
-
-                const result = await response.json();
 
                 // Update the current scenario ID for future saves
                 if (result.scenarioId) {
@@ -42,11 +48,11 @@ export function useScenario() {
 
                 return result.scenarioId;
             } catch (error) {
-                clientLogger.error("Error saving scenario:", error);
+                // Error is already logged in the mutation hook
                 throw error;
             }
         },
-        [session?.user?.id],
+        [session?.user?.id, saveMutation],
     );
 
     const saveScenarioDebounced = useCallback(
@@ -67,7 +73,7 @@ export function useScenario() {
     );
 
     const loadScenario = useCallback(
-        async (scenarioId: string): Promise<Scenario | null> => {
+        async (scenarioId: string): Promise<ScenarioWithId | null> => {
             if (!session?.user?.id) {
                 clientLogger.warn(
                     "Cannot load scenario: user not authenticated",
@@ -76,6 +82,16 @@ export function useScenario() {
             }
 
             try {
+                // Try to get from cache first
+                const cachedData = queryClient.getQueryData<ScenarioWithId>(
+                    SCENARIO_KEYS.detail(scenarioId),
+                );
+                if (cachedData) {
+                    currentScenarioIdRef.current = scenarioId;
+                    return cachedData;
+                }
+
+                // If not in cache, fetch it
                 const response = await fetch(`/api/scenarios?id=${scenarioId}`);
 
                 if (!response.ok) {
@@ -85,7 +101,13 @@ export function useScenario() {
                     throw new Error("Failed to load scenario");
                 }
 
-                const scenarioData = await response.json();
+                const scenarioData = (await response.json()) as ScenarioWithId;
+
+                // Seed the cache
+                queryClient.setQueryData(
+                    SCENARIO_KEYS.detail(scenarioId),
+                    scenarioData,
+                );
 
                 // Update current scenario ID
                 currentScenarioIdRef.current = scenarioId;
@@ -96,29 +118,25 @@ export function useScenario() {
                 throw error;
             }
         },
-        [session?.user?.id],
+        [session?.user?.id, queryClient],
     );
 
-    const loadUserScenarios = useCallback(async () => {
+    const loadUserScenarios = useCallback(async (): Promise<
+        ScenarioWithId[]
+    > => {
         if (!session?.user?.id) {
             clientLogger.warn("Cannot load scenarios: user not authenticated");
             return [];
         }
 
         try {
-            const response = await fetch("/api/scenarios");
-
-            if (!response.ok) {
-                throw new Error("Failed to load scenarios");
-            }
-
-            const result = await response.json();
-            return result.scenarios || [];
+            const result = await refetchScenarios();
+            return (result.data as ScenarioWithId[]) || [];
         } catch (error) {
             clientLogger.error("Error loading user scenarios:", error);
             throw error;
         }
-    }, [session?.user?.id]);
+    }, [session?.user?.id, refetchScenarios]);
 
     const getCurrentScenarioId = useCallback(() => {
         return currentScenarioIdRef.current;
@@ -136,5 +154,12 @@ export function useScenario() {
         getCurrentScenarioId,
         setCurrentScenarioId,
         isAuthenticated: !!session?.user?.id,
+        // Expose React Query primitives for more advanced usage
+        scenarios,
+        isSaving: saveMutation.isPending,
+        isDeleting: deleteMutation.isPending,
+        deleteScenario: deleteMutation.mutateAsync,
+        isLoading,
+        error,
     };
 }

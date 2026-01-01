@@ -6,7 +6,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 export interface MusicParams {
     description: string;
@@ -27,16 +27,30 @@ export function MusicSelectionDialog({
     isGenerating,
     currentParams,
 }: MusicSelectionDialogProps) {
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <MusicSelectionDialogContent
+                key={isOpen ? "open" : "closed"}
+                onClose={onClose}
+                onMusicGenerate={onMusicGenerate}
+                isGenerating={isGenerating}
+                currentParams={currentParams}
+            />
+        </Dialog>
+    );
+}
+
+type MusicSelectionDialogContentProps = MusicSelectionDialogProps;
+
+function MusicSelectionDialogContent({
+    onClose,
+    onMusicGenerate,
+    isGenerating,
+    currentParams,
+}: MusicSelectionDialogContentProps) {
     const [description, setDescription] = useState<string>(
         currentParams.description,
     );
-
-    // Sync state with props when currentParams.description changes or dialog opens
-    useEffect(() => {
-        if (isOpen) {
-            setDescription(currentParams.description);
-        }
-    }, [currentParams.description, isOpen]);
 
     const handleGenerate = () => {
         if (description.trim()) {
@@ -47,54 +61,49 @@ export function MusicSelectionDialog({
     };
 
     const handleClose = () => {
-        // Reset to current params when closing
-        setDescription(currentParams.description);
         onClose();
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="max-w-md">
-                <DialogHeader>
-                    <DialogTitle>Configure Music Generation</DialogTitle>
-                </DialogHeader>
+        <DialogContent className="max-w-md">
+            <DialogHeader>
+                <DialogTitle>Configure Music Generation</DialogTitle>
+            </DialogHeader>
 
-                <div className="space-y-4">
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">
-                            Music Description:
-                        </label>
-                        <Textarea
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            placeholder="Describe the music you want to generate..."
-                            className="min-h-[80px]"
-                        />
-                        <p className="text-xs text-gray-500">
-                            Describe the style, instruments, tempo, genre, mood,
-                            or any specific characteristics you want in the
-                            music.
-                        </p>
-                    </div>
-
-                    <div className="flex justify-end space-x-2 border-t pt-4">
-                        <Button
-                            variant="outline"
-                            onClick={handleClose}
-                            disabled={isGenerating}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={handleGenerate}
-                            disabled={!description.trim() || isGenerating}
-                            className="bg-green-600 hover:bg-green-700"
-                        >
-                            {isGenerating ? "Generating..." : "Generate Music"}
-                        </Button>
-                    </div>
+            <div className="space-y-4">
+                <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                        Music Description:
+                    </label>
+                    <Textarea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="Describe the music you want to generate..."
+                        className="min-h-[80px]"
+                    />
+                    <p className="text-xs text-gray-500">
+                        Describe the style, instruments, tempo, genre, mood, or
+                        any specific characteristics you want in the music.
+                    </p>
                 </div>
-            </DialogContent>
-        </Dialog>
+
+                <div className="flex justify-end space-x-2 border-t pt-4">
+                    <Button
+                        variant="outline"
+                        onClick={handleClose}
+                        disabled={isGenerating}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleGenerate}
+                        disabled={!description.trim() || isGenerating}
+                        className="bg-green-600 hover:bg-green-700"
+                    >
+                        {isGenerating ? "Generating..." : "Generate Music"}
+                    </Button>
+                </div>
+            </div>
+        </DialogContent>
     );
 }
