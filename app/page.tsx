@@ -3,7 +3,7 @@
 import { useScenario } from "@/app/features/scenario/hooks/use-scenario";
 import { BookOpen } from "lucide-react";
 import Image from "next/image";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { CreateTab } from "@/app/features/create/components/create-tab";
 import { EditorTab } from "@/app/features/editor/components/editor-tab";
@@ -20,42 +20,48 @@ import { useSidebarActions } from "@/app/features/shared/hooks/use-sidebar-actio
 
 export default function Home() {
     // Zustand Stores
-    const { scenario } = useScenarioStore();
+    const { scenario, isScenarioLoading, setField } = useScenarioStore();
 
-    const { activeTab, isSidebarCollapsed, triggerSidebarRefresh } =
-        useEditorStore();
+    const { activeTab, isSidebarCollapsed } = useEditorStore();
 
-    const { isLoadingScenarioRef, handleCreateNewStory } = useSidebarActions();
+    const { handleCreateNewStory } = useSidebarActions();
 
     // Scenario auto-save functionality
     const { saveScenarioDebounced, getCurrentScenarioId, isAuthenticated } =
         useScenario();
 
+    const lastSavedScenarioRef = useRef<string | null>(null);
+
     // Auto-save scenario whenever it changes (debounced)
     // Skip auto-save when loading a scenario from sidebar to prevent overwriting with stale data
     useEffect(() => {
-        if (isLoadingScenarioRef.current) {
+        if (isScenarioLoading) {
             // Reset the flag after skipping this save
-            isLoadingScenarioRef.current = false;
+            setField("isScenarioLoading", false);
+            // Sync the ref with loaded content to prevent immediate re-save
+            if (scenario) {
+                lastSavedScenarioRef.current = JSON.stringify(scenario);
+            }
             return;
         }
+
         if (scenario && isAuthenticated) {
-            saveScenarioDebounced(
-                scenario,
-                getCurrentScenarioId() || undefined,
-            );
-            // Trigger sidebar refresh after save (with a small delay to allow debounced save to complete)
-            setTimeout(() => {
-                triggerSidebarRefresh();
-            }, 1500); // Wait longer than the 1s debounce
+            const currentContent = JSON.stringify(scenario);
+            if (currentContent !== lastSavedScenarioRef.current) {
+                lastSavedScenarioRef.current = currentContent;
+                saveScenarioDebounced(
+                    scenario,
+                    getCurrentScenarioId() || undefined,
+                );
+            }
         }
     }, [
         scenario,
         isAuthenticated,
         saveScenarioDebounced,
         getCurrentScenarioId,
-        triggerSidebarRefresh,
-        isLoadingScenarioRef,
+        isScenarioLoading,
+        setField,
     ]);
 
     return (

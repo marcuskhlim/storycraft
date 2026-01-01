@@ -47,10 +47,11 @@ export function EditorTab() {
     const [isGeneratingMusic, setIsGeneratingMusic] = useState(false);
 
     const [layers, setLayers] = useState<TimelineLayer[]>([]);
+    const lastSavedLayersRef = useRef<string | null>(null);
 
     useEffect(() => {
         if (scenario && layers.length === 0) {
-            setLayers([
+            const initialLayers: TimelineLayer[] = [
                 {
                     id: "videos",
                     name: "Videos",
@@ -78,7 +79,9 @@ export function EditorTab() {
                     type: "music",
                     items: [],
                 },
-            ]);
+            ];
+            setLayers(initialLayers);
+            lastSavedLayersRef.current = JSON.stringify(initialLayers);
         }
     }, [scenario, SCENE_DURATION, layers.length]);
 
@@ -251,6 +254,8 @@ export function EditorTab() {
                         const resolvedLayers =
                             await resolveLayerUrls(savedLayers);
                         setLayers(resolvedLayers);
+                        lastSavedLayersRef.current =
+                            JSON.stringify(resolvedLayers);
                         setIsTimelineLoaded(true);
                         isInitializingRef.current = false;
                         return;
@@ -502,8 +507,13 @@ export function EditorTab() {
             isInitializingRef.current
         )
             return;
-        clientLogger.info("Auto-saving timeline to Firestore...");
-        saveTimelineDebounced(scenarioId, layers);
+
+        const currentContent = JSON.stringify(layers);
+        if (currentContent !== lastSavedLayersRef.current) {
+            lastSavedLayersRef.current = currentContent;
+            clientLogger.info("Auto-saving timeline to Firestore...");
+            saveTimelineDebounced(scenarioId, layers);
+        }
     }, [
         layers,
         scenarioId,

@@ -4,7 +4,6 @@ import { useScenarioStore } from "@/app/features/scenario/stores/useScenarioStor
 import { useEditorStore } from "@/app/features/editor/stores/useEditorStore";
 import { useScenario } from "@/app/features/scenario/hooks/use-scenario";
 import { Scenario, type Language } from "@/app/types";
-import { useRef } from "react";
 
 const DEFAULT_LANGUAGE: Language = {
     name: "English (United States)",
@@ -23,19 +22,15 @@ export function useSidebarActions() {
         setField,
         setScenario,
         reset: resetScenarioStore,
+        isScenarioLoading,
     } = useScenarioStore();
     const {
         setActiveTab,
         setCurrentTime,
         isSidebarCollapsed,
         setIsSidebarCollapsed,
-        sidebarRefreshTrigger,
     } = useEditorStore();
     const { setCurrentScenarioId } = useScenario();
-
-    // Ref to track when we're loading a scenario from sidebar (to prevent auto-save with stale data)
-    // In a real refactor, this might move to a specialized hook or store
-    const isLoadingScenarioRef = useRef(false);
 
     const handleSelectScenario = (
         selectedScenario: Scenario,
@@ -45,7 +40,7 @@ export function useSidebarActions() {
             setCurrentScenarioId(scenarioId);
         }
 
-        isLoadingScenarioRef.current = true;
+        setField("isScenarioLoading", true);
         setScenario(selectedScenario);
 
         setField("name", selectedScenario.name || "");
@@ -93,7 +88,6 @@ export function useSidebarActions() {
         handleCreateNewStory,
         toggleSidebar,
         isCollapsed: isSidebarCollapsed,
-        refreshTrigger: sidebarRefreshTrigger,
-        isLoadingScenarioRef, // Exported to be used in page.tsx for the auto-save effect
+        isScenarioLoading,
     };
 }

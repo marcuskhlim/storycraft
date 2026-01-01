@@ -84,9 +84,6 @@ export async function POST(request: NextRequest) {
         if (scenarioDoc.exists) {
             // Update existing scenario
             logger.info(`Updating scenario: ${id}`);
-            logger.debug(
-                `Scenario data: ${JSON.stringify(firestoreScenario, null, 2)}`,
-            );
             await scenarioRef.update({
                 ...firestoreScenario,
                 updatedAt: Timestamp.now(),
@@ -94,9 +91,6 @@ export async function POST(request: NextRequest) {
         } else {
             // Create new scenario
             logger.info(`Creating new scenario: ${id}`);
-            logger.debug(
-                `Scenario data: ${JSON.stringify(firestoreScenario, null, 2)}`,
-            );
             await scenarioRef.set({
                 ...firestoreScenario,
                 createdAt: Timestamp.now(),

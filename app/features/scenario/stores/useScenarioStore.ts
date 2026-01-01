@@ -8,6 +8,10 @@ const DEFAULT_LANGUAGE: Language = {
 };
 
 interface ScenarioState {
+    // Session state
+    currentScenarioId: string | null;
+    isScenarioLoading: boolean;
+
     // Form fields
     pitch: string;
     name: string;
@@ -39,6 +43,8 @@ interface ScenarioState {
 }
 
 const initialState = {
+    currentScenarioId: null,
+    isScenarioLoading: false,
     pitch: "",
     name: "",
     style: "Photographic",

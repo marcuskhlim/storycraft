@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
 import { Plus, BookOpen, PanelLeft, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useScenario } from "@/app/features/scenario/hooks/use-scenario";
-import { useAuth } from "@/app/features/shared/hooks/use-auth";
 import { Scenario } from "@/app/types";
 import { cn } from "@/lib/utils/utils";
 import { useScenarioStore } from "@/app/features/scenario/stores/useScenarioStore";
@@ -32,35 +30,17 @@ import {
 
 export function Sidebar() {
     const { settings, updateSettings } = useSettings();
-    const {
-        scenarios,
-        isLoading,
-        loadUserScenarios,
-        loadScenario,
-        setCurrentScenarioId,
-    } = useScenario();
+    const { scenarios, isLoading, loadScenario, setCurrentScenarioId } =
+        useScenario();
     const { scenario: currentScenario } = useScenarioStore();
-    const { session } = useAuth();
     const {
         handleSelectScenario,
         handleCreateNewStory,
         toggleSidebar,
         isCollapsed,
-        refreshTrigger,
     } = useSidebarActions();
 
     const currentScenarioId = currentScenario?.id;
-
-    // Refresh scenarios when refreshTrigger changes
-    useEffect(() => {
-        if (
-            session?.user?.id &&
-            refreshTrigger !== undefined &&
-            refreshTrigger > 0
-        ) {
-            loadUserScenarios();
-        }
-    }, [refreshTrigger, session?.user?.id, loadUserScenarios]);
 
     const handleSelect = async (scenario: Scenario & { id: string }) => {
         setCurrentScenarioId(scenario.id);

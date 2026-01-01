@@ -10,11 +10,12 @@ import {
     ScenarioWithId,
 } from "./use-scenarios-query";
 import { useQueryClient } from "@tanstack/react-query";
+import { useScenarioStore } from "../stores/useScenarioStore";
 
 export function useScenario() {
     const { session } = useAuth();
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const currentScenarioIdRef = useRef<string | null>(null);
+    const setField = useScenarioStore((state) => state.setField);
     const queryClient = useQueryClient();
 
     const saveMutation = useSaveScenarioMutation();
@@ -36,38 +37,41 @@ export function useScenario() {
             }
 
             try {
+                // Get the latest ID from the store at call time
+                const actualId =
+                    scenarioId ||
+                    useScenarioStore.getState().currentScenarioId ||
+                    undefined;
+
                 const result = await saveMutation.mutateAsync({
                     scenario,
-                    scenarioId: scenarioId || currentScenarioIdRef.current,
+                    scenarioId: actualId,
                 });
 
-                // Update the current scenario ID for future saves
-                if (result.scenarioId) {
-                    currentScenarioIdRef.current = result.scenarioId;
+                // Update the current scenario ID for future saves if it was newly created
+                if (result.scenarioId && result.scenarioId !== actualId) {
+                    setField("currentScenarioId", result.scenarioId);
                 }
 
                 return result.scenarioId;
             } catch (error) {
-                // Error is already logged in the mutation hook
                 throw error;
             }
         },
-        [session?.user?.id, saveMutation],
+        [session?.user?.id, saveMutation, setField],
     );
 
     const saveScenarioDebounced = useCallback(
         (scenario: Scenario, scenarioId?: string) => {
-            // Clear existing timeout
             if (saveTimeoutRef.current) {
                 clearTimeout(saveTimeoutRef.current);
             }
 
-            // Set new timeout for debounced save
             saveTimeoutRef.current = setTimeout(() => {
                 saveScenario(scenario, scenarioId).catch((error) => {
                     clientLogger.error("Debounced save failed:", error);
                 });
-            }, 1000); // Wait 1 second after last change before saving
+            }, 1000);
         },
         [saveScenario],
     );
@@ -82,16 +86,14 @@ export function useScenario() {
             }
 
             try {
-                // Try to get from cache first
                 const cachedData = queryClient.getQueryData<ScenarioWithId>(
                     SCENARIO_KEYS.detail(scenarioId),
                 );
                 if (cachedData) {
-                    currentScenarioIdRef.current = scenarioId;
+                    setField("currentScenarioId", scenarioId);
                     return cachedData;
                 }
 
-                // If not in cache, fetch it
                 const response = await fetch(`/api/scenarios?id=${scenarioId}`);
 
                 if (!response.ok) {
@@ -103,14 +105,12 @@ export function useScenario() {
 
                 const scenarioData = (await response.json()) as ScenarioWithId;
 
-                // Seed the cache
                 queryClient.setQueryData(
                     SCENARIO_KEYS.detail(scenarioId),
                     scenarioData,
                 );
 
-                // Update current scenario ID
-                currentScenarioIdRef.current = scenarioId;
+                setField("currentScenarioId", scenarioId);
 
                 return scenarioData;
             } catch (error) {
@@ -118,7 +118,7 @@ export function useScenario() {
                 throw error;
             }
         },
-        [session?.user?.id, queryClient],
+        [session?.user?.id, queryClient, setField],
     );
 
     const loadUserScenarios = useCallback(async (): Promise<
@@ -139,12 +139,15 @@ export function useScenario() {
     }, [session?.user?.id, refetchScenarios]);
 
     const getCurrentScenarioId = useCallback(() => {
-        return currentScenarioIdRef.current;
+        return useScenarioStore.getState().currentScenarioId;
     }, []);
 
-    const setCurrentScenarioId = useCallback((scenarioId: string | null) => {
-        currentScenarioIdRef.current = scenarioId;
-    }, []);
+    const setCurrentScenarioId = useCallback(
+        (id: string | null) => {
+            setField("currentScenarioId", id);
+        },
+        [setField],
+    );
 
     return {
         saveScenario,
@@ -154,7 +157,6 @@ export function useScenario() {
         getCurrentScenarioId,
         setCurrentScenarioId,
         isAuthenticated: !!session?.user?.id,
-        // Expose React Query primitives for more advanced usage
         scenarios,
         isSaving: saveMutation.isPending,
         isDeleting: deleteMutation.isPending,

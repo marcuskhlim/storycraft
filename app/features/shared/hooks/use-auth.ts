@@ -1,17 +1,27 @@
 import { useSession } from "next-auth/react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useCreateUserMutation } from "./use-auth-query";
 
 export function useAuth() {
     const { data: session, status } = useSession();
-    const createUserMutation = useCreateUserMutation();
+    return { session, status };
+}
+
+export function useAuthSync() {
+    const { data: session, status } = useSession();
+    const { mutate } = useCreateUserMutation();
+    const hasCreatedUser = useRef(false);
 
     useEffect(() => {
         // When user is authenticated, ensure they exist in Firestore
-        if (status === "authenticated" && session?.user?.id) {
-            createUserMutation.mutate();
+        // Only run once per session/mount
+        if (
+            status === "authenticated" &&
+            session?.user?.id &&
+            !hasCreatedUser.current
+        ) {
+            hasCreatedUser.current = true;
+            mutate();
         }
-    }, [status, session?.user?.id, createUserMutation]);
-
-    return { session, status };
+    }, [status, session?.user?.id, mutate]);
 }
