@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { SettingsProvider } from "@/hooks/use-settings";
+import { ErrorBoundary } from "./components/error-boundary";
 
 export default function ClientLayout({
     children,
@@ -16,7 +17,9 @@ export default function ClientLayout({
 
     return (
         <QueryClientProvider client={queryClient}>
-            <SettingsProvider>{children}</SettingsProvider>
+            <SettingsProvider>
+                <ErrorBoundary>{children}</ErrorBoundary>
+            </SettingsProvider>
         </QueryClientProvider>
     );
 }
