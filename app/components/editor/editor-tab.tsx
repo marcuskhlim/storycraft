@@ -14,6 +14,7 @@ import { getDynamicImageUrl } from "@/app/actions/upload-to-gcs";
 import { useTimeline } from "@/hooks/use-timeline";
 import { generateVoiceover } from "@/app/actions/generate-voiceover";
 import { generateMusic } from "@/app/actions/generate-music";
+import { clientLogger } from "@/lib/client-logger";
 
 interface EditorTabProps {
     scenario: Scenario;
@@ -484,7 +485,7 @@ export function EditorTab({
                     }),
                 );
             } catch (error) {
-                console.error("Error generating voiceover:", error);
+                clientLogger.error("Error generating voiceover:", error);
             } finally {
                 setIsGeneratingVoiceover(false);
             }
@@ -540,7 +541,7 @@ export function EditorTab({
                     }),
                 );
             } catch (error) {
-                console.error("Error generating music:", error);
+                clientLogger.error("Error generating music:", error);
             } finally {
                 setIsGeneratingMusic(false);
             }
@@ -559,7 +560,9 @@ export function EditorTab({
                 if (scenarioId && isAuthenticated) {
                     const savedLayers = await loadTimeline(scenarioId);
                     if (savedLayers && savedLayers.length > 0) {
-                        console.log("Loaded saved timeline from Firestore");
+                        clientLogger.info(
+                            "Loaded saved timeline from Firestore",
+                        );
                         // Resolve URLs for saved timeline (URLs may have expired)
                         const resolvedLayers =
                             await resolveLayerUrls(savedLayers);
@@ -571,12 +574,12 @@ export function EditorTab({
                 }
 
                 // No saved timeline - initialize from scenario
-                console.log("Initializing timeline from scenario");
+                clientLogger.info("Initializing timeline from scenario");
                 const initialLayers = await initializeLayersFromScenario();
                 setLayers(initialLayers);
                 setIsTimelineLoaded(true);
             } catch (error) {
-                console.error("Error initializing timeline:", error);
+                clientLogger.error("Error initializing timeline:", error);
                 // Fall back to scenario initialization
                 const initialLayers = await initializeLayersFromScenario();
                 setLayers(initialLayers);
@@ -628,7 +631,7 @@ export function EditorTab({
                                 }
                             }
                         } catch (error) {
-                            console.error(
+                            clientLogger.error(
                                 `Error resolving video URL for item ${item.id}:`,
                                 error,
                             );
@@ -653,7 +656,7 @@ export function EditorTab({
                                 item.content = result.url;
                             }
                         } catch (error) {
-                            console.error(
+                            clientLogger.error(
                                 `Error resolving voiceover URL for item ${item.id}:`,
                                 error,
                             );
@@ -674,7 +677,7 @@ export function EditorTab({
                         musicLayer.items[0].content = result.url;
                     }
                 } catch (error) {
-                    console.error("Error resolving music URL:", error);
+                    clientLogger.error("Error resolving music URL:", error);
                 }
             }
 
@@ -743,7 +746,7 @@ export function EditorTab({
                             };
                         }
                     } catch (error) {
-                        console.error(
+                        clientLogger.error(
                             `Error resolving video URL for scene ${i}:`,
                             error,
                         );
@@ -775,7 +778,7 @@ export function EditorTab({
                             });
                         }
                     } catch (error) {
-                        console.error(
+                        clientLogger.error(
                             `Error resolving voiceover for scene ${i}:`,
                             error,
                         );
@@ -805,7 +808,7 @@ export function EditorTab({
                         ];
                     }
                 } catch (error) {
-                    console.error("Error resolving music:", error);
+                    clientLogger.error("Error resolving music:", error);
                 }
             }
 
@@ -830,7 +833,7 @@ export function EditorTab({
         // Don't save during initialization
         if (isInitializingRef.current) return;
 
-        console.log("Auto-saving timeline to Firestore...");
+        clientLogger.info("Auto-saving timeline to Firestore...");
         saveTimelineDebounced(scenarioId, layers);
     }, [
         layers,

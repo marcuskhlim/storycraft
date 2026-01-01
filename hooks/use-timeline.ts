@@ -1,6 +1,7 @@
 import { useCallback, useRef } from "react";
 import { useAuth } from "./use-auth";
 import type { TimelineLayer } from "@/app/types";
+import { clientLogger } from "@/lib/client-logger";
 
 export function useTimeline() {
     const { session } = useAuth();
@@ -9,7 +10,9 @@ export function useTimeline() {
     const saveTimeline = useCallback(
         async (scenarioId: string, layers: TimelineLayer[]) => {
             if (!session?.user?.id) {
-                console.warn("Cannot save timeline: user not authenticated");
+                clientLogger.warn(
+                    "Cannot save timeline: user not authenticated",
+                );
                 return null;
             }
 
@@ -27,7 +30,7 @@ export function useTimeline() {
                 const result = await response.json();
                 return result.timelineId;
             } catch (error) {
-                console.error("Error saving timeline:", error);
+                clientLogger.error("Error saving timeline:", error);
                 throw error;
             }
         },
@@ -44,7 +47,10 @@ export function useTimeline() {
             // Set new timeout for debounced save
             saveTimeoutRef.current = setTimeout(() => {
                 saveTimeline(scenarioId, layers).catch((error) => {
-                    console.error("Debounced timeline save failed:", error);
+                    clientLogger.error(
+                        "Debounced timeline save failed:",
+                        error,
+                    );
                 });
             }, 1000); // Wait 1 second after last change before saving
         },
@@ -54,7 +60,9 @@ export function useTimeline() {
     const loadTimeline = useCallback(
         async (scenarioId: string): Promise<TimelineLayer[] | null> => {
             if (!session?.user?.id) {
-                console.warn("Cannot load timeline: user not authenticated");
+                clientLogger.warn(
+                    "Cannot load timeline: user not authenticated",
+                );
                 return null;
             }
 
@@ -73,7 +81,7 @@ export function useTimeline() {
                 const { timeline } = await response.json();
                 return timeline?.layers || null;
             } catch (error) {
-                console.error("Error loading timeline:", error);
+                clientLogger.error("Error loading timeline:", error);
                 return null;
             }
         },
@@ -83,7 +91,9 @@ export function useTimeline() {
     const resetTimeline = useCallback(
         async (scenarioId: string) => {
             if (!session?.user?.id) {
-                console.warn("Cannot reset timeline: user not authenticated");
+                clientLogger.warn(
+                    "Cannot reset timeline: user not authenticated",
+                );
                 return;
             }
 
@@ -99,7 +109,7 @@ export function useTimeline() {
                     throw new Error("Failed to reset timeline");
                 }
             } catch (error) {
-                console.error("Error resetting timeline:", error);
+                clientLogger.error("Error resetting timeline:", error);
                 throw error;
             }
         },

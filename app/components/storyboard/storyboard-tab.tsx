@@ -157,8 +157,6 @@ export function StoryboardTab({
     const [displayMode, setDisplayMode] = useState<DisplayMode>("image");
     const [currentSlide, setCurrentSlide] = useState(0);
 
-    console.log(JSON.stringify(scenario, null, 2));
-
     const handleGenerateAllVideosClick = () => {
         onGenerateAllVideos();
     };
@@ -173,12 +171,6 @@ export function StoryboardTab({
         currentSlide,
         Math.max(0, scenes.length - 1),
     );
-
-    // If the clamped value is different and we're not just initializing, we could update state, but usually derived is enough for render
-    // However, controls like "Next" need to know the true current index.
-    // We'll update the interaction handlers to use 'effectiveCurrentSlide'
-
-    console.log(JSON.stringify(scenario, null, 2));
 
     const setActiveTab = (sceneIndex: number, tab: string) => {
         setActiveTabs((prev) => ({

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { getDynamicImageUrl } from "@/app/actions/upload-to-gcs";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
+import { clientLogger } from "@/lib/client-logger";
 
 interface GcsImageProps {
     gcsUri: string | null;
@@ -26,19 +27,18 @@ export function GcsImage({
     const { data: imageData, isLoading } = useQuery({
         queryKey: ["image", gcsUri],
         queryFn: async () => {
-            console.log("GcsImage query " + gcsUri);
             if (!gcsUri) {
                 return null;
             }
             if (!gcsUri.startsWith("gs://")) {
-                console.error("Invalid GCS URI format:", gcsUri);
+                clientLogger.error("Invalid GCS URI format:", gcsUri);
                 return null;
             }
             try {
                 const result = await getDynamicImageUrl(gcsUri);
                 return result;
             } catch (error) {
-                console.error("Error fetching image URL:", error);
+                clientLogger.error("Error fetching image URL:", error);
                 throw error;
             }
         },

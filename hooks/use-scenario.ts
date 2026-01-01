@@ -1,6 +1,7 @@
 import { useCallback, useRef } from "react";
 import { useAuth } from "./use-auth";
 import type { Scenario } from "@/app/types";
+import { clientLogger } from "@/lib/client-logger";
 
 export function useScenario() {
     const { session } = useAuth();
@@ -10,7 +11,9 @@ export function useScenario() {
     const saveScenario = useCallback(
         async (scenario: Scenario, scenarioId?: string) => {
             if (!session?.user?.id) {
-                console.warn("Cannot save scenario: user not authenticated");
+                clientLogger.warn(
+                    "Cannot save scenario: user not authenticated",
+                );
                 return null;
             }
 
@@ -39,7 +42,7 @@ export function useScenario() {
 
                 return result.scenarioId;
             } catch (error) {
-                console.error("Error saving scenario:", error);
+                clientLogger.error("Error saving scenario:", error);
                 throw error;
             }
         },
@@ -56,7 +59,7 @@ export function useScenario() {
             // Set new timeout for debounced save
             saveTimeoutRef.current = setTimeout(() => {
                 saveScenario(scenario, scenarioId).catch((error) => {
-                    console.error("Debounced save failed:", error);
+                    clientLogger.error("Debounced save failed:", error);
                 });
             }, 1000); // Wait 1 second after last change before saving
         },
@@ -66,7 +69,9 @@ export function useScenario() {
     const loadScenario = useCallback(
         async (scenarioId: string): Promise<Scenario | null> => {
             if (!session?.user?.id) {
-                console.warn("Cannot load scenario: user not authenticated");
+                clientLogger.warn(
+                    "Cannot load scenario: user not authenticated",
+                );
                 return null;
             }
 
@@ -87,7 +92,7 @@ export function useScenario() {
 
                 return scenarioData;
             } catch (error) {
-                console.error("Error loading scenario:", error);
+                clientLogger.error("Error loading scenario:", error);
                 throw error;
             }
         },
@@ -96,7 +101,7 @@ export function useScenario() {
 
     const loadUserScenarios = useCallback(async () => {
         if (!session?.user?.id) {
-            console.warn("Cannot load scenarios: user not authenticated");
+            clientLogger.warn("Cannot load scenarios: user not authenticated");
             return [];
         }
 
@@ -110,7 +115,7 @@ export function useScenario() {
             const result = await response.json();
             return result.scenarios || [];
         } catch (error) {
-            console.error("Error loading user scenarios:", error);
+            clientLogger.error("Error loading user scenarios:", error);
             throw error;
         }
     }, [session?.user?.id]);

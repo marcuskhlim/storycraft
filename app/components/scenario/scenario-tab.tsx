@@ -21,6 +21,7 @@ import {
     deletePropFromScenario,
 } from "@/app/actions/modify-scenario";
 import { LoadingMessages } from "@/app/components/ui/loading-messages";
+import { clientLogger } from "@/lib/client-logger";
 
 interface ScenarioTabProps {
     scenario?: Scenario;
@@ -412,8 +413,6 @@ export function ScenarioTab({
 
     const handleCharacterVoiceChange = (index: number, value: string) => {
         const newVoices = [...editedCharacterVoices];
-        console.log("handleCharacterVoiceChange");
-        console.log(value);
         newVoices[index] = value;
         setEditedCharacterVoices(newVoices);
     };
@@ -560,7 +559,7 @@ export function ScenarioTab({
                     setEditingCharacterIndex(editingCharacterIndex - 1);
                 }
             } catch (error) {
-                console.error("Error deleting character:", error);
+                clientLogger.error("Error deleting character:", error);
             } finally {
                 setLocalGeneratingCharacters((prev) => {
                     const newSet = new Set(prev);
@@ -619,7 +618,7 @@ export function ScenarioTab({
                     setEditingSettingIndex(editingSettingIndex - 1);
                 }
             } catch (error) {
-                console.error("Error deleting setting:", error);
+                clientLogger.error("Error deleting setting:", error);
             } finally {
                 setLocalGeneratingSettings((prev) => {
                     const newSet = new Set(prev);
@@ -678,7 +677,7 @@ export function ScenarioTab({
                     setEditingPropIndex(editingPropIndex - 1);
                 }
             } catch (error) {
-                console.error("Error deleting prop:", error);
+                clientLogger.error("Error deleting prop:", error);
             } finally {
                 setLocalGeneratingProps((prev) => {
                     const newSet = new Set(prev);

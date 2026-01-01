@@ -4,6 +4,7 @@ import { useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getDynamicImageUrl } from "@/app/actions/upload-to-gcs";
 import { Loader2 } from "lucide-react";
+import { clientLogger } from "@/lib/client-logger";
 
 interface VideoPlayerProps {
     videoGcsUri: string | null;
@@ -27,14 +28,14 @@ export function VideoPlayer({
                 return null;
             }
             if (!videoGcsUri.startsWith("gs://")) {
-                console.error("Invalid GCS URI format:", videoGcsUri);
+                clientLogger.error("Invalid GCS URI format:", videoGcsUri);
                 return null;
             }
             try {
                 const result = await getDynamicImageUrl(videoGcsUri);
                 return result;
             } catch (error) {
-                console.error("Error fetching video URL:", error);
+                clientLogger.error("Error fetching video URL:", error);
                 throw error;
             }
         },

@@ -164,7 +164,7 @@ export default function Home() {
             }
             setActiveTab("scenario"); // Switch to scenario tab after successful generation
         } catch (error) {
-            console.error("Error generating scenes:", error);
+            clientLogger.error("Error generating scenes:", error);
             setErrorMessage(
                 error instanceof Error
                     ? error.message
@@ -217,7 +217,7 @@ export default function Home() {
                 };
             });
         } catch (error) {
-            console.error("Error regenerating images:", error);
+            clientLogger.error("Error regenerating images:", error);
             setErrorMessage(
                 `${error instanceof Error ? error.message : "Unknown error"}`,
             );
@@ -274,7 +274,7 @@ export default function Home() {
 
             setScenario(updatedScenario);
         } catch (error) {
-            console.error("Error regenerating character image:", error);
+            clientLogger.error("Error regenerating character image:", error);
             setErrorMessage(
                 `Failed to regenerate character image: ${error instanceof Error ? error.message : "Unknown error"}`,
             );
@@ -328,7 +328,7 @@ export default function Home() {
 
             setScenario(updatedScenario);
         } catch (error) {
-            console.error("Error regenerating setting image:", error);
+            clientLogger.error("Error regenerating setting image:", error);
             setErrorMessage(
                 `Failed to regenerate setting image: ${error instanceof Error ? error.message : "Unknown error"}`,
             );
@@ -381,7 +381,7 @@ export default function Home() {
 
             setScenario(updatedScenario);
         } catch (error) {
-            console.error("Error regenerating prop image:", error);
+            clientLogger.error("Error regenerating prop image:", error);
             setErrorMessage(
                 `Failed to regenerate prop image: ${error instanceof Error ? error.message : "Unknown error"}`,
             );
@@ -418,7 +418,7 @@ export default function Home() {
             setVttUri(null);
             // setActiveTab("video") // Don't switch (removed per request)
         } catch (error) {
-            console.error("Error generating video:", error);
+            clientLogger.error("Error generating video:", error);
             setErrorMessage(
                 error instanceof Error
                     ? error.message
@@ -452,7 +452,7 @@ export default function Home() {
                 await resetTimeline(scenarioId);
                 clientLogger.log("Timeline reset for video regeneration");
             } catch (error) {
-                console.error("Failed to reset timeline:", error);
+                clientLogger.error("Failed to reset timeline:", error);
             }
         }
 
@@ -484,7 +484,7 @@ export default function Home() {
                         throw new Error(error);
                     }
                 } catch (error) {
-                    console.error("Error regenerating video:", error);
+                    clientLogger.error("Error regenerating video:", error);
                     if (error instanceof Error) {
                         return {
                             ...scene,
@@ -524,7 +524,7 @@ export default function Home() {
             setScenario(scenarioWithStoryboard);
             setActiveTab("storyboard"); // Switch to storyboard tab after successful generation
         } catch (error) {
-            console.error("Error generating storyboard:", error);
+            clientLogger.error("Error generating storyboard:", error);
             setErrorMessage(
                 error instanceof Error
                     ? error.message
@@ -584,7 +584,7 @@ export default function Home() {
                 throw new Error(error);
             }
         } catch (error) {
-            console.error("[Client] Error generating video:", error);
+            clientLogger.error("[Client] Error generating video:", error);
             setErrorMessage(
                 error instanceof Error
                     ? error.message
@@ -674,7 +674,7 @@ export default function Home() {
             };
             reader.readAsDataURL(file);
         } catch (error) {
-            console.error("Error uploading image:", error);
+            clientLogger.error("Error uploading image:", error);
             setErrorMessage(
                 error instanceof Error
                     ? error.message
@@ -754,7 +754,7 @@ export default function Home() {
                 };
             });
         } catch (error) {
-            console.error("Error uploading setting image:", error);
+            clientLogger.error("Error uploading setting image:", error);
             setErrorMessage(
                 error instanceof Error
                     ? error.message
@@ -838,7 +838,7 @@ export default function Home() {
                 };
             });
         } catch (error) {
-            console.error("Error uploading prop image:", error);
+            clientLogger.error("Error uploading prop image:", error);
             setErrorMessage(
                 error instanceof Error
                     ? error.message
@@ -932,7 +932,7 @@ export default function Home() {
                 };
             });
         } catch (error) {
-            console.error("Error uploading character image:", error);
+            clientLogger.error("Error uploading character image:", error);
             setErrorMessage(
                 error instanceof Error
                     ? error.message
@@ -988,7 +988,7 @@ export default function Home() {
                 });
             }
         } catch (error) {
-            console.error("Error uploading logo:", error);
+            clientLogger.error("Error uploading logo:", error);
         } finally {
             setIsUploading(false);
         }

@@ -12,6 +12,7 @@ import {
     ALL_FORMATS,
 } from "mediabunny";
 import { TimelineLayer } from "@/app/types";
+import { clientLogger } from "./client-logger";
 
 // Constants
 const FPS = 30;
@@ -22,7 +23,7 @@ export async function exportVideoClient(
     layers: TimelineLayer[],
     onProgress?: (progress: number) => void,
 ): Promise<Blob> {
-    console.log("Starting client-side export...");
+    clientLogger.info("Starting client-side export...");
 
     // 1. Initialize Output with BufferTarget (MP4)
     const target = new BufferTarget();
@@ -71,7 +72,7 @@ export async function exportVideoClient(
     });
     if (duration === 0) duration = 1; // Minimum duration
 
-    console.log(`Export duration: ${duration}s`);
+    clientLogger.info(`Export duration: ${duration}s`);
 
     // 6. Process Audio (Mix to AudioBuffer)
     // We need to load all audio inputs first to decode them.
@@ -89,7 +90,7 @@ export async function exportVideoClient(
             // OfflineAudioContext can decode too via decodeAudioData
             return await audioContext.decodeAudioData(arrayBuffer);
         } catch {
-            console.error("Failed to load audio:", url);
+            clientLogger.error("Failed to load audio:", url);
             return null;
         }
     };
@@ -161,7 +162,10 @@ export async function exportVideoClient(
                         videoInputs.set(item.id, { input, sink });
                     }
                 } catch {
-                    console.error("Failed to load video input:", item.content);
+                    clientLogger.error(
+                        "Failed to load video input:",
+                        item.content,
+                    );
                 }
             }
         }

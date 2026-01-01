@@ -5,6 +5,7 @@ import { VideoPlayer } from "./video-player";
 import { Download, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { getDynamicImageUrl } from "@/app/actions/upload-to-gcs";
+import { clientLogger } from "@/lib/client-logger";
 
 interface VideoTabProps {
     videoGcsUri: string | null;
@@ -17,8 +18,6 @@ export function VideoTab({ videoGcsUri, vttUri, language }: VideoTabProps) {
     const [isDownloading, setIsDownloading] = useState(false);
 
     const handleDownload = async () => {
-        console.log("handleDownload");
-        console.log(videoGcsUri);
         if (!videoGcsUri) return;
 
         try {
@@ -37,7 +36,7 @@ export function VideoTab({ videoGcsUri, vttUri, language }: VideoTabProps) {
             link.click();
             document.body.removeChild(link);
         } catch (error) {
-            console.error("Error downloading video:", error);
+            clientLogger.error("Error downloading video:", error);
         } finally {
             setIsDownloading(false);
         }
