@@ -15,7 +15,7 @@ import {
     Image as ImageIcon,
 } from "lucide-react";
 import { useState } from "react";
-import { Scene, Scenario, ImagePrompt, VideoPrompt } from "../../types";
+import { Scene, ImagePrompt, VideoPrompt } from "../../types";
 import { SceneData } from "./scene-data";
 import { SceneCard } from "./scene-card";
 import { GcsImage } from "../ui/gcs-image";
@@ -120,14 +120,13 @@ function VideoPromptDisplay({ videoPrompt }: { videoPrompt: VideoPrompt }) {
     );
 }
 
+import { useScenarioStore } from "@/stores/useScenarioStore";
+import { useLoadingStore } from "@/stores/useLoadingStore";
+
 type ViewMode = "grid" | "list" | "slideshow";
 type DisplayMode = "image" | "video";
 
 interface StoryboardTabProps {
-    scenario: Scenario;
-    isVideoLoading: boolean;
-    generatingScenes: Set<number>;
-    errorMessage: string | null;
     onGenerateAllVideos: () => Promise<void>;
     onUpdateScene: (index: number, updatedScene: Scene) => void;
     onRegenerateImage: (index: number) => Promise<void>;
@@ -139,10 +138,6 @@ interface StoryboardTabProps {
 }
 
 export function StoryboardTab({
-    scenario,
-    isVideoLoading,
-    generatingScenes,
-    errorMessage,
     onGenerateAllVideos,
     onUpdateScene,
     onRegenerateImage,
@@ -152,17 +147,24 @@ export function StoryboardTab({
     onRemoveScene,
     onReorderScenes,
 }: StoryboardTabProps) {
-    const scenes = scenario.scenes;
+    const { scenario, errorMessage } = useScenarioStore();
+    const { video: isVideoLoading, scenes: generatingScenes } =
+        useLoadingStore();
+
     const [viewMode, setViewMode] = useState<ViewMode>("grid");
     const [displayMode, setDisplayMode] = useState<DisplayMode>("image");
     const [currentSlide, setCurrentSlide] = useState(0);
+    const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+    const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+    const [activeTabs, setActiveTabs] = useState<{ [key: number]: string }>({});
+
+    if (!scenario) return null;
+
+    const scenes = scenario.scenes;
 
     const handleGenerateAllVideosClick = () => {
         onGenerateAllVideos();
     };
-    const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-    const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-    const [activeTabs, setActiveTabs] = useState<{ [key: number]: string }>({});
 
     // No need for effects to sync these states - handle clamping at usage time and defaulting at usage time
 

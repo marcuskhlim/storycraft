@@ -79,52 +79,42 @@ const ASPECT_RATIOS = [
     { name: "9:16", value: "9:16", icon: Smartphone },
 ];
 
+import { useScenarioStore } from "@/stores/useScenarioStore";
+import { useLoadingStore } from "@/stores/useLoadingStore";
+
 interface CreateTabProps {
-    name: string;
-    setName: (name: string) => void;
-    pitch: string;
-    setPitch: (pitch: string) => void;
-    numScenes: number;
-    setNumScenes: (num: number) => void;
-    style: string;
-    setStyle: (style: string) => void;
-    aspectRatio: string;
-    setAspectRatio: (aspectRatio: string) => void;
-    durationSeconds: number;
-    setDurationSeconds: (duration: number) => void;
-    language: Language;
-    setLanguage: (language: Language) => void;
-    isLoading: boolean;
-    errorMessage: string | null;
     onGenerate: () => Promise<void>;
     styles: Style[];
-    styleImageUri: string | null;
-    setStyleImageUri: (uri: string | null) => void;
 }
 
-export function CreateTab({
-    name,
-    setName,
-    pitch,
-    setPitch,
-    numScenes,
-    setNumScenes,
-    style,
-    setStyle,
-    aspectRatio,
-    setAspectRatio,
-    durationSeconds,
-    setDurationSeconds,
-    language,
-    setLanguage,
-    isLoading,
-    errorMessage,
-    onGenerate,
-    styles,
-    styleImageUri,
-    setStyleImageUri,
-}: CreateTabProps) {
+export function CreateTab({ onGenerate, styles }: CreateTabProps) {
+    const {
+        name,
+        pitch,
+        numScenes,
+        style,
+        aspectRatio,
+        durationSeconds,
+        language,
+        styleImageUri,
+        errorMessage,
+        setField,
+    } = useScenarioStore();
+
+    const { scenario: isLoading } = useLoadingStore();
+
     const totalLength = numScenes * durationSeconds;
+
+    const setName = (val: string) => setField("name", val);
+    const setPitch = (val: string) => setField("pitch", val);
+    const setNumScenes = (val: number) => setField("numScenes", val);
+    const setStyle = (val: string) => setField("style", val);
+    const setAspectRatio = (val: string) => setField("aspectRatio", val);
+    const setDurationSeconds = (val: number) =>
+        setField("durationSeconds", val);
+    const setLanguage = (val: Language) => setField("language", val);
+    const setStyleImageUri = (val: string | null) =>
+        setField("styleImageUri", val);
 
     return (
         <div className="mx-auto max-w-5xl space-y-8 pb-10">

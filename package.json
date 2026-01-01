@@ -46,7 +46,8 @@
         "tailwindcss-animate": "^1.0.7",
         "uuid": "^11.0.5",
         "winston": "^3.17.0",
-        "zod": "^4.0.17"
+        "zod": "^4.0.17",
+        "zustand": "^5.0.9"
     },
     "devDependencies": {
         "@types/node": "^20",

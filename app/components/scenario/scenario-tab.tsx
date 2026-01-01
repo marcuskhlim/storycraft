@@ -10,7 +10,6 @@ import {
     X,
     RefreshCw,
 } from "lucide-react";
-import { Scenario } from "../../types";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -23,53 +22,52 @@ import {
 import { LoadingMessages } from "@/app/components/ui/loading-messages";
 import { clientLogger } from "@/lib/client-logger";
 
+import { useScenarioStore } from "@/stores/useScenarioStore";
+import { useLoadingStore } from "@/stores/useLoadingStore";
+
 interface ScenarioTabProps {
-    scenario?: Scenario;
     onGenerateStoryBoard: () => void;
-    isLoading: boolean;
-    onScenarioUpdate?: (updatedScenario: Scenario) => void;
-    onRegenerateCharacterImage?: (
+    onRegenerateCharacterImage: (
         characterIndex: number,
         name: string,
         description: string,
         voice: string,
     ) => Promise<void>;
-    onUploadCharacterImage?: (
+    onUploadCharacterImage: (
         characterIndex: number,
         file: File,
     ) => Promise<void>;
-    generatingCharacterImages?: Set<number>;
-    onRegenerateSettingImage?: (
+    onRegenerateSettingImage: (
         settingIndex: number,
         name: string,
         description: string,
     ) => Promise<void>;
-    onUploadSettingImage?: (settingIndex: number, file: File) => Promise<void>;
-    generatingSettingImages?: Set<number>;
-    onRegeneratePropImage?: (
+    onUploadSettingImage: (settingIndex: number, file: File) => Promise<void>;
+    onRegeneratePropImage: (
         propIndex: number,
         name: string,
         description: string,
     ) => Promise<void>;
-    onUploadPropImage?: (propIndex: number, file: File) => Promise<void>;
-    generatingPropImages?: Set<number>;
+    onUploadPropImage: (propIndex: number, file: File) => Promise<void>;
 }
 
 export function ScenarioTab({
-    scenario,
     onGenerateStoryBoard,
-    isLoading,
-    onScenarioUpdate,
     onRegenerateCharacterImage,
     onUploadCharacterImage,
-    generatingCharacterImages,
     onRegenerateSettingImage,
     onUploadSettingImage,
-    generatingSettingImages,
     onRegeneratePropImage,
     onUploadPropImage,
-    generatingPropImages,
 }: ScenarioTabProps) {
+    const { scenario, setScenario } = useScenarioStore();
+    const {
+        scenario: isLoading,
+        characters: generatingCharacterImages,
+        settings: generatingSettingImages,
+        props: generatingPropImages,
+    } = useLoadingStore();
+
     const [isEditing, setIsEditing] = useState(false);
     const [editedScenario, setEditedScenario] = useState(
         scenario?.scenario || "",
@@ -225,20 +223,20 @@ export function ScenarioTab({
     ]);
 
     const handleSave = useCallback(async () => {
-        if (scenario && onScenarioUpdate) {
+        if (scenario) {
             const updatedScenario = {
                 ...scenario,
                 scenario: editedScenario,
             };
-            onScenarioUpdate(updatedScenario);
+            setScenario(updatedScenario);
             setEditedScenario(updatedScenario.scenario);
         }
         setIsEditing(false);
-    }, [scenario, onScenarioUpdate, editedScenario]);
+    }, [scenario, setScenario, editedScenario]);
 
     const handleSaveCharacter = useCallback(
         async (index: number) => {
-            if (scenario && onScenarioUpdate) {
+            if (scenario) {
                 const updatedDescription = editedCharacterDescriptions[index];
                 const updatedName = editedCharacterNames[index];
                 const updatedVoice = editedCharacterVoices[index];
@@ -255,13 +253,13 @@ export function ScenarioTab({
                     ...scenario,
                     characters: updatedCharacters,
                 };
-                onScenarioUpdate(updatedScenario);
+                setScenario(updatedScenario);
             }
             setEditingCharacterIndex(null);
         },
         [
             scenario,
-            onScenarioUpdate,
+            setScenario,
             editedCharacterDescriptions,
             editedCharacterNames,
             editedCharacterVoices,
@@ -270,7 +268,7 @@ export function ScenarioTab({
 
     const handleSaveSetting = useCallback(
         async (index: number) => {
-            if (scenario && onScenarioUpdate) {
+            if (scenario) {
                 const updatedDescription = editedSettingDescriptions[index];
                 const updatedName = editedSettingNames[index];
 
@@ -285,21 +283,16 @@ export function ScenarioTab({
                     ...scenario,
                     settings: updatedSettings,
                 };
-                onScenarioUpdate(updatedScenario);
+                setScenario(updatedScenario);
             }
             setEditingSettingIndex(null);
         },
-        [
-            scenario,
-            onScenarioUpdate,
-            editedSettingDescriptions,
-            editedSettingNames,
-        ],
+        [scenario, setScenario, editedSettingDescriptions, editedSettingNames],
     );
 
     const handleSaveProp = useCallback(
         async (index: number) => {
-            if (scenario && onScenarioUpdate) {
+            if (scenario) {
                 const updatedDescription = editedPropDescriptions[index];
                 const updatedName = editedPropNames[index];
 
@@ -314,24 +307,24 @@ export function ScenarioTab({
                     ...scenario,
                     props: updatedProps,
                 };
-                onScenarioUpdate(updatedScenario);
+                setScenario(updatedScenario);
             }
             setEditingPropIndex(null);
         },
-        [scenario, onScenarioUpdate, editedPropDescriptions, editedPropNames],
+        [scenario, setScenario, editedPropDescriptions, editedPropNames],
     );
 
     const handleSaveMusic = useCallback(async () => {
-        if (scenario && onScenarioUpdate) {
+        if (scenario) {
             // Update only the music property without regenerating scenario
             const updatedScenario = {
                 ...scenario,
                 music: editedMusic,
             };
-            onScenarioUpdate(updatedScenario);
+            setScenario(updatedScenario);
         }
         setIsEditingMusic(false);
-    }, [scenario, onScenarioUpdate, editedMusic]);
+    }, [scenario, setScenario, editedMusic]);
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
@@ -512,7 +505,7 @@ export function ScenarioTab({
     };
 
     const handleAddCharacter = () => {
-        if (scenario && onScenarioUpdate) {
+        if (scenario) {
             const newCharacter = {
                 name: "New Character",
                 description: "Enter character description...",
@@ -522,7 +515,7 @@ export function ScenarioTab({
                 ...scenario,
                 characters: updatedCharacters,
             };
-            onScenarioUpdate(updatedScenario);
+            setScenario(updatedScenario);
 
             // Set the new character to editing mode
             setEditingCharacterIndex(updatedCharacters.length - 1);
@@ -530,7 +523,7 @@ export function ScenarioTab({
     };
 
     const handleRemoveCharacter = async (index: number) => {
-        if (scenario && onScenarioUpdate) {
+        if (scenario) {
             setLocalGeneratingCharacters((prev) => new Set([...prev, index]));
             try {
                 const newScenario = await deleteCharacterFromScenario(
@@ -539,14 +532,14 @@ export function ScenarioTab({
                     scenario.characters[index].description,
                 );
                 const updatedCharacters = scenario.characters.filter(
-                    (_, i) => i !== index,
+                    (item, i) => i !== index,
                 );
                 const updatedScenario = {
                     ...scenario,
                     characters: updatedCharacters,
                     scenario: newScenario.updatedScenario,
                 };
-                onScenarioUpdate(updatedScenario);
+                setScenario(updatedScenario);
 
                 // Clear editing state if we're removing the character being edited
                 if (editingCharacterIndex === index) {
@@ -571,7 +564,7 @@ export function ScenarioTab({
     };
 
     const handleAddSetting = () => {
-        if (scenario && onScenarioUpdate) {
+        if (scenario) {
             const newSetting = {
                 name: "New Setting",
                 description: "Enter setting description...",
@@ -581,7 +574,7 @@ export function ScenarioTab({
                 ...scenario,
                 settings: updatedSettings,
             };
-            onScenarioUpdate(updatedScenario);
+            setScenario(updatedScenario);
 
             // Set the new setting to editing mode
             setEditingSettingIndex(updatedSettings.length - 1);
@@ -589,7 +582,7 @@ export function ScenarioTab({
     };
 
     const handleRemoveSetting = async (index: number) => {
-        if (scenario && onScenarioUpdate) {
+        if (scenario) {
             setLocalGeneratingSettings((prev) => new Set([...prev, index]));
             try {
                 const newScenario = await deleteSettingFromScenario(
@@ -598,14 +591,14 @@ export function ScenarioTab({
                     scenario.settings[index].description,
                 );
                 const updatedSettings = scenario.settings.filter(
-                    (_, i) => i !== index,
+                    (item, i) => i !== index,
                 );
                 const updatedScenario = {
                     ...scenario,
                     settings: updatedSettings,
                     scenario: newScenario.updatedScenario,
                 };
-                onScenarioUpdate(updatedScenario);
+                setScenario(updatedScenario);
 
                 // Clear editing state if we're removing the setting being edited
                 if (editingSettingIndex === index) {
@@ -630,7 +623,7 @@ export function ScenarioTab({
     };
 
     const handleAddProp = () => {
-        if (scenario && onScenarioUpdate) {
+        if (scenario) {
             const newProp = {
                 name: "New Prop",
                 description: "Enter prop description...",
@@ -640,7 +633,7 @@ export function ScenarioTab({
                 ...scenario,
                 props: updatedProps,
             };
-            onScenarioUpdate(updatedScenario);
+            setScenario(updatedScenario);
 
             // Set the new prop to editing mode
             setEditingPropIndex(updatedProps.length - 1);
@@ -648,7 +641,7 @@ export function ScenarioTab({
     };
 
     const handleRemoveProp = async (index: number) => {
-        if (scenario && onScenarioUpdate) {
+        if (scenario) {
             setLocalGeneratingProps((prev) => new Set([...prev, index]));
             try {
                 const newScenario = await deletePropFromScenario(
@@ -657,14 +650,14 @@ export function ScenarioTab({
                     scenario.props[index].description,
                 );
                 const updatedProps = scenario.props.filter(
-                    (_, i) => i !== index,
+                    (item, i) => i !== index,
                 );
                 const updatedScenario = {
                     ...scenario,
                     props: updatedProps,
                     scenario: newScenario.updatedScenario,
                 };
-                onScenarioUpdate(updatedScenario);
+                setScenario(updatedScenario);
 
                 // Clear editing state if we're removing the prop being edited
                 if (editingPropIndex === index) {

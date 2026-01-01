@@ -4,7 +4,7 @@ import { TimelineLayer } from "@/app/types";
 import { Button } from "@/components/ui/button";
 import { Film, Loader2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Scenario, TimelineItem } from "../../types";
+import { TimelineItem } from "../../types";
 import { AudioWaveform } from "./audio-wave-form";
 import { MediabunnyPlayer } from "./mediabunny-player";
 import { MusicParams, MusicSelectionDialog } from "./music-selection-dialog";
@@ -16,18 +16,13 @@ import { generateVoiceover } from "@/app/actions/generate-voiceover";
 import { generateMusic } from "@/app/actions/generate-music";
 import { clientLogger } from "@/lib/client-logger";
 
+import { useScenarioStore } from "@/stores/useScenarioStore";
+import { useLoadingStore } from "@/stores/useLoadingStore";
+import { useEditorStore } from "@/stores/useEditorStore";
+
 interface EditorTabProps {
-    scenario: Scenario;
     scenarioId: string | null;
-    currentTime: number;
-    onTimeUpdate: (time: number) => void;
-    logoOverlay: string | null;
-    setLogoOverlay: (logo: string | null) => void;
-    onLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
-    onLogoRemove: () => void;
     onExportMovie: (layers: TimelineLayer[]) => Promise<void>;
-    isExporting?: boolean;
-    exportProgress?: number;
 }
 
 const TIMELINE_DURATION = 65; // Total timeline duration in seconds
@@ -41,17 +36,16 @@ const formatTime = (seconds: number): string => {
     return `${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
 };
 
-export function EditorTab({
-    scenario,
-    scenarioId,
-    currentTime,
-    onTimeUpdate,
-    logoOverlay,
-    onExportMovie,
-    isExporting = false,
-    exportProgress = 0,
-}: EditorTabProps) {
-    const SCENE_DURATION = scenario.durationSeconds || 8;
+export function EditorTab({ scenarioId, onExportMovie }: EditorTabProps) {
+    const { scenario, logoOverlay } = useScenarioStore();
+    const { video: isExporting } = useLoadingStore();
+    const {
+        currentTime,
+        exportProgress,
+        setCurrentTime: onTimeUpdate,
+    } = useEditorStore();
+
+    const SCENE_DURATION = scenario?.durationSeconds || 8;
     const timelineRef = useRef<HTMLDivElement>(null);
 
     // Timeline persistence
@@ -60,18 +54,17 @@ export function EditorTab({
     const [isTimelineLoaded, setIsTimelineLoaded] = useState(false);
     const isInitializingRef = useRef(false);
 
-    // Simplified state management
+    // ... (rest of the state hooks)
     const [selectedItem, setSelectedItem] = useState<{
         layerId: string;
         itemId: string;
     } | null>(null);
 
-    // Resize state
     const [isResizing, setIsResizing] = useState(false);
     const [resizeStartX, setResizeStartX] = useState(0);
     const [resizeStartTime, setResizeStartTime] = useState(0);
     const [resizeStartDuration, setResizeStartDuration] = useState(0);
-    const [resizeStartTrimStart, setResizeStartTrimStart] = useState(0); // Track initial trim offset
+    const [resizeStartTrimStart, setResizeStartTrimStart] = useState(0);
     const [resizeHandle, setResizeHandle] = useState<"start" | "end" | null>(
         null,
     );
@@ -80,7 +73,6 @@ export function EditorTab({
         itemId: string;
     } | null>(null);
 
-    // Drag state for moving clips
     const [isDragging, setIsDragging] = useState(false);
     const [dragStartX, setDragStartX] = useState(0);
     const [dragStartTime, setDragStartTime] = useState(0);
@@ -94,50 +86,52 @@ export function EditorTab({
     } | null>(null);
     const [snapLinePosition, setSnapLinePosition] = useState<number | null>(
         null,
-    ); // Visual snap indicator
-    const originalLayerItemsRef = useRef<TimelineItem[]>([]); // Store original positions for swap detection
+    );
+    const originalLayerItemsRef = useRef<TimelineItem[]>([]);
 
-    // Playback state - driven by MediabunnyPlayer
     const [isPlaying, setIsPlaying] = useState(false);
-
-    // Dialog states
     const [isVoiceDialogOpen, setIsVoiceDialogOpen] = useState(false);
     const [isMusicDialogOpen, setIsMusicDialogOpen] = useState(false);
-
-    // Internal generation loading states
     const [isGeneratingVoiceover, setIsGeneratingVoiceover] = useState(false);
     const [isGeneratingMusic, setIsGeneratingMusic] = useState(false);
 
-    // Timeline layers
-    const [layers, setLayers] = useState<TimelineLayer[]>([
-        {
-            id: "videos",
-            name: "Videos",
-            type: "video",
-            items: scenario.scenes.map((scene, index) => ({
-                id: `video-${index}`,
-                startTime: index * SCENE_DURATION,
-                duration: SCENE_DURATION,
-                content: "",
-                type: "video",
-                metadata: {
-                    logoOverlay: scenario.logoOverlay || undefined,
+    const [layers, setLayers] = useState<TimelineLayer[]>([]);
+
+    useEffect(() => {
+        if (scenario && layers.length === 0) {
+            setLayers([
+                {
+                    id: "videos",
+                    name: "Videos",
+                    type: "video",
+                    items: scenario.scenes.map((scene, index) => ({
+                        id: `video-${index}`,
+                        startTime: index * SCENE_DURATION,
+                        duration: SCENE_DURATION,
+                        content: "",
+                        type: "video",
+                        metadata: {
+                            logoOverlay: scenario.logoOverlay || undefined,
+                        },
+                    })),
                 },
-            })),
-        },
-        {
-            id: "voiceovers",
-            name: "Voiceovers",
-            type: "voiceover",
-            items: [],
-        },
-        {
-            id: "music",
-            name: "Music",
-            type: "music",
-            items: [],
-        },
-    ]);
+                {
+                    id: "voiceovers",
+                    name: "Voiceovers",
+                    type: "voiceover",
+                    items: [],
+                },
+                {
+                    id: "music",
+                    name: "Music",
+                    type: "music",
+                    items: [],
+                },
+            ]);
+        }
+    }, [scenario, SCENE_DURATION, layers.length]);
+
+    // ... (rest of the component)
 
     // Voice selection handlers
     const handleOpenVoiceDialog = () => setIsVoiceDialogOpen(true);
@@ -438,13 +432,13 @@ export function EditorTab({
     // Internal handler: Generate voiceover and add to timeline
     const handleGenerateVoiceoverInternal = useCallback(
         async (voice?: Voice) => {
-            if (!scenario.scenes || scenario.scenes.length === 0) return;
+            if (!scenario?.scenes || scenario.scenes.length === 0) return;
 
             setIsGeneratingVoiceover(true);
             try {
                 const voiceoverUrls = await generateVoiceover(
-                    scenario.scenes,
-                    scenario.language,
+                    scenario?.scenes || [],
+                    scenario?.language || { name: "English", code: "en-US" },
                     voice?.name, // Voice interface uses 'name' not 'voiceName'
                 );
 
@@ -491,8 +485,8 @@ export function EditorTab({
             }
         },
         [
-            scenario.scenes,
-            scenario.language,
+            scenario?.scenes,
+            scenario?.language,
             layers,
             SCENE_DURATION,
             getAudioDuration,
@@ -519,7 +513,7 @@ export function EditorTab({
                         (max, item) =>
                             Math.max(max, item.startTime + item.duration),
                         0,
-                    ) ?? scenario.scenes.length * SCENE_DURATION;
+                    ) ?? (scenario?.scenes?.length || 0) * SCENE_DURATION;
 
                 const musicItem: TimelineItem = {
                     id: "music-0",
@@ -546,7 +540,7 @@ export function EditorTab({
                 setIsGeneratingMusic(false);
             }
         },
-        [layers, scenario.scenes.length, SCENE_DURATION, getAudioDuration],
+        [layers, scenario?.scenes?.length, SCENE_DURATION, getAudioDuration],
     );
 
     // Initialize timeline - try to load saved state first, otherwise initialize from scenario
@@ -612,7 +606,7 @@ export function EditorTab({
                 for (let i = 0; i < videoLayer.items.length; i++) {
                     const item = videoLayer.items[i];
                     const sceneIndex = parseInt(item.id.replace("video-", ""));
-                    const scene = scenario.scenes[sceneIndex];
+                    const scene = scenario?.scenes?.[sceneIndex];
                     if (scene?.videoUri) {
                         try {
                             const result = await getDynamicImageUrl(
@@ -646,7 +640,7 @@ export function EditorTab({
                     const sceneIndex = parseInt(
                         item.id.replace("voiceover-", ""),
                     );
-                    const scene = scenario.scenes[sceneIndex];
+                    const scene = scenario?.scenes?.[sceneIndex];
                     if (scene?.voiceoverAudioUri) {
                         try {
                             const result = await getDynamicImageUrl(
@@ -669,7 +663,7 @@ export function EditorTab({
             if (
                 musicLayer &&
                 musicLayer.items.length > 0 &&
-                scenario.musicUrl
+                scenario?.musicUrl
             ) {
                 try {
                     const result = await getDynamicImageUrl(scenario.musicUrl);
@@ -693,14 +687,14 @@ export function EditorTab({
                     id: "videos",
                     name: "Videos",
                     type: "video",
-                    items: scenario.scenes.map((scene, index) => ({
+                    items: (scenario?.scenes || []).map((scene, index) => ({
                         id: `video-${index}`,
                         startTime: index * SCENE_DURATION,
                         duration: SCENE_DURATION,
                         content: "",
                         type: "video" as const,
                         metadata: {
-                            logoOverlay: scenario.logoOverlay || undefined,
+                            logoOverlay: scenario?.logoOverlay || undefined,
                         },
                     })),
                 },
@@ -729,8 +723,9 @@ export function EditorTab({
             )!;
 
             // Resolve video URLs and get original durations
-            for (let i = 0; i < scenario.scenes.length; i++) {
-                const scene = scenario.scenes[i];
+            const videoScenes = scenario?.scenes || [];
+            for (let i = 0; i < videoScenes.length; i++) {
+                const scene = videoScenes[i];
                 if (scene.videoUri) {
                     try {
                         const result = await getDynamicImageUrl(scene.videoUri);
@@ -756,8 +751,9 @@ export function EditorTab({
 
             // Resolve voiceover URLs
             const voiceoverItems: TimelineItem[] = [];
-            for (let i = 0; i < scenario.scenes.length; i++) {
-                const scene = scenario.scenes[i];
+            const voiceScenes = scenario?.scenes || [];
+            for (let i = 0; i < voiceScenes.length; i++) {
+                const scene = voiceScenes[i];
                 if (scene.voiceoverAudioUri) {
                     try {
                         const result = await getDynamicImageUrl(
@@ -788,7 +784,7 @@ export function EditorTab({
             voiceoverLayer.items = voiceoverItems;
 
             // Resolve music URL
-            if (scenario.musicUrl) {
+            if (scenario?.musicUrl) {
                 try {
                     const result = await getDynamicImageUrl(scenario.musicUrl);
                     if (result?.url) {
@@ -1558,6 +1554,8 @@ export function EditorTab({
         onTimeUpdate(newTime);
     };
 
+    if (!scenario) return null;
+
     return (
         <div className="mx-auto max-w-5xl space-y-8 pb-10">
             {/* Header section */}
@@ -1615,7 +1613,7 @@ export function EditorTab({
                     onEnded={handlePlaybackEnded}
                     logoOverlay={logoOverlay}
                     aspectRatio={
-                        scenario.aspectRatio === "9:16" ? "9:16" : "16:9"
+                        scenario?.aspectRatio === "9:16" ? "9:16" : "16:9"
                     }
                 />
             </div>
