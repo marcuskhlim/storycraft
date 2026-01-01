@@ -309,7 +309,7 @@ export function CreateTab({
                     {/* Format Card */}
                     <Card className="flex-1 border border-zinc-200 shadow-none dark:border-zinc-800">
                         <CardHeader className="flex flex-row items-center space-x-2 space-y-0">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
                                 <div className="h-4 w-4 rounded border-2 border-current" />
                             </div>
                             <CardTitle className="text-lg">Format</CardTitle>
@@ -356,7 +356,7 @@ export function CreateTab({
                     {/* Video Configuration Card */}
                     <Card className="flex-[2] border border-zinc-200 shadow-none dark:border-zinc-800">
                         <CardHeader className="flex flex-row items-center space-x-2 space-y-0">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
                                 <Video className="h-5 w-5" />
                             </div>
                             <CardTitle className="text-lg">
@@ -445,7 +445,7 @@ export function CreateTab({
             {/* Style Selector Card */}
             <Card className="border border-zinc-200 shadow-none dark:border-zinc-800">
                 <CardHeader className="flex flex-row items-center space-x-2 space-y-0">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
                         <Sparkles className="h-5 w-5" />
                     </div>
                     <CardTitle className="text-xl">Visual Style</CardTitle>
