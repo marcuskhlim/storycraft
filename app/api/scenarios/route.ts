@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { firestore } from "@/lib/storage/firestore";
 import { auth } from "@/auth";
-import { Timestamp } from "@google-cloud/firestore";
+import { Timestamp, FieldPath } from "@google-cloud/firestore";
 import { Scene } from "@/app/types";
 import logger from "@/app/logger";
 import { scenarioApiPostSchema } from "@/app/schemas";
@@ -150,22 +150,20 @@ export async function GET(request: NextRequest) {
         }
 
         if (scenarioId) {
-            // Get specific scenario
-            const scenarioRef = firestore
+            // Get specific scenario for this user
+            const scenarioSnapshot = await firestore
                 .collection("scenarios")
-                .doc(scenarioId);
-            const scenarioDoc = await scenarioRef.get();
+                .where(FieldPath.documentId(), "==", scenarioId)
+                .where("userId", "==", userId)
+                .limit(1)
+                .get();
 
-            if (!scenarioDoc.exists) {
+            if (scenarioSnapshot.empty) {
                 return notFoundResponse("Scenario not found");
             }
 
+            const scenarioDoc = scenarioSnapshot.docs[0];
             const scenarioData = scenarioDoc.data();
-
-            // Check if user owns this scenario
-            if (scenarioData?.userId !== userId) {
-                return forbiddenResponse();
-            }
 
             return successResponse({
                 id: scenarioId,
