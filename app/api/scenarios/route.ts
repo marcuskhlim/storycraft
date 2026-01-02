@@ -82,6 +82,15 @@ export async function POST(request: NextRequest) {
         const scenarioDoc = await scenarioRef.get();
 
         if (scenarioDoc.exists) {
+            // Check if user owns this scenario
+            const existingData = scenarioDoc.data();
+            if (existingData?.userId !== userId) {
+                return NextResponse.json(
+                    { error: "Unauthorized" },
+                    { status: 403 },
+                );
+            }
+
             // Update existing scenario
             logger.info(`Updating scenario: ${id}`);
             await scenarioRef.update({
