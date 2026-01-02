@@ -4,7 +4,7 @@ import logger from "@/app/logger";
 import { env } from "@/lib/utils/env";
 
 // Initialize storage
-const storage = new Storage({
+export const storage = new Storage({
     projectId: env.PROJECT_ID,
     // keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS, // Uncomment if needed
 });

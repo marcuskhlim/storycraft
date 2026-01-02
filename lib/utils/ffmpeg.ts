@@ -1,5 +1,5 @@
 import { TimelineLayer } from "@/app/types";
-import { Storage } from "@google-cloud/storage";
+import { storage } from "@/lib/storage/storage";
 import ffmpeg from "fluent-ffmpeg";
 import * as fs from "fs";
 import * as os from "os";
@@ -469,7 +469,6 @@ export async function exportMovie(
     const outputFileNameWithAudio = `${id}_with_audio.mp4`;
     const outputFileNameWithVoiceover = `${id}_with_voiceover.mp4`;
     let finalOutputPath;
-    const storage = new Storage();
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "video-concat-"));
     const publicDir = path.join(process.cwd(), "public");
 

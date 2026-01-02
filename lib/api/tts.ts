@@ -1,13 +1,11 @@
-import { Storage } from "@google-cloud/storage";
 import textToSpeech, { protos } from "@google-cloud/text-to-speech";
 import * as fs from "fs";
 import * as path from "path";
 import { v4 as uuidv4 } from "uuid";
 import logger from "@/app/logger";
+import { storage } from "@/lib/storage/storage";
 
 const GCS_VIDEOS_STORAGE_URI = process.env.GCS_VIDEOS_STORAGE_URI || "";
-
-const storage = new Storage();
 
 // Assuming you're using Google Cloud Text-to-Speech:
 const client = new textToSpeech.TextToSpeechClient();
