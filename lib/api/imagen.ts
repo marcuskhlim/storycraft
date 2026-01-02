@@ -1,28 +1,12 @@
-import { GoogleAuth } from "google-auth-library";
 import logger from "@/app/logger";
 import { withRetry } from "@/lib/utils/retry";
+import { getAccessToken } from "./auth-utils";
 
 const LOCATION = process.env.LOCATION;
 const PROJECT_ID = process.env.PROJECT_ID;
 const GCS_VIDEOS_STORAGE_URI = process.env.GCS_VIDEOS_STORAGE_URI;
 const MODEL = "imagen-4.0-generate-001";
 const MODEL_EDIT = "imagen-3.0-capability-001";
-
-async function getAccessToken(): Promise<string> {
-    const auth = new GoogleAuth({
-        scopes: ["https://www.googleapis.com/auth/cloud-platform"],
-    });
-    const client = await auth.getClient();
-    const accessToken = (await client.getAccessToken()).token;
-    // Check if accessToken is null or undefined
-    if (accessToken) {
-        return accessToken;
-    } else {
-        // Handle the case where accessToken is null or undefined
-        // This could involve throwing an error, retrying, or providing a default value
-        throw new Error("Failed to obtain access token.");
-    }
-}
 
 interface GenerateImageResponse {
     predictions: Array<{

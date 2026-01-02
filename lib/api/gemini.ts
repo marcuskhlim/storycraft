@@ -78,12 +78,6 @@ export async function generateImage(
 
     return withRetry(
         async () => {
-            const ai = new GoogleGenAI({
-                vertexai: true,
-                project: env.PROJECT_ID,
-                location: "global",
-            });
-
             logger.debug("Generate Image : " + model);
             logger.debug("Config : " + JSON.stringify(config, null, 2));
             const response = await ai.models.generateContent({

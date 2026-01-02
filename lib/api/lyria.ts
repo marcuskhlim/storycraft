@@ -1,11 +1,11 @@
 import { Storage } from "@google-cloud/storage";
 import * as fs from "fs";
-import { GoogleAuth } from "google-auth-library";
 import * as path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { concatenateMusicWithFade } from "@/lib/utils/ffmpeg";
 import logger from "@/app/logger";
 import { withRetry } from "@/lib/utils/retry";
+import { getAccessToken } from "./auth-utils";
 
 const GCS_VIDEOS_STORAGE_URI = process.env.GCS_VIDEOS_STORAGE_URI || "";
 const LOCATION = process.env.LOCATION;
@@ -13,22 +13,6 @@ const PROJECT_ID = process.env.PROJECT_ID;
 const MODEL = "lyria-002";
 
 const storage = new Storage();
-
-async function getAccessToken(): Promise<string> {
-    const auth = new GoogleAuth({
-        scopes: ["https://www.googleapis.com/auth/cloud-platform"],
-    });
-    const client = await auth.getClient();
-    const accessToken = (await client.getAccessToken()).token;
-    // Check if accessToken is null or undefined
-    if (accessToken) {
-        return accessToken;
-    } else {
-        // Handle the case where accessToken is null or undefined
-        // This could involve throwing an error, retrying, or providing a default value
-        throw new Error("Failed to obtain access token.");
-    }
-}
 
 export async function generateMusicRest(prompt: string): Promise<string> {
     const token = await getAccessToken();

@@ -1,8 +1,8 @@
-import { GoogleAuth } from "google-auth-library";
 import logger from "@/app/logger";
 import { getRAIUserMessage } from "@/lib/utils/rai";
 import { DEFAULT_SETTINGS } from "@/lib/ai-config";
 import { withRetry } from "@/lib/utils/retry";
+import { getAccessToken } from "./auth-utils";
 
 const LOCATION = process.env.LOCATION;
 const PROJECT_ID = process.env.PROJECT_ID;
@@ -25,19 +25,6 @@ interface GenerateVideoResponse {
         message: string;
         status: string;
     };
-}
-
-async function getAccessToken(): Promise<string> {
-    const auth = new GoogleAuth({
-        scopes: ["https://www.googleapis.com/auth/cloud-platform"],
-    });
-    const client = await auth.getClient();
-    const accessToken = (await client.getAccessToken()).token;
-    if (accessToken) {
-        return accessToken;
-    } else {
-        throw new Error("Failed to obtain access token.");
-    }
 }
 
 async function checkOperation(
