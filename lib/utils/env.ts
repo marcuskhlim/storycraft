@@ -22,24 +22,14 @@ const envSchema = z.object({
 // but they are required at runtime.
 const parsed = envSchema.safeParse(process.env);
 
-if (!parsed.success) {
-    // Only log errors in server-side or during build
-    if (typeof window === "undefined") {
-        console.error(
-            "❌ Invalid environment variables:",
-            JSON.stringify(parsed.error.flatten().fieldErrors, null, 2),
-        );
-    }
-
-    // In production, we want to fail fast if critical env vars are missing.
-    if (
-        process.env.NODE_ENV === "production" &&
-        typeof window === "undefined"
-    ) {
-        throw new Error("Invalid environment variables");
-    }
+if (!parsed.success && typeof window === "undefined") {
+    console.error(
+        "❌ Invalid environment variables:",
+        JSON.stringify(parsed.error.flatten().fieldErrors, null, 2),
+    );
+    throw new Error("Invalid environment variables");
 }
 
-export const env = parsed.success
-    ? parsed.data
-    : (process.env as unknown as z.infer<typeof envSchema>);
+export const env = (parsed.success ? parsed.data : process.env) as z.infer<
+    typeof envSchema
+>;
