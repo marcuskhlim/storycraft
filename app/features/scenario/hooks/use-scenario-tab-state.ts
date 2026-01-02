@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { useScenarioStore } from "@/app/features/scenario/stores/useScenarioStore";
 import { useLoadingStore } from "@/app/features/shared/stores/useLoadingStore";
 import { useScenarioActions } from "@/app/features/scenario/hooks/use-scenario-actions";
@@ -9,7 +9,8 @@ import {
     deleteSettingFromScenario,
     deletePropFromScenario,
 } from "@/app/features/scenario/actions/modify-scenario";
-import { clientLogger } from "@/lib/utils/client-logger";
+import { useEntityState } from "./use-entity-state";
+import { Scenario } from "@/app/types";
 
 export function useScenarioTabState() {
     const { scenario, setScenario } = useScenarioStore();
@@ -30,39 +31,108 @@ export function useScenarioTabState() {
         handleUploadPropImage,
     } = useScenarioActions();
 
-    const [localLoadingCharacters, setLocalLoadingCharacters] = useState<
-        Set<number>
-    >(new Set());
-    const [localLoadingSettings, setLocalLoadingSettings] = useState<
-        Set<number>
-    >(new Set());
-    const [localLoadingProps, setLocalLoadingProps] = useState<Set<number>>(
-        new Set(),
+    const updateCharacters = useCallback(
+        (
+            updatedCharacters: Scenario["characters"],
+            updatedScenarioText?: string,
+        ) => {
+            if (scenario) {
+                setScenario({
+                    ...scenario,
+                    characters: updatedCharacters,
+                    scenario: updatedScenarioText ?? scenario.scenario,
+                });
+            }
+        },
+        [scenario, setScenario],
     );
 
-    const [newCharacterIndex, setNewCharacterIndex] = useState<number | null>(
-        null,
+    const {
+        isLoading: isCharacterLoading,
+        handleUpdate: handleUpdateCharacter,
+        handleAdd: handleAddCharacter,
+        handleRemove: handleRemoveCharacter,
+        newEntityIndex: newCharacterIndex,
+    } = useEntityState({
+        entities: scenario?.characters,
+        onUpdateEntities: updateCharacters,
+        deleteEntityAction: deleteCharacterFromScenario,
+        scenarioText: scenario?.scenario,
+        entityType: "character",
+        defaultNewEntity: {
+            name: "New Character",
+            description: "Enter character description...",
+            voice: "",
+        },
+        loadingStates: generatingCharacterImages,
+    });
+
+    const updateSettings = useCallback(
+        (
+            updatedSettings: Scenario["settings"],
+            updatedScenarioText?: string,
+        ) => {
+            if (scenario) {
+                setScenario({
+                    ...scenario,
+                    settings: updatedSettings,
+                    scenario: updatedScenarioText ?? scenario.scenario,
+                });
+            }
+        },
+        [scenario, setScenario],
     );
-    const [newSettingIndex, setNewSettingIndex] = useState<number | null>(null);
-    const [newPropIndex, setNewPropIndex] = useState<number | null>(null);
 
-    const isCharacterLoading = (index: number) => {
-        return (
-            generatingCharacterImages?.has(index) ||
-            localLoadingCharacters.has(index)
-        );
-    };
+    const {
+        isLoading: isSettingLoading,
+        handleUpdate: handleUpdateSetting,
+        handleAdd: handleAddSetting,
+        handleRemove: handleRemoveSetting,
+        newEntityIndex: newSettingIndex,
+    } = useEntityState({
+        entities: scenario?.settings,
+        onUpdateEntities: updateSettings,
+        deleteEntityAction: deleteSettingFromScenario,
+        scenarioText: scenario?.scenario,
+        entityType: "setting",
+        defaultNewEntity: {
+            name: "New Setting",
+            description: "Enter setting description...",
+        },
+        loadingStates: generatingSettingImages,
+    });
 
-    const isSettingLoading = (index: number) => {
-        return (
-            generatingSettingImages?.has(index) ||
-            localLoadingSettings.has(index)
-        );
-    };
+    const updateProps = useCallback(
+        (updatedProps: Scenario["props"], updatedScenarioText?: string) => {
+            if (scenario) {
+                setScenario({
+                    ...scenario,
+                    props: updatedProps,
+                    scenario: updatedScenarioText ?? scenario.scenario,
+                });
+            }
+        },
+        [scenario, setScenario],
+    );
 
-    const isPropLoading = (index: number) => {
-        return generatingPropImages?.has(index) || localLoadingProps.has(index);
-    };
+    const {
+        isLoading: isPropLoading,
+        handleUpdate: handleUpdateProp,
+        handleAdd: handleAddProp,
+        handleRemove: handleRemoveProp,
+        newEntityIndex: newPropIndex,
+    } = useEntityState({
+        entities: scenario?.props,
+        onUpdateEntities: updateProps,
+        deleteEntityAction: deletePropFromScenario,
+        scenarioText: scenario?.scenario,
+        entityType: "prop",
+        defaultNewEntity: {
+            name: "New Prop",
+            description: "Enter prop description...",
+        },
+        loadingStates: generatingPropImages,
+    });
 
     const handleUpdateScenarioDescription = useCallback(
         (newDescription: string) => {
@@ -77,194 +147,6 @@ export function useScenarioTabState() {
         (newMusic: string) => {
             if (scenario) {
                 setScenario({ ...scenario, music: newMusic });
-            }
-        },
-        [scenario, setScenario],
-    );
-
-    const handleUpdateCharacter = useCallback(
-        (
-            index: number,
-            updatedCharacter: {
-                name: string;
-                description: string;
-                voice?: string;
-            },
-        ) => {
-            if (scenario) {
-                const updatedCharacters = [...scenario.characters];
-                updatedCharacters[index] = {
-                    ...updatedCharacters[index],
-                    ...updatedCharacter,
-                };
-                setScenario({ ...scenario, characters: updatedCharacters });
-                if (newCharacterIndex === index) setNewCharacterIndex(null);
-            }
-        },
-        [scenario, setScenario, newCharacterIndex],
-    );
-
-    const handleAddCharacter = useCallback(() => {
-        if (scenario) {
-            const newCharacter = {
-                name: "New Character",
-                description: "Enter character description...",
-                voice: "",
-            };
-            const updatedCharacters = [...scenario.characters, newCharacter];
-            setScenario({ ...scenario, characters: updatedCharacters });
-            setNewCharacterIndex(updatedCharacters.length - 1);
-        }
-    }, [scenario, setScenario]);
-
-    const handleRemoveCharacter = useCallback(
-        async (index: number) => {
-            if (scenario) {
-                setLocalLoadingCharacters((prev) => new Set([...prev, index]));
-                try {
-                    const newScenarioData = await deleteCharacterFromScenario(
-                        scenario.scenario,
-                        scenario.characters[index].name,
-                        scenario.characters[index].description,
-                    );
-                    const updatedCharacters = scenario.characters.filter(
-                        (_, i) => i !== index,
-                    );
-                    setScenario({
-                        ...scenario,
-                        characters: updatedCharacters,
-                        scenario: newScenarioData.updatedScenario,
-                    });
-                } catch (error) {
-                    clientLogger.error("Error deleting character:", error);
-                } finally {
-                    setLocalLoadingCharacters((prev) => {
-                        const newSet = new Set(prev);
-                        newSet.delete(index);
-                        return newSet;
-                    });
-                }
-            }
-        },
-        [scenario, setScenario],
-    );
-
-    const handleUpdateSetting = useCallback(
-        (
-            index: number,
-            updatedSetting: { name: string; description: string },
-        ) => {
-            if (scenario) {
-                const updatedSettings = [...scenario.settings];
-                updatedSettings[index] = {
-                    ...updatedSettings[index],
-                    ...updatedSetting,
-                };
-                setScenario({ ...scenario, settings: updatedSettings });
-                if (newSettingIndex === index) setNewSettingIndex(null);
-            }
-        },
-        [scenario, setScenario, newSettingIndex],
-    );
-
-    const handleAddSetting = useCallback(() => {
-        if (scenario) {
-            const newSetting = {
-                name: "New Setting",
-                description: "Enter setting description...",
-            };
-            const updatedSettings = [...scenario.settings, newSetting];
-            setScenario({ ...scenario, settings: updatedSettings });
-            setNewSettingIndex(updatedSettings.length - 1);
-        }
-    }, [scenario, setScenario]);
-
-    const handleRemoveSetting = useCallback(
-        async (index: number) => {
-            if (scenario) {
-                setLocalLoadingSettings((prev) => new Set([...prev, index]));
-                try {
-                    const newScenarioData = await deleteSettingFromScenario(
-                        scenario.scenario,
-                        scenario.settings[index].name,
-                        scenario.settings[index].description,
-                    );
-                    const updatedSettings = scenario.settings.filter(
-                        (_, i) => i !== index,
-                    );
-                    setScenario({
-                        ...scenario,
-                        settings: updatedSettings,
-                        scenario: newScenarioData.updatedScenario,
-                    });
-                } catch (error) {
-                    clientLogger.error("Error deleting setting:", error);
-                } finally {
-                    setLocalLoadingSettings((prev) => {
-                        const newSet = new Set(prev);
-                        newSet.delete(index);
-                        return newSet;
-                    });
-                }
-            }
-        },
-        [scenario, setScenario],
-    );
-
-    const handleUpdateProp = useCallback(
-        (index: number, updatedProp: { name: string; description: string }) => {
-            if (scenario) {
-                const updatedProps = [...scenario.props];
-                updatedProps[index] = {
-                    ...updatedProps[index],
-                    ...updatedProp,
-                };
-                setScenario({ ...scenario, props: updatedProps });
-                if (newPropIndex === index) setNewPropIndex(null);
-            }
-        },
-        [scenario, setScenario, newPropIndex],
-    );
-
-    const handleAddProp = useCallback(() => {
-        if (scenario) {
-            const newProp = {
-                name: "New Prop",
-                description: "Enter prop description...",
-            };
-            const updatedProps = [...scenario.props, newProp];
-            setScenario({ ...scenario, props: updatedProps });
-            setNewPropIndex(updatedProps.length - 1);
-        }
-    }, [scenario, setScenario]);
-
-    const handleRemoveProp = useCallback(
-        async (index: number) => {
-            if (scenario) {
-                setLocalLoadingProps((prev) => new Set([...prev, index]));
-                try {
-                    const newScenarioData = await deletePropFromScenario(
-                        scenario.scenario,
-                        scenario.props[index].name,
-                        scenario.props[index].description,
-                    );
-                    const updatedProps = scenario.props.filter(
-                        (_, i) => i !== index,
-                    );
-                    setScenario({
-                        ...scenario,
-                        props: updatedProps,
-                        scenario: newScenarioData.updatedScenario,
-                    });
-                } catch (error) {
-                    clientLogger.error("Error deleting prop:", error);
-                } finally {
-                    setLocalLoadingProps((prev) => {
-                        const newSet = new Set(prev);
-                        newSet.delete(index);
-                        return newSet;
-                    });
-                }
             }
         },
         [scenario, setScenario],
