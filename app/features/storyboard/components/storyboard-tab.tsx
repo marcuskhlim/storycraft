@@ -671,7 +671,7 @@ export function StoryboardTab() {
                             <Video className="h-4 w-4 text-muted-foreground" />
                         </div>
                     </div>
-                    <LoadingMessages isLoading={isVideoLoading} />
+                    <LoadingMessages isLoading={isVideoLoading} phase="video" />
                     <Button
                         size="lg"
                         onClick={handleGenerateAllVideosClick}

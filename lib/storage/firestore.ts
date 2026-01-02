@@ -6,7 +6,7 @@ const firestore = new Firestore({
     projectId: env.PROJECT_ID,
     databaseId: env.FIRESTORE_DATABASE_ID,
     // Add connection pooling settings
-    maxIdleTime: 0, // 30 seconds
+    maxIdleTime: 180 * 1000, // 60 seconds
     maxConcurrency: 100, // Max concurrent requests
     keepAlive: true,
 });

@@ -5,6 +5,7 @@
 This document presents a thorough analysis of the StoryCraft codebase, an AI-powered video storyboard generation platform built with Next.js 15, React 18, TypeScript, Zustand, and Google Cloud services. The analysis covers security, performance, best practices, code quality, and architectural improvements.
 
 **Key Findings:**
+
 - **15 Critical Issues** requiring immediate attention (security vulnerabilities, missing authentication)
 - **23 High Priority Issues** affecting code quality and maintainability
 - **35+ Medium/Low Priority** improvements for long-term health
@@ -31,16 +32,19 @@ This document presents a thorough analysis of the StoryCraft codebase, an AI-pow
 ### 1.1 Missing Authentication on API Routes (CRITICAL)
 
 **Affected Files:**
+
 - `app/api/videos/route.ts` - No auth check
 - `app/api/regenerate-image/route.ts` - No auth check
 - `app/api/scene/route.ts` - No auth check
 
 **Impact:** Any unauthenticated user can:
+
 - Generate unlimited videos (API quota abuse)
 - Regenerate images without authorization
 - Access scene processing endpoints
 
 **Fix:**
+
 ```typescript
 // Add to all affected routes
 const session = await auth();
@@ -54,6 +58,7 @@ if (!session?.user?.id) {
 **File:** `app/api/scenarios/route.ts:81-99`
 
 **Vulnerability:** Users can overwrite any scenario by providing a known `scenarioId`:
+
 ```typescript
 // VULNERABLE CODE - No ownership verification before update
 if (scenarioDoc.exists) {
@@ -62,11 +67,13 @@ if (scenarioDoc.exists) {
 ```
 
 **Attack Vector:**
+
 1. User A creates scenario with ID "abc123"
 2. User B sends POST with `scenarioId: "abc123"`
 3. User B's data overwrites User A's scenario
 
 **Fix:** Add ownership check before update:
+
 ```typescript
 if (scenarioDoc.exists) {
     const existingData = scenarioDoc.data();
@@ -83,8 +90,8 @@ if (scenarioDoc.exists) {
 
 ```javascript
 // VULNERABLE
-"script-src 'self' 'unsafe-eval' 'unsafe-inline';"
-"style-src 'self' 'unsafe-inline';"
+"script-src 'self' 'unsafe-eval' 'unsafe-inline';";
+"style-src 'self' 'unsafe-inline';";
 ```
 
 **Impact:** `unsafe-eval` and `unsafe-inline` completely defeat CSP protection, allowing XSS attacks.
@@ -94,11 +101,13 @@ if (scenarioDoc.exists) {
 ### 1.4 Exposed Credentials in Repository (CRITICAL)
 
 **File:** `.env.local` contains real credentials:
+
 - Google OAuth Client ID/Secret
 - AUTH_SECRET
 - GCP Project ID
 
 **Immediate Actions:**
+
 1. Rotate ALL credentials immediately
 2. Remove `.env.local` from git history
 3. Add `.env.local` to `.gitignore`
@@ -123,12 +132,14 @@ maxIdleTime: 0,  // Connections NEVER close - memory leak!
 **Affected Routes:** All API routes lack Zod schema validation
 
 **Example (scenarios/route.ts:20-27):**
+
 ```typescript
 const { scenario, scenarioId } = body;
 if (!scenario) { ... }  // Only checks existence, not structure
 ```
 
 **Fix:** Add schema validation:
+
 ```typescript
 import { scenarioSchema } from "@/app/schemas";
 
@@ -140,11 +151,11 @@ if (!parseResult.success) {
 
 ### 2.2 Inconsistent Response Formats
 
-| Route | Success Format | Error Format |
-|-------|---------------|--------------|
-| `/api/users` | `{ success, data, meta }` | `{ error: string }` |
+| Route            | Success Format            | Error Format                                 |
+| ---------------- | ------------------------- | -------------------------------------------- |
+| `/api/users`     | `{ success, data, meta }` | `{ error: string }`                          |
 | `/api/scenarios` | `{ success, data, meta }` | `{ success: false, error: {code, message} }` |
-| `/api/videos` | `{ success, videoUrls }` | `{ success: false, error: string }` |
+| `/api/videos`    | `{ success, videoUrls }`  | `{ success: false, error: string }`          |
 
 **Fix:** Standardize all responses using `ApiResponse<T>` type.
 
@@ -160,22 +171,23 @@ const results = await Promise.all(scenes.map(async (scene) => {...}));
 **Impact:** 100 scenes = 100 concurrent AI API calls = quota exhaustion, timeouts
 
 **Fix:** Implement concurrency limit:
+
 ```typescript
-import pLimit from 'p-limit';
-const limit = pLimit(5);  // Max 5 concurrent
+import pLimit from "p-limit";
+const limit = pLimit(5); // Max 5 concurrent
 
 const results = await Promise.all(
-    scenes.map(scene => limit(() => generateVideo(scene)))
+    scenes.map((scene) => limit(() => generateVideo(scene))),
 );
 ```
 
 ### 2.4 Inconsistent Logging
 
-| Route | Logger Used |
-|-------|------------|
-| `scenarios/route.ts` | `logger.error()` |
-| `users/route.ts` | `console.error()` |
-| `timeline/route.ts` | `console.error()` |
+| Route                | Logger Used       |
+| -------------------- | ----------------- |
+| `scenarios/route.ts` | `logger.error()`  |
+| `users/route.ts`     | `console.error()` |
+| `timeline/route.ts`  | `console.error()` |
 
 **Fix:** Use Winston logger consistently across all routes.
 
@@ -185,13 +197,14 @@ const results = await Promise.all(
 
 ### 3.1 Mega-Components Need Splitting
 
-| Component | Lines | Issues |
-|-----------|-------|--------|
-| `ScenarioTab.tsx` | 1318 | 15+ useState, duplicate editing logic |
-| `EditorTab.tsx` | 630 | Timeline + URL resolution + export mixed |
-| `StoryboardTab.tsx` | 709 | 3 view modes in one component |
+| Component           | Lines | Issues                                   |
+| ------------------- | ----- | ---------------------------------------- |
+| `ScenarioTab.tsx`   | 1318  | 15+ useState, duplicate editing logic    |
+| `EditorTab.tsx`     | 630   | Timeline + URL resolution + export mixed |
+| `StoryboardTab.tsx` | 709   | 3 view modes in one component            |
 
 **ScenarioTab Issues:**
+
 - 15+ local state variables for editing
 - Character/Setting/Prop editing duplicated 3x (~400 lines)
 - Should split into: CharacterEditor, SettingEditor, PropEditor, MusicEditor
@@ -199,14 +212,17 @@ const results = await Promise.all(
 ### 3.2 Missing Memoization
 
 **Statistics:**
+
 - 40 memoization usages for ~82 useState = 48% coverage
 - Missing `React.memo` on: ScenarioTab, StoryboardTab, CreateTab
 
 **Performance Impact:**
+
 - `JSON.parse(JSON.stringify())` used 19 times for deep cloning
 - Expensive re-renders on every state change
 
 **Fix:**
+
 ```typescript
 // Wrap heavy components
 export const ScenarioTab = React.memo(function ScenarioTab() {...});
@@ -219,12 +235,14 @@ const newLayers = produce(layers, draft => { draft[0].name = 'new'; });
 ### 3.3 Accessibility Critical Gaps
 
 **Current State:**
+
 - 1 aria-label total
 - 0 aria-live regions
 - 6 role attributes
 - Limited keyboard support
 
 **Required:**
+
 - Add aria-labels to all interactive elements
 - Implement keyboard navigation for timeline editor
 - Add focus management in modals
@@ -233,6 +251,7 @@ const newLayers = produce(layers, draft => { draft[0].name = 'new'; });
 ### 3.4 Code Duplication Patterns
 
 **Pattern 1: Character/Setting/Prop Editing** (400+ duplicate lines)
+
 ```typescript
 // Repeated 3 times with minor variations
 const [editedCharacterNames, setEditedCharacterNames] = useState([]);
@@ -243,6 +262,7 @@ const [editingCharacterIndex, setEditingCharacterIndex] = useState(null);
 **Fix:** Create reusable `EntityEditor` component with generic type.
 
 **Pattern 2: File Input Handler** (repeated 9+ times)
+
 ```typescript
 fileInputRefs.current[index]?.click();
 ```
@@ -273,8 +293,8 @@ setErrorMessage: (errorMessage) => {
 **File:** `app/features/editor/hooks/use-mediabunny.ts:76-77`
 
 ```typescript
-const inputCache = new Map<string, Input>();      // Never cleared!
-const thumbnailCache = new Map<string, ImageBitmap[]>();  // Never cleared!
+const inputCache = new Map<string, Input>(); // Never cleared!
+const thumbnailCache = new Map<string, ImageBitmap[]>(); // Never cleared!
 ```
 
 **Impact:** All loaded videos accumulate forever
@@ -295,6 +315,7 @@ useQuery({
 ```
 
 **Fix:** Add standard query options:
+
 ```typescript
 staleTime: 5 * 60 * 1000,  // 5 minutes
 retry: 3,
@@ -304,6 +325,7 @@ refetchOnWindowFocus: false,
 ### 4.4 Image Upload Pattern Duplicated
 
 **Files:**
+
 - `use-scenario-actions.ts:122-133, 235-243, 339-347`
 - `use-storyboard-actions.ts:238-255`
 
@@ -337,11 +359,11 @@ saveScenario(scenario, scenarioId).catch((error) => {
 
 **Character type defined in 3 places:**
 
-| Location | Has `voice` field? |
-|----------|-------------------|
-| `app/types.ts:50-54` | Yes (optional) |
-| `app/schemas.ts:54-59` | Yes (optional) |
-| `app/features/scenario/actions/modify-scenario.ts:23-27` | **NO** |
+| Location                                                 | Has `voice` field? |
+| -------------------------------------------------------- | ------------------ |
+| `app/types.ts:50-54`                                     | Yes (optional)     |
+| `app/schemas.ts:54-59`                                   | Yes (optional)     |
+| `app/features/scenario/actions/modify-scenario.ts:23-27` | **NO**             |
 
 **Impact:** Type mismatch causes runtime errors
 
@@ -356,7 +378,7 @@ type FirestoreTimestamp =
     | FirebaseFirestore.Timestamp
     | Date
     | { seconds: number; nanoseconds: number }
-    | unknown;  // Defeats type safety!
+    | unknown; // Defeats type safety!
 ```
 
 **Fix:** Remove `unknown`, use proper union type.
@@ -371,7 +393,8 @@ const { scenario } = await request.json();
 
 // Should be
 const parseResult = scenarioSchema.safeParse(await request.json());
-if (!parseResult.success) return NextResponse.json({error: parseResult.error}, {status: 400});
+if (!parseResult.success)
+    return NextResponse.json({ error: parseResult.error }, { status: 400 });
 ```
 
 ### 5.4 Using `.parse()` Instead of `.safeParse()`
@@ -389,6 +412,7 @@ if (!parseResult.success) return NextResponse.json({error: parseResult.error}, {
 ### 6.1 Retry Logic Duplicated Across 4 Files
 
 **Files:**
+
 - `lib/api/gemini.ts:78-141`
 - `lib/api/veo.ts:115-179`
 - `lib/api/imagen.ts:41-103`
@@ -397,6 +421,7 @@ if (!parseResult.success) return NextResponse.json({error: parseResult.error}, {
 **Total:** ~60-70 duplicated lines
 
 **Fix:** Create `lib/utils/retry.ts`:
+
 ```typescript
 export async function withRetry<T>(
     fn: () => Promise<T>,
@@ -415,9 +440,9 @@ export async function withRetry<T>(
 **File:** `lib/utils/ffmpeg.ts`
 
 ```typescript
-fs.mkdtempSync()      // Blocks event loop
-fs.writeFileSync()    // Blocks event loop
-fs.readFileSync()     // Blocks event loop
+fs.mkdtempSync(); // Blocks event loop
+fs.writeFileSync(); // Blocks event loop
+fs.readFileSync(); // Blocks event loop
 ```
 
 **Fix:** Use async versions: `fs.promises.mkdtemp()`, etc.
@@ -444,7 +469,7 @@ const ai = new GoogleGenAI({
 ```typescript
 export const env = parsed.success
     ? parsed.data
-    : (process.env as unknown as z.infer<typeof envSchema>);  // Dangerous!
+    : (process.env as unknown as z.infer<typeof envSchema>); // Dangerous!
 ```
 
 **Fix:** Throw error if validation fails in production.
@@ -458,12 +483,14 @@ export const env = parsed.success
 **Impact:** Multi-document operations lack atomicity
 
 **Example (scenarios DELETE):**
+
 ```typescript
 await scenarioRef.delete();
 // Timeline document NOT deleted - orphaned data!
 ```
 
 **Fix:** Use batch writes:
+
 ```typescript
 const batch = firestore.batch();
 batch.delete(scenarioRef);
@@ -474,6 +501,7 @@ await batch.commit();
 ### 7.2 Missing Index Configuration
 
 **Required Indexes:**
+
 - `scenarios`: `(userId, updatedAt DESC)` - for user scenario list
 - `timelines`: `(userId, scenarioId)` - for filtering
 
@@ -489,6 +517,7 @@ const scenariosSnapshot = await scenariosRef.get();
 ```
 
 **Fix:** Add pagination:
+
 ```typescript
 .limit(20)
 .startAfter(cursor)
@@ -512,18 +541,19 @@ if (scenarioData?.userId !== userId) {...}
 
 ### 8.1 Current State
 
-| Category | Test Files | Coverage |
-|----------|-----------|----------|
-| Unit Tests | 3 files | ~5 test cases |
-| E2E Tests | 1 file | 2 test cases |
-| API Routes | 0 | 0% |
-| Hooks | 0 | 0% |
-| Stores | 0 | 0% |
-| Components | 0 | 0% |
+| Category   | Test Files | Coverage      |
+| ---------- | ---------- | ------------- |
+| Unit Tests | 3 files    | ~5 test cases |
+| E2E Tests  | 1 file     | 2 test cases  |
+| API Routes | 0          | 0%            |
+| Hooks      | 0          | 0%            |
+| Stores     | 0          | 0%            |
+| Components | 0          | 0%            |
 
 ### 8.2 Missing Test Coverage
 
 **Critical Gaps:**
+
 - **API Routes** (0/8 tested): scenarios, users, timeline, videos
 - **Custom Hooks** (0/15 tested): useScenario, useTimeline, useAuth
 - **Zustand Stores** (0/3 tested): useScenarioStore, useEditorStore
@@ -532,6 +562,7 @@ if (scenarioData?.userId !== userId) {...}
 ### 8.3 Test Configuration Issues
 
 **vitest.config.ts:** Missing coverage thresholds
+
 ```typescript
 // Add:
 coverage: {
@@ -543,13 +574,14 @@ coverage: {
 ```
 
 **playwright.config.ts:** Only tests Chromium
+
 ```typescript
 // Add Firefox and Safari
 projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
     { name: "firefox", use: { ...devices["Desktop Firefox"] } },
     { name: "webkit", use: { ...devices["Desktop Safari"] } },
-]
+];
 ```
 
 ---
@@ -561,6 +593,7 @@ projects: [
 **File:** `package.json`
 
 Unused tRPC packages (never imported):
+
 ```json
 "@trpc/client": "^11.4.4",
 "@trpc/next": "^11.4.4",
@@ -595,6 +628,7 @@ eslint: {
 ### 9.4 Dockerfile Package Manager Mismatch
 
 Project uses npm (`package-lock.json`), but Dockerfile uses yarn:
+
 ```dockerfile
 RUN yarn build  # Should be: npm run build
 ```
@@ -615,74 +649,74 @@ RUN yarn build  # Should be: npm run build
 
 ### Phase 1: Critical Security (Immediate)
 
-| Issue | File(s) | Effort |
-|-------|---------|--------|
-| Add auth to videos/regenerate-image/scene routes | `app/api/*/route.ts` | Low |
-| Add ownership check to POST scenarios | `app/api/scenarios/route.ts` | Low |
-| Rotate exposed credentials | `.env.local` | Medium |
-| Fix Firestore maxIdleTime: 0 | `lib/storage/firestore.ts` | Low |
-| Remove unsafe-eval from CSP | `next.config.mjs` | Medium |
+| Issue                                            | File(s)                      | Effort |
+| ------------------------------------------------ | ---------------------------- | ------ |
+| Add auth to videos/regenerate-image/scene routes | `app/api/*/route.ts`         | Low    |
+| Add ownership check to POST scenarios            | `app/api/scenarios/route.ts` | Low    |
+| Rotate exposed credentials                       | `.env.local`                 | Medium |
+| Fix Firestore maxIdleTime: 0                     | `lib/storage/firestore.ts`   | Low    |
+| Remove unsafe-eval from CSP                      | `next.config.mjs`            | Medium |
 
 ### Phase 2: High Priority (This Week)
 
-| Issue | File(s) | Effort |
-|-------|---------|--------|
-| Add Zod validation to all API routes | `app/api/*/route.ts` | Medium |
-| Consolidate duplicate types | `app/types.ts`, `app/schemas.ts` | Medium |
-| Extract retry logic to utility | `lib/api/*.ts` | Medium |
-| Enable ESLint during builds | `next.config.mjs` | Low |
-| Remove unused tRPC packages | `package.json` | Low |
-| Add batch operations for deletes | `app/api/scenarios/route.ts` | Medium |
+| Issue                                | File(s)                          | Effort |
+| ------------------------------------ | -------------------------------- | ------ |
+| Add Zod validation to all API routes | `app/api/*/route.ts`             | Medium |
+| Consolidate duplicate types          | `app/types.ts`, `app/schemas.ts` | Medium |
+| Extract retry logic to utility       | `lib/api/*.ts`                   | Medium |
+| Enable ESLint during builds          | `next.config.mjs`                | Low    |
+| Remove unused tRPC packages          | `package.json`                   | Low    |
+| Add batch operations for deletes     | `app/api/scenarios/route.ts`     | Medium |
 
 ### Phase 3: Code Quality (This Month)
 
-| Issue | File(s) | Effort |
-|-------|---------|--------|
-| Split ScenarioTab into smaller components | `app/features/scenario/` | High |
-| Add memoization to heavy components | Various | Medium |
-| Move toast from Zustand store | `useScenarioStore.ts` | Low |
-| Fix cache memory leak in mediabunny | `use-mediabunny.ts` | Medium |
-| Standardize API response format | `app/api/*/route.ts` | Medium |
-| Add pagination to scenarios list | `app/api/scenarios/route.ts` | Medium |
+| Issue                                     | File(s)                      | Effort |
+| ----------------------------------------- | ---------------------------- | ------ |
+| Split ScenarioTab into smaller components | `app/features/scenario/`     | High   |
+| Add memoization to heavy components       | Various                      | Medium |
+| Move toast from Zustand store             | `useScenarioStore.ts`        | Low    |
+| Fix cache memory leak in mediabunny       | `use-mediabunny.ts`          | Medium |
+| Standardize API response format           | `app/api/*/route.ts`         | Medium |
+| Add pagination to scenarios list          | `app/api/scenarios/route.ts` | Medium |
 
 ### Phase 4: Testing (Ongoing)
 
-| Issue | Target | Effort |
-|-------|--------|--------|
-| API route tests | 30 test cases | High |
-| Hook tests | 40 test cases | High |
-| Store tests | 25 test cases | Medium |
-| Component tests | 50 test cases | High |
-| E2E tests | 15 scenarios | High |
-| Target coverage | 70%+ | Ongoing |
+| Issue           | Target        | Effort  |
+| --------------- | ------------- | ------- |
+| API route tests | 30 test cases | High    |
+| Hook tests      | 40 test cases | High    |
+| Store tests     | 25 test cases | Medium  |
+| Component tests | 50 test cases | High    |
+| E2E tests       | 15 scenarios  | High    |
+| Target coverage | 70%+          | Ongoing |
 
 ### Phase 5: Accessibility & Polish
 
-| Issue | File(s) | Effort |
-|-------|---------|--------|
-| Add ARIA labels | All interactive elements | Medium |
-| Keyboard navigation | Timeline editor | High |
-| Focus management | Modals, dialogs | Medium |
-| Color + icon status indicators | All status displays | Low |
+| Issue                          | File(s)                  | Effort |
+| ------------------------------ | ------------------------ | ------ |
+| Add ARIA labels                | All interactive elements | Medium |
+| Keyboard navigation            | Timeline editor          | High   |
+| Focus management               | Modals, dialogs          | Medium |
+| Color + icon status indicators | All status displays      | Low    |
 
 ---
 
 ## Metrics Summary
 
-| Category | Critical | High | Medium | Low |
-|----------|----------|------|--------|-----|
-| Security | 5 | 3 | 2 | 0 |
-| API Routes | 2 | 4 | 3 | 2 |
-| Components | 0 | 3 | 5 | 2 |
-| Hooks/State | 1 | 4 | 4 | 1 |
-| Types/Schemas | 2 | 3 | 2 | 1 |
-| Utilities | 0 | 3 | 4 | 2 |
-| Database | 3 | 3 | 3 | 1 |
-| Testing | 0 | 2 | 2 | 1 |
-| Config | 2 | 3 | 3 | 2 |
-| **Total** | **15** | **28** | **28** | **12** |
+| Category      | Critical | High   | Medium | Low    |
+| ------------- | -------- | ------ | ------ | ------ |
+| Security      | 5        | 3      | 2      | 0      |
+| API Routes    | 2        | 4      | 3      | 2      |
+| Components    | 0        | 3      | 5      | 2      |
+| Hooks/State   | 1        | 4      | 4      | 1      |
+| Types/Schemas | 2        | 3      | 2      | 1      |
+| Utilities     | 0        | 3      | 4      | 2      |
+| Database      | 3        | 3      | 3      | 1      |
+| Testing       | 0        | 2      | 2      | 1      |
+| Config        | 2        | 3      | 3      | 2      |
+| **Total**     | **15**   | **28** | **28** | **12** |
 
 ---
 
-*Generated: 2026-01-02*
-*Analysis covers: 75+ TypeScript files, 15,948+ lines of code*
+_Generated: 2026-01-02_
+_Analysis covers: 75+ TypeScript files, 15,948+ lines of code_

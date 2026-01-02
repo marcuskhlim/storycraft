@@ -134,7 +134,7 @@ export function CreateTab() {
                     </p>
                 </div>
                 <div className="flex items-center gap-4">
-                    <LoadingMessages isLoading={isLoading} />
+                    <LoadingMessages isLoading={isLoading} phase="scenario" />
                     <Button
                         size="lg"
                         onClick={() => handleGenerateScenario()}

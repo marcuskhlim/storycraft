@@ -1391,12 +1391,10 @@ vi.mock("@/lib/gemini", () => ({
             scenes: [{}, {}, {}, {}, {}],
         }),
     }),
-    generateImage: vi
-        .fn()
-        .mockResolvedValue({
-            success: true,
-            imageGcsUri: "gs://bucket/image.png",
-        }),
+    generateImage: vi.fn().mockResolvedValue({
+        success: true,
+        imageGcsUri: "gs://bucket/image.png",
+    }),
 }));
 
 describe("generateScenario", () => {

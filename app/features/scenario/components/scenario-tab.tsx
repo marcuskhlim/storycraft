@@ -674,7 +674,10 @@ export function ScenarioTab() {
                             </p>
                         </div>
                         <div className="flex items-center gap-4">
-                            <LoadingMessages isLoading={isLoading} />
+                            <LoadingMessages
+                                isLoading={isLoading}
+                                phase="storyboard"
+                            />
                             <Button
                                 size="lg"
                                 onClick={handleGenerateStoryBoard}
