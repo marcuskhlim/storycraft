@@ -12,7 +12,7 @@ import {
     regeneratePropAndScenarioFromText,
     regeneratePropAndScenarioFromImage,
 } from "@/app/features/scenario/actions/modify-scenario";
-import { resizeImage } from "@/app/features/storyboard/actions/resize-image";
+import { useImageUpload } from "@/app/features/shared/hooks/use-image-upload";
 import { toast } from "sonner";
 
 export function useScenarioActions() {
@@ -28,6 +28,7 @@ export function useScenarioActions() {
     const { setLoading, startLoading, stopLoading } = useLoadingStore();
     const { setActiveTab } = useEditorStore();
     const { settings } = useSettings();
+    const { uploadImageFile } = useImageUpload();
 
     const handleGenerateStoryBoard = async () => {
         clientLogger.log("Generating storyboard");
@@ -121,21 +122,7 @@ export function useScenarioActions() {
         startLoading("characters", characterIndex);
 
         try {
-            const base64String = await new Promise<string>(
-                (resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                        resolve(reader.result as string);
-                    };
-                    reader.onerror = () => {
-                        reject(new Error("Failed to read the image file"));
-                    };
-                    reader.readAsDataURL(file);
-                },
-            );
-
-            const imageBase64 = base64String.split(",")[1];
-            const resizedImageGcsUri = await resizeImage(imageBase64);
+            const resizedImageGcsUri = await uploadImageFile(file);
 
             const result = await regenerateCharacterAndScenarioFromImage(
                 scenario.scenario,
@@ -235,18 +222,7 @@ export function useScenarioActions() {
         startLoading("settings", settingIndex);
 
         try {
-            const base64String = await new Promise<string>(
-                (resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result as string);
-                    reader.onerror = () =>
-                        reject(new Error("Failed to read the image file"));
-                    reader.readAsDataURL(file);
-                },
-            );
-
-            const imageBase64 = base64String.split(",")[1];
-            const resizedImageGcsUri = await resizeImage(imageBase64);
+            const resizedImageGcsUri = await uploadImageFile(file);
 
             const result = await regenerateSettingAndScenarioFromImage(
                 scenario.scenario,
@@ -340,18 +316,7 @@ export function useScenarioActions() {
         startLoading("props", propIndex);
 
         try {
-            const base64String = await new Promise<string>(
-                (resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result as string);
-                    reader.onerror = () =>
-                        reject(new Error("Failed to read the image file"));
-                    reader.readAsDataURL(file);
-                },
-            );
-
-            const imageBase64 = base64String.split(",")[1];
-            const resizedImageGcsUri = await resizeImage(imageBase64);
+            const resizedImageGcsUri = await uploadImageFile(file);
 
             const result = await regeneratePropAndScenarioFromImage(
                 scenario.scenario,

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Scenario } from "@/app/types";
 import { clientLogger } from "@/lib/utils/client-logger";
 import { ApiResponse } from "@/types/api";
+import { toast } from "sonner";
 
 export const SCENARIO_KEYS = {
     all: ["scenarios"] as const,
@@ -29,6 +30,9 @@ export function useScenarios() {
             }>;
             return result.data?.scenarios || [];
         },
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        retry: 3,
+        refetchOnWindowFocus: false,
     });
 }
 
@@ -47,6 +51,9 @@ export function useScenarioById(id: string | null) {
             return result.data || null;
         },
         enabled: !!id,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        retry: 3,
+        refetchOnWindowFocus: false,
     });
 }
 
@@ -100,6 +107,11 @@ export function useSaveScenarioMutation() {
         },
         onError: (error) => {
             clientLogger.error("Error saving scenario:", error);
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : "Failed to save scenario",
+            );
         },
     });
 }
@@ -134,6 +146,11 @@ export function useDeleteScenarioMutation() {
         },
         onError: (error) => {
             clientLogger.error("Error deleting scenario:", error);
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : "Failed to delete scenario",
+            );
         },
     });
 }

@@ -7,7 +7,7 @@ import { useSettings } from "@/app/features/shared/hooks/use-settings";
 import { clientLogger } from "@/lib/utils/client-logger";
 import { useScenario } from "@/app/features/scenario/hooks/use-scenario";
 import { useTimeline } from "@/app/features/editor/hooks/use-timeline";
-import { resizeImage } from "@/app/features/storyboard/actions/resize-image";
+import { useImageUpload } from "@/app/features/shared/hooks/use-image-upload";
 import { Scene } from "@/app/types";
 import { ApiResponse } from "@/types/api";
 import pLimit from "p-limit";
@@ -21,6 +21,7 @@ export function useStoryboardActions() {
     const { settings } = useSettings();
     const { getCurrentScenarioId } = useScenario();
     const { resetTimeline } = useTimeline();
+    const { uploadImageFile } = useImageUpload();
 
     const handleRegenerateImage = async (index: number) => {
         if (!scenario) return;
@@ -261,26 +262,7 @@ export function useStoryboardActions() {
         startLoading("scenes", index);
 
         try {
-            const reader = new FileReader();
-
-            const uploadPromise = new Promise<string>((resolve, reject) => {
-                reader.onloadend = async () => {
-                    try {
-                        const base64String = reader.result as string;
-                        const imageBase64 = base64String.split(",")[1];
-                        const resizedImageGcsUri =
-                            await resizeImage(imageBase64);
-                        resolve(resizedImageGcsUri);
-                    } catch (e) {
-                        reject(e);
-                    }
-                };
-                reader.onerror = () =>
-                    reject(new Error("Failed to read the image file"));
-                reader.readAsDataURL(file);
-            });
-
-            const resizedImageGcsUri = await uploadPromise;
+            const resizedImageGcsUri = await uploadImageFile(file);
 
             const updatedScenes = [...scenario.scenes];
             updatedScenes[index] = {

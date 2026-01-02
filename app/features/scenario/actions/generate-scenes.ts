@@ -16,11 +16,7 @@ import { getRAIUserMessage } from "@/lib/utils/rai";
 
 import { Scenario, Language } from "@/app/types";
 import logger from "@/app/logger";
-import {
-    createCollage,
-    resizeImage,
-} from "@/app/features/storyboard/actions/resize-image";
-import { gcsUriToBase64 } from "@/lib/storage/storage";
+import { createCollage } from "@/app/features/storyboard/actions/resize-image";
 import {
     generateScenarioSchema,
     generateStoryboardSchema,
@@ -454,27 +450,27 @@ export async function generateStoryboard(
                                 );
                             }
                             if (result.success) {
-                                let resizedimageUri;
-                                if (scenario.aspectRatio === "16:9") {
-                                    resizedimageUri = await resizeImage(
-                                        await gcsUriToBase64(
-                                            result.imageGcsUri!,
-                                        ),
-                                        1980,
-                                        1080,
-                                    );
-                                } else {
-                                    resizedimageUri = await resizeImage(
-                                        await gcsUriToBase64(
-                                            result.imageGcsUri!,
-                                        ),
-                                        1080,
-                                        1920,
-                                    );
-                                }
+                                // let resizedimageUri;
+                                // if (scenario.aspectRatio === "16:9") {
+                                //     resizedimageUri = await resizeImage(
+                                //         await gcsUriToBase64(
+                                //             result.imageGcsUri!,
+                                //         ),
+                                //         1980,
+                                //         1080,
+                                //     );
+                                // } else {
+                                //     resizedimageUri = await resizeImage(
+                                //         await gcsUriToBase64(
+                                //             result.imageGcsUri!,
+                                //         ),
+                                //         1080,
+                                //         1920,
+                                //     );
+                                // }
                                 return {
                                     ...scene,
-                                    imageGcsUri: resizedimageUri,
+                                    imageGcsUri: result.imageGcsUri!,
                                 };
                             } else {
                                 throw {
