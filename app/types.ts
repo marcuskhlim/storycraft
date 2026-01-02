@@ -34,6 +34,21 @@ export interface Scene {
     errorMessage?: string;
 }
 
+export interface Entity {
+    name: string;
+    description: string;
+    imageGcsUri?: string;
+    [key: string]: string | number | boolean | undefined | null;
+}
+
+export interface Character extends Entity {
+    voice?: string;
+}
+
+export type Setting = Entity;
+
+export type Prop = Entity;
+
 export interface Scenario {
     id?: string;
     name: string;
@@ -47,18 +62,9 @@ export interface Scenario {
     music: string;
     musicUrl?: string;
     language: Language;
-    characters: Array<{
-        name: string;
-        description: string;
-        voice?: string;
-        imageGcsUri?: string;
-    }>;
-    settings: Array<{
-        name: string;
-        description: string;
-        imageGcsUri?: string;
-    }>;
-    props: Array<{ name: string; description: string; imageGcsUri?: string }>;
+    characters: Character[];
+    settings: Setting[];
+    props: Prop[];
     logoOverlay?: string;
     styleImageUri?: string;
     scenes: Scene[];

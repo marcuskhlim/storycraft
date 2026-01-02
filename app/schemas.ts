@@ -1,8 +1,18 @@
 import { z } from "zod";
+import {
+    Character,
+    Language,
+    Prop,
+    Setting,
+    Scene,
+    Scenario,
+    TimelineItem,
+    TimelineLayer,
+} from "./types";
 
 // Base Types
 
-export const languageSchema = z.object({
+export const languageSchema: z.ZodType<Language> = z.object({
     name: z.string(),
     code: z.string(),
 });
@@ -39,7 +49,7 @@ export const videoPromptSchema = z.object({
     ),
 });
 
-export const sceneSchema = z.object({
+export const sceneSchema: z.ZodType<Scene> = z.object({
     imagePrompt: imagePromptSchema,
     videoPrompt: videoPromptSchema,
     description: z.string(),
@@ -51,26 +61,27 @@ export const sceneSchema = z.object({
     errorMessage: z.string().optional(),
 });
 
-export const characterSchema = z.object({
+export const characterSchema: z.ZodType<Character> = z.object({
     name: z.string(),
     description: z.string(),
     voice: z.string().optional(),
     imageGcsUri: z.string().optional(),
 });
 
-export const settingSchema = z.object({
+export const settingSchema: z.ZodType<Setting> = z.object({
     name: z.string(),
     description: z.string(),
     imageGcsUri: z.string().optional(),
 });
 
-export const propSchema = z.object({
+export const propSchema: z.ZodType<Prop> = z.object({
     name: z.string(),
     description: z.string(),
     imageGcsUri: z.string().optional(),
 });
 
-export const scenarioSchema = z.object({
+export const scenarioSchema: z.ZodType<Scenario> = z.object({
+    id: z.string().optional(),
     name: z.string(),
     pitch: z.string(),
     scenario: z.string(),
@@ -87,10 +98,10 @@ export const scenarioSchema = z.object({
     props: z.array(propSchema),
     logoOverlay: z.string().optional(),
     styleImageUri: z.string().optional(),
-    scenes: z.array(sceneSchema).optional(),
+    scenes: z.array(sceneSchema),
 });
 
-export const timelineItemSchema = z.object({
+export const timelineItemSchema: z.ZodType<TimelineItem> = z.object({
     id: z.string(),
     startTime: z.number(),
     duration: z.number(),
@@ -109,7 +120,7 @@ export const timelineItemSchema = z.object({
         .optional(),
 });
 
-export const timelineLayerSchema = z.object({
+export const timelineLayerSchema: z.ZodType<TimelineLayer> = z.object({
     id: z.string(),
     name: z.string(),
     type: z.enum(["video", "voiceover", "music"]),

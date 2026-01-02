@@ -14,13 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { GcsImage } from "@/app/features/shared/components/ui/gcs-image";
 import { useFileUpload } from "@/app/features/shared/hooks/use-file-upload";
-
-export interface Entity {
-    name: string;
-    description: string;
-    imageGcsUri?: string;
-    [key: string]: string | number | boolean | undefined | null;
-}
+import { Entity } from "@/app/types";
 
 interface EntityCardProps<T extends Entity> {
     entity: T;

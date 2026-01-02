@@ -2,13 +2,7 @@
 
 import { memo, useCallback } from "react";
 import { EntityCard } from "./entity-card";
-
-interface Setting {
-    name: string;
-    description: string;
-    imageGcsUri?: string;
-    [key: string]: string | number | boolean | undefined | null;
-}
+import { Setting } from "@/app/types";
 
 interface SettingCardProps {
     setting: Setting;

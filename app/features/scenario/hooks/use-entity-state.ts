@@ -2,12 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { clientLogger } from "@/lib/utils/client-logger";
-
-interface Entity {
-    name: string;
-    description: string;
-    [key: string]: string | number | boolean | undefined | null;
-}
+import { Entity } from "@/app/types";
 
 interface UseEntityStateOptions<T extends Entity> {
     entities: T[] | undefined;

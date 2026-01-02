@@ -5,6 +5,7 @@ import { z } from "zod";
 import yaml from "js-yaml";
 import logger from "@/app/logger";
 import { createPartFromText, createPartFromUri } from "@google/genai";
+import { Character, Setting, Prop } from "@/app/types";
 import {
     deleteCharacterSchema,
     deletePropSchema,
@@ -19,23 +20,7 @@ import {
 
 import { DEFAULT_SETTINGS } from "@/lib/ai-config";
 
-// Shared types
-export interface Character {
-    name: string;
-    description: string;
-    imageGcsUri?: string;
-}
-export interface Setting {
-    name: string;
-    description: string;
-    imageGcsUri?: string;
-}
-export interface Prop {
-    name: string;
-    description: string;
-    imageGcsUri?: string;
-}
-
+// ScenarioUpdateResult interface remains as it's specific to these actions
 export interface ScenarioUpdateResult {
     updatedScenario: string;
     updatedCharacter?: {

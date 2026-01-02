@@ -2,13 +2,7 @@
 
 import { memo, useCallback } from "react";
 import { EntityCard } from "./entity-card";
-
-interface Prop {
-    name: string;
-    description: string;
-    imageGcsUri?: string;
-    [key: string]: string | number | boolean | undefined | null;
-}
+import { Prop } from "@/app/types";
 
 interface PropCardProps {
     prop: Prop;

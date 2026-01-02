@@ -3,14 +3,7 @@
 import { memo, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { EntityCard } from "./entity-card";
-
-interface Character {
-    name: string;
-    description: string;
-    voice?: string;
-    imageGcsUri?: string;
-    [key: string]: string | number | boolean | undefined | null;
-}
+import { Character } from "@/app/types";
 
 interface CharacterCardProps {
     character: Character;

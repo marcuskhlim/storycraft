@@ -1,11 +1,7 @@
-import { ImagePrompt, VideoPrompt } from "@/app/types";
+import { Scenario, TimelineState } from "@/app/types";
 
 // Type for Firestore timestamps that can be various forms
-type FirestoreTimestamp =
-    | FirebaseFirestore.Timestamp
-    | Date
-    | { seconds: number; nanoseconds: number }
-    | unknown;
+type FirestoreTimestamp = { seconds: number; nanoseconds: number } | Date;
 
 export interface FirestoreUser {
     email: string;
@@ -14,70 +10,15 @@ export interface FirestoreUser {
     photoURL: string;
 }
 
-export interface FirestoreScenario {
+export interface FirestoreScenario extends Scenario {
     id: string;
     userId: string;
-    name: string;
-    pitch: string;
-    scenario: string;
-    style: string;
-    genre: string;
-    mood: string;
-    music: string;
-    musicUrl?: string;
-    language: {
-        name: string;
-        code: string;
-    };
-    characters: Array<{
-        name: string;
-        description: string;
-        imageGcsUri?: string;
-    }>;
-    props: Array<{ name: string; description: string; imageGcsUri?: string }>;
-    settings: Array<{
-        name: string;
-        description: string;
-        imageGcsUri?: string;
-    }>;
-    logoOverlay?: string;
-    scenes: Array<{
-        imagePrompt: ImagePrompt;
-        videoPrompt: VideoPrompt;
-        description: string;
-        voiceover: string;
-        charactersPresent: string[];
-        imageGcsUri?: string;
-        videoUri?: string;
-        voiceoverAudioUri?: string;
-        errorMessage?: string;
-    }>;
     createdAt: FirestoreTimestamp;
     updatedAt: FirestoreTimestamp;
 }
 
-export interface FirestoreTimelineState {
-    id: string;
-    scenarioId: string;
+export interface FirestoreTimelineState extends TimelineState {
     userId: string;
-    layers: Array<{
-        id: string;
-        name: string;
-        type: "video" | "voiceover" | "music";
-        items: Array<{
-            id: string;
-            startTime: number;
-            duration: number;
-            content: string;
-            type: "video" | "voiceover" | "music";
-            metadata?: {
-                originalDuration?: number;
-                trimStart?: number;
-                logoOverlay?: string;
-                [key: string]: string | number | boolean | undefined;
-            };
-        }>;
-    }>;
     createdAt: FirestoreTimestamp;
     updatedAt: FirestoreTimestamp;
 }
