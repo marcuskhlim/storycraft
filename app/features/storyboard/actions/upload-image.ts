@@ -12,7 +12,17 @@ export async function saveImageToPublic(
     originalFilename: string,
 ): Promise<string> {
     try {
-        saveImageToPublicSchema.parse({ base64String, originalFilename });
+        const parseResult = saveImageToPublicSchema.safeParse({
+            base64String,
+            originalFilename,
+        });
+        if (!parseResult.success) {
+            logger.error(
+                "Validation error in saveImageToPublic:",
+                parseResult.error,
+            );
+            throw new Error(`Invalid input: ${parseResult.error.message}`);
+        }
 
         // Extract the file extension from the original filename
         const fileExtension = path.extname(originalFilename).toLowerCase();

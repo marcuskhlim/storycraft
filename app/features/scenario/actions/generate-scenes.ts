@@ -38,7 +38,7 @@ export async function generateScenario(
     styleImageUri?: string,
 ): Promise<Scenario> {
     try {
-        generateScenarioSchema.parse({
+        const parseResult = generateScenarioSchema.safeParse({
             name,
             pitch,
             numScenes,
@@ -50,6 +50,13 @@ export async function generateScenario(
             thinkingBudget,
             styleImageUri,
         });
+        if (!parseResult.success) {
+            logger.error(
+                "Validation error in generateScenario:",
+                parseResult.error,
+            );
+            throw new Error(`Invalid input: ${parseResult.error.message}`);
+        }
 
         const prompt = getScenarioPrompt(pitch, numScenes, style, language);
         logger.debug("Create a scenario");
@@ -288,7 +295,7 @@ export async function generateStoryboard(
             scenes: scenario.scenes || [],
         };
 
-        generateStoryboardSchema.parse({
+        const parseResult = generateStoryboardSchema.safeParse({
             scenario: scenarioToValidate,
             numScenes,
             style,
@@ -296,6 +303,13 @@ export async function generateStoryboard(
             modelName,
             thinkingBudget,
         });
+        if (!parseResult.success) {
+            logger.error(
+                "Validation error in generateStoryboard:",
+                parseResult.error,
+            );
+            throw new Error(`Invalid input: ${parseResult.error.message}`);
+        }
 
         // Create a new scenario object to ensure proper serialization
         const newScenario: Scenario = {

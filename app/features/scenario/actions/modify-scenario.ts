@@ -278,11 +278,17 @@ export async function deleteCharacterFromScenario(
     oldDescription: string,
 ): Promise<ScenarioUpdateResult> {
     try {
-        deleteCharacterSchema.parse({
+        const parseResult = deleteCharacterSchema.safeParse({
             currentScenario,
             oldName,
             oldDescription,
         });
+        if (!parseResult.success) {
+            handleError(
+                "delete character from scenario text",
+                parseResult.error,
+            );
+        }
         // Update scenario text
         const updatedScenario = await deleteFromScenarioText(
             currentScenario,
@@ -306,7 +312,14 @@ export async function deleteSettingFromScenario(
     oldDescription: string,
 ): Promise<ScenarioUpdateResult> {
     try {
-        deleteSettingSchema.parse({ currentScenario, oldName, oldDescription });
+        const parseResult = deleteSettingSchema.safeParse({
+            currentScenario,
+            oldName,
+            oldDescription,
+        });
+        if (!parseResult.success) {
+            handleError("delete setting from scenario text", parseResult.error);
+        }
         const updatedScenario = await deleteFromScenarioText(
             currentScenario,
             oldName,
@@ -329,7 +342,14 @@ export async function deletePropFromScenario(
     oldDescription: string,
 ): Promise<ScenarioUpdateResult> {
     try {
-        deletePropSchema.parse({ currentScenario, oldName, oldDescription });
+        const parseResult = deletePropSchema.safeParse({
+            currentScenario,
+            oldName,
+            oldDescription,
+        });
+        if (!parseResult.success) {
+            handleError("delete prop from scenario text", parseResult.error);
+        }
         const updatedScenario = await deleteFromScenarioText(
             currentScenario,
             oldName,
@@ -361,7 +381,7 @@ export async function regenerateCharacterAndScenarioFromText(
     imageModel: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<ScenarioUpdateResult> {
     try {
-        regenerateCharacterTextSchema.parse({
+        const parseResult = regenerateCharacterTextSchema.safeParse({
             currentScenario,
             oldCharacterName,
             newCharacterName,
@@ -371,6 +391,12 @@ export async function regenerateCharacterAndScenarioFromText(
             thinkingBudget,
             imageModel,
         });
+        if (!parseResult.success) {
+            handleError(
+                "regenerate character and scenario from text",
+                parseResult.error,
+            );
+        }
 
         // Generate new character image
         const newImageGcsUri = await generateCharacterImage(
@@ -417,7 +443,7 @@ export async function regenerateCharacterAndScenarioFromImage(
     imageModel: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<ScenarioUpdateResult> {
     try {
-        regenerateCharacterImageSchema.parse({
+        const parseResult = regenerateCharacterImageSchema.safeParse({
             currentScenario,
             characterName,
             currentCharacterDescription,
@@ -429,6 +455,9 @@ export async function regenerateCharacterAndScenarioFromImage(
             thinkingBudget,
             imageModel,
         });
+        if (!parseResult.success) {
+            handleError("regenerate character and scenario", parseResult.error);
+        }
 
         const characterListText = allCharacters
             .map((char) => `- ${char.name}: ${char.description}`)
@@ -477,9 +506,16 @@ Return both the updated scenario (maintaining all characters) and the updated de
             llmModel,
         );
 
-        const characterScenarioUpdate = CharacterScenarioUpdateSchema.parse(
-            JSON.parse(text!),
-        );
+        const characterScenarioUpdateResult =
+            CharacterScenarioUpdateSchema.safeParse(JSON.parse(text!));
+        if (!characterScenarioUpdateResult.success) {
+            handleError(
+                "parse character scenario update",
+                characterScenarioUpdateResult.error,
+            );
+        }
+        const characterScenarioUpdate = characterScenarioUpdateResult.data!;
+
         const newImageGcsUri = await styleImage(
             imageGcsUri,
             characterScenarioUpdate.updatedCharacter.description,
@@ -514,7 +550,7 @@ export async function regenerateSettingAndScenarioFromText(
     imageModel: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<ScenarioUpdateResult> {
     try {
-        regenerateSettingTextSchema.parse({
+        const parseResult = regenerateSettingTextSchema.safeParse({
             currentScenario,
             oldSettingName,
             newSettingName,
@@ -525,6 +561,9 @@ export async function regenerateSettingAndScenarioFromText(
             thinkingBudget,
             imageModel,
         });
+        if (!parseResult.success) {
+            handleError("regenerate scenario from setting", parseResult.error);
+        }
 
         // Generate new character image
         const newImageGcsUri = await generateSettingImage(
@@ -572,7 +611,7 @@ export async function regeneratePropAndScenarioFromText(
     imageModel: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<ScenarioUpdateResult> {
     try {
-        regeneratePropTextSchema.parse({
+        const parseResult = regeneratePropTextSchema.safeParse({
             currentScenario,
             oldPropName,
             newPropName,
@@ -582,6 +621,9 @@ export async function regeneratePropAndScenarioFromText(
             thinkingBudget,
             imageModel,
         });
+        if (!parseResult.success) {
+            handleError("regenerate scenario from prop", parseResult.error);
+        }
 
         // Generate new character image
         const newImageGcsUri = await generatePropImage(
@@ -629,7 +671,7 @@ export async function regenerateSettingAndScenarioFromImage(
     imageModel: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<ScenarioUpdateResult> {
     try {
-        regenerateSettingImageSchema.parse({
+        const parseResult = regenerateSettingImageSchema.safeParse({
             currentScenario,
             settingName,
             currentSettingDescription,
@@ -640,6 +682,9 @@ export async function regenerateSettingAndScenarioFromImage(
             thinkingBudget,
             imageModel,
         });
+        if (!parseResult.success) {
+            handleError("regenerate setting and scenario", parseResult.error);
+        }
 
         const settingListText = allSettings
             .map((setting) => `- ${setting.name}: ${setting.description}`)
@@ -686,9 +731,16 @@ Return both the updated scenario (maintaining all settings) and the updated desc
             llmModel,
         );
 
-        const settingScenarioUpdate = SettingScenarioUpdateSchema.parse(
-            JSON.parse(text!),
-        );
+        const settingScenarioUpdateResult =
+            SettingScenarioUpdateSchema.safeParse(JSON.parse(text!));
+        if (!settingScenarioUpdateResult.success) {
+            handleError(
+                "parse setting scenario update",
+                settingScenarioUpdateResult.error,
+            );
+        }
+        const settingScenarioUpdate = settingScenarioUpdateResult.data!;
+
         const newImageGcsUri = await styleImage(
             imageGcsUri,
             settingScenarioUpdate.updatedSetting.description,
@@ -723,7 +775,7 @@ export async function regeneratePropAndScenarioFromImage(
     imageModel: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<ScenarioUpdateResult> {
     try {
-        regeneratePropImageSchema.parse({
+        const parseResult = regeneratePropImageSchema.safeParse({
             currentScenario,
             propName,
             currentPropDescription,
@@ -734,6 +786,9 @@ export async function regeneratePropAndScenarioFromImage(
             thinkingBudget,
             imageModel,
         });
+        if (!parseResult.success) {
+            handleError("regenerate prop and scenario", parseResult.error);
+        }
 
         const propListText = allProps
             .map((prop) => `- ${prop.name}: ${prop.description}`)
@@ -780,9 +835,17 @@ Return both the updated scenario (maintaining all props) and the updated descrip
             llmModel,
         );
 
-        const propScenarioUpdate = PropScenarioUpdateSchema.parse(
+        const propScenarioUpdateResult = PropScenarioUpdateSchema.safeParse(
             JSON.parse(text!),
         );
+        if (!propScenarioUpdateResult.success) {
+            handleError(
+                "parse prop scenario update",
+                propScenarioUpdateResult.error,
+            );
+        }
+        const propScenarioUpdate = propScenarioUpdateResult.data!;
+
         const newImageGcsUri = await styleImage(
             imageGcsUri,
             propScenarioUpdate.updatedProp.description,

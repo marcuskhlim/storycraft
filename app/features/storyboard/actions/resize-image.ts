@@ -12,7 +12,15 @@ export async function resizeImage(
     width: number = 1920,
     height: number = 1080,
 ): Promise<string> {
-    resizeImageSchema.parse({ base64Image, width, height });
+    const parseResult = resizeImageSchema.safeParse({
+        base64Image,
+        width,
+        height,
+    });
+    if (!parseResult.success) {
+        logger.error("Validation error in resizeImage:", parseResult.error);
+        throw new Error(`Invalid input: ${parseResult.error.message}`);
+    }
     logger.debug("Resizing image");
     try {
         // Remove data URL prefix if present
@@ -64,7 +72,15 @@ export async function createCollage(
     props: Array<{ name: string; description: string; imageGcsUri?: string }>,
     aspectRatio: string,
 ): Promise<string> {
-    createCollageSchema.parse({ characters, props, aspectRatio });
+    const parseResult = createCollageSchema.safeParse({
+        characters,
+        props,
+        aspectRatio,
+    });
+    if (!parseResult.success) {
+        logger.error("Validation error in createCollage:", parseResult.error);
+        throw new Error(`Invalid input: ${parseResult.error.message}`);
+    }
     // Calculate canvas dimensions based on aspect ratio
     let canvasWidth: number, canvasHeight: number;
 

@@ -23,7 +23,17 @@ export async function conversationalEdit(
 ): Promise<ConversationalEditResult> {
     const { imageGcsUri, instruction, sceneNumber, scenarioId } = params;
     try {
-        conversationalEditSchema.parse(params);
+        const parseResult = conversationalEditSchema.safeParse(params);
+        if (!parseResult.success) {
+            logger.error(
+                "Validation error in conversationalEdit:",
+                parseResult.error,
+            );
+            return {
+                success: false,
+                errorMessage: `Invalid input: ${parseResult.error.message}`,
+            };
+        }
 
         logger.info(
             `Starting conversational edit for scene ${sceneNumber} in scenario ${scenarioId}`,

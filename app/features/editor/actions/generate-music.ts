@@ -5,7 +5,11 @@ import logger from "@/app/logger";
 import { generateMusicSchema } from "@/app/schemas";
 
 export async function generateMusic(prompt: string): Promise<string> {
-    generateMusicSchema.parse({ prompt });
+    const parseResult = generateMusicSchema.safeParse({ prompt });
+    if (!parseResult.success) {
+        logger.error("Validation error in generateMusic:", parseResult.error);
+        throw new Error(`Invalid input: ${parseResult.error.message}`);
+    }
     logger.debug("Generating music");
     try {
         const musicUrl = await generateMusicRest(prompt);

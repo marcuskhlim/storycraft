@@ -58,14 +58,31 @@ export async function getDynamicImageUrl(
     gcsUri: string,
     download: boolean = false,
 ): Promise<{ url: string | null; mimeType: string | null }> {
-    getDynamicImageUrlSchema.parse({ gcsUri, download });
+    const parseResult = getDynamicImageUrlSchema.safeParse({
+        gcsUri,
+        download,
+    });
+    if (!parseResult.success) {
+        logger.error(
+            "Validation error in getDynamicImageUrl:",
+            parseResult.error,
+        );
+        return { url: null, mimeType: null };
+    }
     // Call the cached function
     logger.debug(`getDynamicImageUrl: ${gcsUri}`);
     return getCachedSignedUrl(gcsUri, download);
 }
 
 export async function uploadImageToGCS(base64: string): Promise<string | null> {
-    uploadImageToGCSSchema.parse({ base64 });
+    const parseResult = uploadImageToGCSSchema.safeParse({ base64 });
+    if (!parseResult.success) {
+        logger.error(
+            "Validation error in uploadImageToGCS:",
+            parseResult.error,
+        );
+        return null;
+    }
     const gcsUri = await uploadImage(base64, uuidv4());
     return gcsUri;
 }

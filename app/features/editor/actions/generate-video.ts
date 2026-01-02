@@ -12,7 +12,18 @@ export async function exportMovieAction(
     | { success: false; error: string }
 > {
     try {
-        exportMovieSchema.parse({ layers });
+        const parseResult = exportMovieSchema.safeParse({ layers });
+        if (!parseResult.success) {
+            logger.error(
+                "Validation error in exportMovieAction:",
+                parseResult.error,
+            );
+            return {
+                success: false,
+                error: `Invalid input: ${parseResult.error.message}`,
+            };
+        }
+
         logger.debug("Exporting movie...");
         const { videoUrl, vttUrl } = await exportMovieFFMPEG(layers);
         logger.debug(`videoUrl: ${videoUrl}`);

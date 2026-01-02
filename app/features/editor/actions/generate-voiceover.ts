@@ -12,7 +12,19 @@ export async function generateVoiceover(
     language: Language,
     voiceName?: string,
 ): Promise<string[]> {
-    generateVoiceoverSchema.parse({ scenes, language, voiceName });
+    const parseResult = generateVoiceoverSchema.safeParse({
+        scenes,
+        language,
+        voiceName,
+    });
+    if (!parseResult.success) {
+        logger.error(
+            "Validation error in generateVoiceover:",
+            parseResult.error,
+        );
+        throw new Error(`Invalid input: ${parseResult.error.message}`);
+    }
+
     logger.debug(`Generating voiceover with voice: ${voiceName || "default"}`);
     try {
         const speachAudioFiles = await Promise.all(
