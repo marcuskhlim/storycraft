@@ -227,6 +227,15 @@ export async function exportVideoClient(
     // Finalize
     await output.finalize();
 
+    // Cleanup video inputs
+    videoInputs.forEach(({ input }) => {
+        try {
+            input.dispose();
+        } catch (e) {
+            clientLogger.warn("Failed to dispose video input:", e);
+        }
+    });
+
     if (!target.buffer) {
         throw new Error("Export failed: No buffer produced");
     }

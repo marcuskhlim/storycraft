@@ -22,6 +22,7 @@ interface ThumbnailData {
 }
 
 // Global cache for thumbnails - keyed by video URL only
+const MAX_THUMBNAIL_CACHE_SIZE = 100;
 const thumbnailCache = new Map<string, ThumbnailData>();
 const loadingPromises = new Map<string, Promise<ThumbnailData>>();
 
@@ -33,6 +34,7 @@ export function VideoThumbnail({
     isResizing = false,
     className,
 }: VideoThumbnailProps) {
+    // ...
     const [thumbnailData, setThumbnailData] = useState<ThumbnailData | null>(
         null,
     );
@@ -88,6 +90,17 @@ export function VideoThumbnail({
                             thumbnails: frames,
                             videoDuration,
                         };
+
+                        // Enforce cache size limit
+                        if (thumbnailCache.size >= MAX_THUMBNAIL_CACHE_SIZE) {
+                            const oldestKey = thumbnailCache
+                                .keys()
+                                .next().value;
+                            if (oldestKey) {
+                                thumbnailCache.delete(oldestKey);
+                            }
+                        }
+
                         thumbnailCache.set(cacheKey, data);
                         loadingPromises.delete(cacheKey);
                         resolve(data);
@@ -125,6 +138,17 @@ export function VideoThumbnail({
                             thumbnails: frames,
                             videoDuration,
                         };
+
+                        // Enforce cache size limit
+                        if (thumbnailCache.size >= MAX_THUMBNAIL_CACHE_SIZE) {
+                            const oldestKey = thumbnailCache
+                                .keys()
+                                .next().value;
+                            if (oldestKey) {
+                                thumbnailCache.delete(oldestKey);
+                            }
+                        }
+
                         thumbnailCache.set(cacheKey, data);
                         loadingPromises.delete(cacheKey);
                         resolve(data);

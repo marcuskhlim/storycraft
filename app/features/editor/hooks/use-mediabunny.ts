@@ -73,13 +73,20 @@ interface UseMediabunnyReturn {
 }
 
 // Cache for loaded inputs to avoid re-loading
+const MAX_INPUT_CACHE_SIZE = 50;
+const MAX_THUMBNAIL_CACHE_SIZE = 100;
+
 const inputCache = new Map<string, Input>();
 const thumbnailCache = new Map<string, ImageBitmap[]>();
+
+// Keep track of active hook instances to know when to clear global cache
+let activeInstances = 0;
 
 export function useMediabunny({
     layers,
     onTimeUpdate,
 }: UseMediabunnyOptions): UseMediabunnyReturn {
+    // ... state definitions ...
     const [videoSources, setVideoSources] = useState<Map<string, MediaSource>>(
         new Map(),
     );
@@ -96,6 +103,17 @@ export function useMediabunny({
     const animationFrameRef = useRef<number | null>(null);
     const lastFrameTimeRef = useRef<number>(0);
     const audioContextRef = useRef<AudioContext | null>(null);
+
+    // Track instance count and cleanup
+    useEffect(() => {
+        activeInstances++;
+        return () => {
+            activeInstances--;
+            if (activeInstances === 0) {
+                clearMediabunnyCache();
+            }
+        };
+    }, []);
 
     // Initialize audio context
     useEffect(() => {
@@ -125,6 +143,20 @@ export function useMediabunny({
             }
 
             try {
+                // Enforce cache size limit
+                if (inputCache.size >= MAX_INPUT_CACHE_SIZE) {
+                    const oldestKey = inputCache.keys().next().value;
+                    if (oldestKey) {
+                        const oldestInput = inputCache.get(oldestKey);
+                        try {
+                            oldestInput?.dispose();
+                        } catch (e) {
+                            console.warn("Failed to dispose old input:", e);
+                        }
+                        inputCache.delete(oldestKey);
+                    }
+                }
+
                 const input = new Input({
                     source: new UrlSource(url),
                     formats: ALL_FORMATS,
@@ -182,6 +214,22 @@ export function useMediabunny({
                         } catch {
                             console.warn("Failed to create bitmap");
                         }
+                    }
+                }
+
+                // Enforce cache size limit
+                if (thumbnailCache.size >= MAX_THUMBNAIL_CACHE_SIZE) {
+                    const oldestKey = thumbnailCache.keys().next().value;
+                    if (oldestKey) {
+                        const oldestFrames = thumbnailCache.get(oldestKey);
+                        oldestFrames?.forEach((bitmap) => {
+                            try {
+                                bitmap.close();
+                            } catch (e) {
+                                console.warn("Failed to close old bitmap:", e);
+                            }
+                        });
+                        thumbnailCache.delete(oldestKey);
                     }
                 }
 

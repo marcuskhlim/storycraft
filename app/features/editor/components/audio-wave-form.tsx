@@ -20,6 +20,7 @@ interface WaveformData {
 
 const waveformCache = new Map<string, WaveformData>();
 const loadingPromises = new Map<string, Promise<WaveformData>>();
+const MAX_WAVEFORM_CACHE_SIZE = 100;
 
 // Fixed number of bars to extract for the full audio
 const BARS_PER_AUDIO = 200;
@@ -36,6 +37,7 @@ export function AudioWaveform({
     originalDuration,
     isResizing = false,
 }: AudioWaveformProps) {
+    // ...
     const [waveformData, setWaveformData] = useState<WaveformData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const mountedRef = useRef(true);
@@ -110,6 +112,15 @@ export function AudioWaveform({
                         waveform: normalized,
                         audioDuration,
                     };
+
+                    // Enforce cache size limit
+                    if (waveformCache.size >= MAX_WAVEFORM_CACHE_SIZE) {
+                        const oldestKey = waveformCache.keys().next().value;
+                        if (oldestKey) {
+                            waveformCache.delete(oldestKey);
+                        }
+                    }
+
                     waveformCache.set(cacheKey, data);
                     loadingPromises.delete(cacheKey);
                     return data;
