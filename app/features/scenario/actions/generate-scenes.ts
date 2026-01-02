@@ -282,8 +282,14 @@ export async function generateStoryboard(
     logger.debug("Create a storyboard");
     logger.debug(scenario.scenario);
     try {
+        // Ensure scenes is at least an empty array for validation
+        const scenarioToValidate = {
+            ...scenario,
+            scenes: scenario.scenes || [],
+        };
+
         generateStoryboardSchema.parse({
-            scenario,
+            scenario: scenarioToValidate,
             numScenes,
             style,
             language,
@@ -293,7 +299,7 @@ export async function generateStoryboard(
 
         // Create a new scenario object to ensure proper serialization
         const newScenario: Scenario = {
-            ...scenario,
+            ...scenarioToValidate,
             scenes: [],
         };
 
