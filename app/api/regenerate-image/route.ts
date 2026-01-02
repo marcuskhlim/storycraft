@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateImageRest } from "@/lib/api/imagen";
 import { imagePromptToString } from "@/lib/utils/prompt-utils";
-import { Scenario, ImagePrompt } from "@/app/types";
+import { ImagePrompt } from "@/app/types";
 import yaml from "js-yaml";
 import { createPartFromUri, createPartFromText } from "@google/genai";
 import { generateImage } from "@/lib/api/gemini";
@@ -11,6 +11,18 @@ import { createCollage } from "@/app/features/storyboard/actions/resize-image";
 import { auth } from "@/auth";
 
 import { DEFAULT_SETTINGS } from "@/lib/ai-config";
+import { z } from "zod";
+import { imagePromptSchema, scenarioSchema } from "@/app/schemas";
+
+const postSchema = z.object({
+    prompt: imagePromptSchema,
+    scenario: scenarioSchema,
+    modelName: z.string().optional(),
+});
+
+const putSchema = z.object({
+    prompt: z.string().min(1),
+});
 
 //export const runtime = 'nodejs';
 
@@ -22,22 +34,29 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
+
+        // Validate request body
+        const parseResult = postSchema.safeParse(body);
+        if (!parseResult.success) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: {
+                        code: "VALIDATION_ERROR",
+                        message: "Invalid request body",
+                        details: parseResult.error.format(),
+                    },
+                    meta: { timestamp: new Date().toISOString() },
+                },
+                { status: 400 },
+            );
+        }
+
         const {
             prompt,
             scenario,
             modelName = DEFAULT_SETTINGS.imageModel,
-        } = body as {
-            prompt: ImagePrompt;
-            scenario: Scenario;
-            modelName?: string;
-        };
-
-        if (!prompt) {
-            return NextResponse.json(
-                { error: "Prompt is required" },
-                { status: 400 },
-            );
-        }
+        } = parseResult.data;
 
         const useR2I = true;
         if (useR2I) {
@@ -190,14 +209,25 @@ export async function PUT(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { prompt } = body;
 
-        if (!prompt || typeof prompt !== "string") {
+        // Validate request body
+        const parseResult = putSchema.safeParse(body);
+        if (!parseResult.success) {
             return NextResponse.json(
-                { error: "String prompt is required for character image" },
+                {
+                    success: false,
+                    error: {
+                        code: "VALIDATION_ERROR",
+                        message: "Invalid request body",
+                        details: parseResult.error.format(),
+                    },
+                    meta: { timestamp: new Date().toISOString() },
+                },
                 { status: 400 },
             );
         }
+
+        const { prompt } = parseResult.data;
 
         logger.debug(`Regenerating character image with prompt: ${prompt}`);
 

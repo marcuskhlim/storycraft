@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { firestore } from "@/lib/storage/firestore";
 import { auth } from "@/auth";
 import { Timestamp } from "@google-cloud/firestore";
+import { timelineLayerSchema } from "@/app/schemas";
+import { z } from "zod";
+
+const postSchema = z.object({
+    scenarioId: z.string().min(1),
+    layers: z.array(timelineLayerSchema),
+});
 
 // Save or update timeline state
 export async function POST(request: NextRequest) {
@@ -15,14 +22,26 @@ export async function POST(request: NextRequest) {
         }
 
         const userId = session.user.id;
-        const { scenarioId, layers } = await request.json();
+        const body = await request.json();
 
-        if (!scenarioId || !layers) {
+        // Validate request body
+        const parseResult = postSchema.safeParse(body);
+        if (!parseResult.success) {
             return NextResponse.json(
-                { error: "scenarioId and layers are required" },
+                {
+                    success: false,
+                    error: {
+                        code: "VALIDATION_ERROR",
+                        message: "Invalid request body",
+                        details: parseResult.error.format(),
+                    },
+                    meta: { timestamp: new Date().toISOString() },
+                },
                 { status: 400 },
             );
         }
+
+        const { scenarioId, layers } = parseResult.data;
 
         // Use scenarioId as the timeline document ID (1:1 relationship)
         const timelineRef = firestore.collection("timelines").doc(scenarioId);
@@ -85,14 +104,31 @@ export async function GET(request: NextRequest) {
         }
 
         const { searchParams } = new URL(request.url);
-        const scenarioId = searchParams.get("scenarioId");
+        const scenarioIdParam = searchParams.get("scenarioId");
 
-        if (!scenarioId) {
+        if (!scenarioIdParam) {
             return NextResponse.json(
                 { error: "scenarioId is required" },
                 { status: 400 },
             );
         }
+
+        const idResult = z.string().min(1).safeParse(scenarioIdParam);
+        if (!idResult.success) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: {
+                        code: "VALIDATION_ERROR",
+                        message: "Invalid scenarioId",
+                        details: idResult.error.format(),
+                    },
+                    meta: { timestamp: new Date().toISOString() },
+                },
+                { status: 400 },
+            );
+        }
+        const scenarioId = idResult.data;
 
         const timelineRef = firestore.collection("timelines").doc(scenarioId);
         const timelineDoc = await timelineRef.get();
@@ -153,14 +189,31 @@ export async function DELETE(request: NextRequest) {
         }
 
         const { searchParams } = new URL(request.url);
-        const scenarioId = searchParams.get("scenarioId");
+        const scenarioIdParam = searchParams.get("scenarioId");
 
-        if (!scenarioId) {
+        if (!scenarioIdParam) {
             return NextResponse.json(
                 { error: "scenarioId is required" },
                 { status: 400 },
             );
         }
+
+        const idResult = z.string().min(1).safeParse(scenarioIdParam);
+        if (!idResult.success) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: {
+                        code: "VALIDATION_ERROR",
+                        message: "Invalid scenarioId",
+                        details: idResult.error.format(),
+                    },
+                    meta: { timestamp: new Date().toISOString() },
+                },
+                { status: 400 },
+            );
+        }
+        const scenarioId = idResult.data;
 
         const timelineRef = firestore.collection("timelines").doc(scenarioId);
         const timelineDoc = await timelineRef.get();

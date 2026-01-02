@@ -7,6 +7,8 @@ import { NextResponse } from "next/server";
 import logger from "@/app/logger";
 import { getRAIUserMessage } from "@/lib/utils/rai";
 import { DEFAULT_SETTINGS } from "@/lib/ai-config";
+import { z } from "zod";
+import { sceneSchema, scenarioSchema } from "@/app/schemas";
 
 const USE_COSMO = process.env.USE_COSMO === "true";
 const GCS_VIDEOS_STORAGE_URI = process.env.GCS_VIDEOS_STORAGE_URI;
@@ -25,6 +27,15 @@ const placeholderVideoUrls916 = [
     `${GCS_VIDEOS_STORAGE_URI}dog_2_9_16.mp4`,
 ];
 
+const postSchema = z.object({
+    scenes: z.array(sceneSchema),
+    scenario: scenarioSchema,
+    aspectRatio: z.string(),
+    model: z.string().optional(),
+    generateAudio: z.boolean().optional(),
+    durationSeconds: z.number().optional(),
+});
+
 /**
  * Handles POST requests to generate videos from a list of scenes. test
  *
@@ -39,6 +50,25 @@ export async function POST(req: Request): Promise<Response> {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const body = await req.json();
+
+    // Validate request body
+    const parseResult = postSchema.safeParse(body);
+    if (!parseResult.success) {
+        return NextResponse.json(
+            {
+                success: false,
+                error: {
+                    code: "VALIDATION_ERROR",
+                    message: "Invalid request body",
+                    details: parseResult.error.format(),
+                },
+                meta: { timestamp: new Date().toISOString() },
+            },
+            { status: 400 },
+        );
+    }
+
     const {
         scenes,
         scenario,
@@ -46,14 +76,7 @@ export async function POST(req: Request): Promise<Response> {
         model,
         generateAudio,
         durationSeconds,
-    }: {
-        scenes: Array<Scene>;
-        scenario: Scenario;
-        aspectRatio: string;
-        model?: string;
-        generateAudio?: boolean;
-        durationSeconds?: number;
-    } = await req.json();
+    } = parseResult.data;
 
     try {
         logger.debug("Generating videos in parallel...");
@@ -62,7 +85,7 @@ export async function POST(req: Request): Promise<Response> {
         logger.debug(`scenes: ${scenes}`);
         logger.debug(`durationSeconds: ${durationSeconds}`);
 
-        const videoGenerationTasks = scenes
+        const videoGenerationTasks = (scenes as Scene[])
             .filter((scene) => scene.imageGcsUri)
             .map(async (scene, index) => {
                 logger.debug(
@@ -92,7 +115,10 @@ export async function POST(req: Request): Promise<Response> {
                     const promptString =
                         typeof scene.videoPrompt === "string"
                             ? scene.videoPrompt
-                            : videoPromptToString(scene.videoPrompt, scenario);
+                            : videoPromptToString(
+                                  scene.videoPrompt,
+                                  scenario as Scenario,
+                              );
                     logger.debug(promptString);
                     const operationName = await generateSceneVideo(
                         promptString,

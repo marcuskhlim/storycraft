@@ -4,6 +4,13 @@ import { auth } from "@/auth";
 import { Timestamp } from "@google-cloud/firestore";
 import { Scene } from "@/app/types";
 import logger from "@/app/logger";
+import { scenarioSchema } from "@/app/schemas";
+import { z } from "zod";
+
+const postSchema = z.object({
+    scenario: scenarioSchema,
+    scenarioId: z.string().optional(),
+});
 
 export async function POST(request: NextRequest) {
     try {
@@ -17,14 +24,25 @@ export async function POST(request: NextRequest) {
 
         const userId = session.user.id;
         const body = await request.json();
-        const { scenario, scenarioId } = body;
 
-        if (!scenario) {
+        // Validate request body
+        const parseResult = postSchema.safeParse(body);
+        if (!parseResult.success) {
             return NextResponse.json(
-                { error: "Scenario data is required" },
+                {
+                    success: false,
+                    error: {
+                        code: "VALIDATION_ERROR",
+                        message: "Invalid request body",
+                        details: parseResult.error.format(),
+                    },
+                    meta: { timestamp: new Date().toISOString() },
+                },
                 { status: 400 },
             );
         }
+
+        const { scenario, scenarioId } = parseResult.data;
 
         // Generate a unique ID if not provided
         const id = scenarioId || firestore.collection("scenarios").doc().id;
@@ -139,7 +157,28 @@ export async function GET(request: NextRequest) {
 
         const userId = session.user.id;
         const { searchParams } = new URL(request.url);
-        const scenarioId = searchParams.get("id");
+        const scenarioIdParam = searchParams.get("id");
+
+        // Validate scenarioId if provided
+        let scenarioId: string | null = null;
+        if (scenarioIdParam) {
+            const idResult = z.string().safeParse(scenarioIdParam);
+            if (!idResult.success) {
+                return NextResponse.json(
+                    {
+                        success: false,
+                        error: {
+                            code: "VALIDATION_ERROR",
+                            message: "Invalid scenario ID",
+                            details: idResult.error.format(),
+                        },
+                        meta: { timestamp: new Date().toISOString() },
+                    },
+                    { status: 400 },
+                );
+            }
+            scenarioId = idResult.data;
+        }
 
         if (scenarioId) {
             // Get specific scenario
@@ -219,14 +258,31 @@ export async function DELETE(request: NextRequest) {
 
         const userId = session.user.id;
         const { searchParams } = new URL(request.url);
-        const scenarioId = searchParams.get("id");
+        const scenarioIdParam = searchParams.get("id");
 
-        if (!scenarioId) {
+        if (!scenarioIdParam) {
             return NextResponse.json(
                 { error: "Scenario ID is required" },
                 { status: 400 },
             );
         }
+
+        const idResult = z.string().safeParse(scenarioIdParam);
+        if (!idResult.success) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: {
+                        code: "VALIDATION_ERROR",
+                        message: "Invalid scenario ID",
+                        details: idResult.error.format(),
+                    },
+                    meta: { timestamp: new Date().toISOString() },
+                },
+                { status: 400 },
+            );
+        }
+        const scenarioId = idResult.data;
 
         // Get the scenario to verify ownership
         const scenarioRef = firestore.collection("scenarios").doc(scenarioId);
