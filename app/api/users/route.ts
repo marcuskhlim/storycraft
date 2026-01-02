@@ -22,39 +22,45 @@ export async function POST() {
         const displayName = session.user.name || userEmail.split("@")[0];
         const photoURL = session.user.image || "";
 
-        // Check if user already exists
         const userRef = firestore.collection("users").doc(userId);
-        const userDoc = await userRef.get();
 
-        if (userDoc.exists) {
-            // User exists, update their information
-            await userRef.update({
-                displayName,
-                photoURL,
-                // Don't update createdAt
-            });
+        // Use a transaction to manage user data
+        const result = await firestore.runTransaction(async (transaction) => {
+            const userDoc = await transaction.get(userRef);
 
-            const updatedUserData = await userRef.get();
-            return successResponse({
-                id: userId,
-                ...updatedUserData.data(),
-            });
-        } else {
-            // Create new user
-            const newUser: FirestoreUser = {
-                email: userEmail,
-                displayName,
-                photoURL,
-                createdAt: Timestamp.now(),
-            };
+            if (userDoc.exists) {
+                // User exists, update their information
+                transaction.update(userRef, {
+                    displayName,
+                    photoURL,
+                    // Don't update createdAt
+                });
 
-            await userRef.set(newUser);
+                return {
+                    id: userId,
+                    ...userDoc.data(),
+                    displayName,
+                    photoURL,
+                };
+            } else {
+                // Create new user
+                const newUser: FirestoreUser = {
+                    email: userEmail,
+                    displayName,
+                    photoURL,
+                    createdAt: Timestamp.now(),
+                };
 
-            return successResponse({
-                id: userId,
-                ...newUser,
-            });
-        }
+                transaction.set(userRef, newUser);
+
+                return {
+                    id: userId,
+                    ...newUser,
+                };
+            }
+        });
+
+        return successResponse(result);
     } catch (error) {
         logger.error(`Error managing user: ${error}`);
         return errorResponse("Failed to manage user", "USER_MANAGEMENT_ERROR");

@@ -87,33 +87,39 @@ export async function POST(request: NextRequest) {
             firestoreScenario.logoOverlay = scenario.logoOverlay;
 
         const scenarioRef = firestore.collection("scenarios").doc(id);
-        const scenarioDoc = await scenarioRef.get();
 
-        if (scenarioDoc.exists) {
-            // Check if user owns this scenario
-            const existingData = scenarioDoc.data();
-            if (existingData?.userId !== userId) {
-                return forbiddenResponse();
+        await firestore.runTransaction(async (transaction) => {
+            const scenarioDoc = await transaction.get(scenarioRef);
+
+            if (scenarioDoc.exists) {
+                // Check if user owns this scenario
+                const existingData = scenarioDoc.data();
+                if (existingData?.userId !== userId) {
+                    throw new Error("FORBIDDEN");
+                }
+
+                // Update existing scenario
+                logger.info(`Updating scenario: ${id}`);
+                transaction.update(scenarioRef, {
+                    ...firestoreScenario,
+                    updatedAt: Timestamp.now(),
+                });
+            } else {
+                // Create new scenario
+                logger.info(`Creating new scenario: ${id}`);
+                transaction.set(scenarioRef, {
+                    ...firestoreScenario,
+                    createdAt: Timestamp.now(),
+                    updatedAt: Timestamp.now(),
+                });
             }
-
-            // Update existing scenario
-            logger.info(`Updating scenario: ${id}`);
-            await scenarioRef.update({
-                ...firestoreScenario,
-                updatedAt: Timestamp.now(),
-            });
-        } else {
-            // Create new scenario
-            logger.info(`Creating new scenario: ${id}`);
-            await scenarioRef.set({
-                ...firestoreScenario,
-                createdAt: Timestamp.now(),
-                updatedAt: Timestamp.now(),
-            });
-        }
+        });
 
         return successResponse({ scenarioId: id });
     } catch (error) {
+        if (error instanceof Error && error.message === "FORBIDDEN") {
+            return forbiddenResponse();
+        }
         logger.error(`Error saving scenario: ${error}`);
         return errorResponse("Failed to save scenario", "SAVE_ERROR");
     }
@@ -214,23 +220,45 @@ export async function DELETE(request: NextRequest) {
         }
         const scenarioId = idResult.data;
 
-        // Get the scenario to verify ownership
+        // Get the scenario reference
         const scenarioRef = firestore.collection("scenarios").doc(scenarioId);
-        const scenarioDoc = await scenarioRef.get();
 
-        if (!scenarioDoc.exists) {
-            return notFoundResponse("Scenario not found");
+        // Use a transaction to atomically verify ownership and delete both scenario and timeline
+        try {
+            await firestore.runTransaction(async (transaction) => {
+                const scenarioDoc = await transaction.get(scenarioRef);
+
+                if (!scenarioDoc.exists) {
+                    throw new Error("NOT_FOUND");
+                }
+
+                const scenarioData = scenarioDoc.data();
+
+                // Check if user owns this scenario
+                if (scenarioData?.userId !== userId) {
+                    throw new Error("FORBIDDEN");
+                }
+
+                // Delete the scenario
+                transaction.delete(scenarioRef);
+
+                // Delete the associated timeline if it exists
+                const timelineRef = firestore
+                    .collection("timelines")
+                    .doc(scenarioId);
+                transaction.delete(timelineRef);
+            });
+        } catch (error) {
+            if (error instanceof Error) {
+                if (error.message === "NOT_FOUND") {
+                    return notFoundResponse("Scenario not found");
+                }
+                if (error.message === "FORBIDDEN") {
+                    return forbiddenResponse();
+                }
+            }
+            throw error; // Re-throw for the outer catch block
         }
-
-        const scenarioData = scenarioDoc.data();
-
-        // Check if user owns this scenario
-        if (scenarioData?.userId !== userId) {
-            return forbiddenResponse();
-        }
-
-        // Delete the scenario
-        await scenarioRef.delete();
 
         return successResponse({ success: true });
     } catch (error) {

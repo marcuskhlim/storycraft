@@ -34,32 +34,38 @@ export async function POST(request: NextRequest) {
 
         // Use scenarioId as the timeline document ID (1:1 relationship)
         const timelineRef = firestore.collection("timelines").doc(scenarioId);
-        const existingDoc = await timelineRef.get();
 
-        const timelineData = {
-            id: scenarioId,
-            scenarioId,
-            userId,
-            layers,
-            updatedAt: Timestamp.now(),
-        };
+        await firestore.runTransaction(async (transaction) => {
+            const existingDoc = await transaction.get(timelineRef);
 
-        if (existingDoc.exists) {
-            // Verify ownership before updating
-            const existingData = existingDoc.data();
-            if (existingData?.userId !== userId) {
-                return forbiddenResponse();
+            const timelineData = {
+                id: scenarioId,
+                scenarioId,
+                userId,
+                layers,
+                updatedAt: Timestamp.now(),
+            };
+
+            if (existingDoc.exists) {
+                // Verify ownership before updating
+                const existingData = existingDoc.data();
+                if (existingData?.userId !== userId) {
+                    throw new Error("FORBIDDEN");
+                }
+                transaction.update(timelineRef, timelineData);
+            } else {
+                transaction.set(timelineRef, {
+                    ...timelineData,
+                    createdAt: Timestamp.now(),
+                });
             }
-            await timelineRef.update(timelineData);
-        } else {
-            await timelineRef.set({
-                ...timelineData,
-                createdAt: Timestamp.now(),
-            });
-        }
+        });
 
         return successResponse({ timelineId: scenarioId });
     } catch (error) {
+        if (error instanceof Error && error.message === "FORBIDDEN") {
+            return forbiddenResponse();
+        }
         logger.error(`Error saving timeline: ${error}`);
         return errorResponse("Failed to save timeline", "SAVE_TIMELINE_ERROR");
     }
@@ -142,22 +148,29 @@ export async function DELETE(request: NextRequest) {
         }
         const scenarioId = idResult.data;
 
+        const userId = session.user.id;
         const timelineRef = firestore.collection("timelines").doc(scenarioId);
-        const timelineDoc = await timelineRef.get();
 
-        if (timelineDoc.exists) {
-            const data = timelineDoc.data();
+        await firestore.runTransaction(async (transaction) => {
+            const timelineDoc = await transaction.get(timelineRef);
 
-            // Verify ownership before deleting
-            if (data?.userId !== session.user.id) {
-                return forbiddenResponse();
+            if (timelineDoc.exists) {
+                const data = timelineDoc.data();
+
+                // Verify ownership before deleting
+                if (data?.userId !== userId) {
+                    throw new Error("FORBIDDEN");
+                }
+
+                transaction.delete(timelineRef);
             }
-
-            await timelineRef.delete();
-        }
+        });
 
         return successResponse({ success: true });
     } catch (error) {
+        if (error instanceof Error && error.message === "FORBIDDEN") {
+            return forbiddenResponse();
+        }
         logger.error(`Error deleting timeline: ${error}`);
         return errorResponse(
             "Failed to delete timeline",
