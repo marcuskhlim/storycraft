@@ -46,20 +46,6 @@ const nextConfig = {
                         key: "Referrer-Policy",
                         value: "origin-when-cross-origin",
                     },
-                    {
-                        key: "Content-Security-Policy",
-                        value: `
-              default-src 'self';
-              script-src 'self' 'unsafe-eval' 'unsafe-inline';
-              style-src 'self' 'unsafe-inline';
-              img-src 'self' blob: data: https://storage.googleapis.com https://lh3.googleusercontent.com;
-              media-src 'self' blob: https://storage.googleapis.com;
-              connect-src 'self' https://*.googleapis.com https://*.google.com;
-              frame-ancestors 'none';
-            `
-                            .replace(/\s{2,}/g, " ")
-                            .trim(),
-                    },
                 ],
             },
         ];

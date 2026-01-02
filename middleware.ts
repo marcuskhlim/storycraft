@@ -22,7 +22,34 @@ export default auth(async (req) => {
         }
     }
 
-    return NextResponse.next();
+    const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+    const isDev = process.env.NODE_ENV === "development";
+
+    const cspHeader = `
+    default-src 'self';
+    script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${isDev ? "'unsafe-eval'" : ""};
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' blob: data: https://storage.googleapis.com https://*.googleusercontent.com;
+    media-src 'self' blob: https://storage.googleapis.com;
+    connect-src 'self' https://*.googleapis.com https://*.google.com https://accounts.google.com;
+    frame-src 'self' https://accounts.google.com;
+    frame-ancestors 'none';
+  `
+        .replace(/\s{2,}/g, " ")
+        .trim();
+
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set("x-nonce", nonce);
+    requestHeaders.set("Content-Security-Policy", cspHeader);
+
+    const response = NextResponse.next({
+        request: {
+            headers: requestHeaders,
+        },
+    });
+    response.headers.set("Content-Security-Policy", cspHeader);
+
+    return response;
 });
 
 export const config = {

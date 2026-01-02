@@ -376,7 +376,7 @@ export async function generateStoryboard(
                             presentCharacters.length +
                                 props.length +
                                 settings.length <=
-                            3
+                            14
                         ) {
                             const characterParts = presentCharacters.flatMap(
                                 (character) => [
