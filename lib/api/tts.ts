@@ -7,8 +7,17 @@ import { storage } from "@/lib/storage/storage";
 
 const GCS_VIDEOS_STORAGE_URI = process.env.GCS_VIDEOS_STORAGE_URI || "";
 
+// Use a global variable to ensure the client is reused across HMR in development
+const globalForTTS = global as unknown as {
+    client: InstanceType<typeof textToSpeech.TextToSpeechClient>;
+};
+
 // Assuming you're using Google Cloud Text-to-Speech:
-const client = new textToSpeech.TextToSpeechClient();
+const client = globalForTTS.client || new textToSpeech.TextToSpeechClient();
+
+if (process.env.NODE_ENV !== "production") {
+    globalForTTS.client = client;
+}
 
 export async function tts(
     text: string,
@@ -23,11 +32,13 @@ export async function tts(
 
     //logger.debug(response)
     // log every voices containing the selected voice name
-    response?.voices?.forEach((voice) => {
-        if (voice.name?.includes(voiceName!)) {
-            logger.debug(voice);
-        }
-    });
+    response?.voices?.forEach(
+        (voice: protos.google.cloud.texttospeech.v1.IVoice) => {
+            if (voice.name?.includes(voiceName!)) {
+                logger.debug(voice);
+            }
+        },
+    );
 
     let selectedVoiceName: string | null | undefined;
     if (voiceName) {

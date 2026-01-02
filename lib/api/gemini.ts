@@ -13,11 +13,20 @@ import { withRetry } from "@/lib/utils/retry";
 
 const PROJECT_ID = env.PROJECT_ID;
 
-const ai = new GoogleGenAI({
-    vertexai: true,
-    project: PROJECT_ID,
-    location: "global",
-});
+// Use a global variable to ensure the client is reused across HMR in development
+const globalForAI = global as unknown as { ai: GoogleGenAI };
+
+const ai =
+    globalForAI.ai ||
+    new GoogleGenAI({
+        vertexai: true,
+        project: PROJECT_ID,
+        location: "global",
+    });
+
+if (process.env.NODE_ENV !== "production") {
+    globalForAI.ai = ai;
+}
 
 export async function generateContent(
     prompt: ContentListUnion,

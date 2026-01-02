@@ -3,11 +3,20 @@ import sharp from "sharp";
 import logger from "@/app/logger";
 import { env } from "@/lib/utils/env";
 
+// Use a global variable to ensure the client is reused across HMR in development
+const globalForStorage = global as unknown as { storage: Storage };
+
 // Initialize storage
-export const storage = new Storage({
-    projectId: env.PROJECT_ID,
-    // keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS, // Uncomment if needed
-});
+export const storage =
+    globalForStorage.storage ||
+    new Storage({
+        projectId: env.PROJECT_ID,
+        // keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS, // Uncomment if needed
+    });
+
+if (process.env.NODE_ENV !== "production") {
+    globalForStorage.storage = storage;
+}
 
 const storageUri = env.GCS_VIDEOS_STORAGE_URI; // Make sure this env var is set
 
