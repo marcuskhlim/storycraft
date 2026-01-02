@@ -9,6 +9,7 @@ import { useScenario } from "@/app/features/scenario/hooks/use-scenario";
 import { useTimeline } from "@/app/features/editor/hooks/use-timeline";
 import { resizeImage } from "@/app/features/storyboard/actions/resize-image";
 import { Scene } from "@/app/types";
+import { ApiResponse } from "@/types/api";
 
 export function useStoryboardActions() {
     const { scenario, setScenario, setErrorMessage } = useScenarioStore();
@@ -37,10 +38,17 @@ export function useStoryboardActions() {
                 }),
             });
 
-            const result = await response.json();
+            const result = (await response.json()) as ApiResponse<{
+                imageGcsUri?: string;
+                success?: boolean;
+                errorMessage?: string;
+            }>;
 
-            const { imageGcsUri } = result;
-            const errorMessage = result.errorMessage;
+            if (!result.success) {
+                throw new Error(result.error?.message || "Failed to regenerate image");
+            }
+
+            const { imageGcsUri, errorMessage } = result.data || {};
 
             const updatedScenes = [...scenario.scenes];
             updatedScenes[index] = {
@@ -107,15 +115,17 @@ export function useStoryboardActions() {
                         }),
                     });
 
-                    const { success, videoUrls, error } = await response.json();
+                    const result = (await response.json()) as ApiResponse<{
+                        videoUrls: string[];
+                    }>;
 
-                    if (success) {
+                    if (result.success && result.data) {
                         return {
                             ...scene,
-                            videoUri: videoUrls[0] || undefined,
+                            videoUri: result.data.videoUrls[0] || undefined,
                         };
                     } else {
-                        throw new Error(error);
+                        throw new Error(result.error?.message || "Failed to generate video");
                     }
                 } catch (error) {
                     clientLogger.error("Error regenerating video:", error);
@@ -163,10 +173,12 @@ export function useStoryboardActions() {
                 }),
             });
 
-            const { success, videoUrls, error } = await response.json();
+            const result = (await response.json()) as ApiResponse<{
+                videoUrls: string[];
+            }>;
 
-            if (success) {
-                const videoUri = success ? videoUrls[0] : undefined;
+            if (result.success && result.data) {
+                const videoUri = result.data.videoUrls[0] || undefined;
 
                 const updatedScenes = [...scenario.scenes];
                 updatedScenes[index] = {
@@ -180,7 +192,7 @@ export function useStoryboardActions() {
                     scenes: updatedScenes,
                 });
             } else {
-                throw new Error(error);
+                throw new Error(result.error?.message || "Failed to generate video");
             }
         } catch (error) {
             clientLogger.error("[Client] Error generating video:", error);

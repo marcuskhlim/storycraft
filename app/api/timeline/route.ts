@@ -4,6 +4,13 @@ import { auth } from "@/auth";
 import { Timestamp } from "@google-cloud/firestore";
 import { timelineLayerSchema } from "@/app/schemas";
 import { z } from "zod";
+import { 
+    successResponse, 
+    unauthorizedResponse, 
+    forbiddenResponse, 
+    errorResponse, 
+    validationErrorResponse 
+} from "@/lib/api/response";
 
 const postSchema = z.object({
     scenarioId: z.string().min(1),
@@ -15,10 +22,7 @@ export async function POST(request: NextRequest) {
     try {
         const session = await auth();
         if (!session?.user?.id) {
-            return NextResponse.json(
-                { error: "Unauthorized" },
-                { status: 401 },
-            );
+            return unauthorizedResponse();
         }
 
         const userId = session.user.id;
@@ -27,18 +31,7 @@ export async function POST(request: NextRequest) {
         // Validate request body
         const parseResult = postSchema.safeParse(body);
         if (!parseResult.success) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: {
-                        code: "VALIDATION_ERROR",
-                        message: "Invalid request body",
-                        details: parseResult.error.format(),
-                    },
-                    meta: { timestamp: new Date().toISOString() },
-                },
-                { status: 400 },
-            );
+            return validationErrorResponse(parseResult.error.format());
         }
 
         const { scenarioId, layers } = parseResult.data;
@@ -59,10 +52,7 @@ export async function POST(request: NextRequest) {
             // Verify ownership before updating
             const existingData = existingDoc.data();
             if (existingData?.userId !== userId) {
-                return NextResponse.json(
-                    { error: "Unauthorized" },
-                    { status: 403 },
-                );
+                return forbiddenResponse();
             }
             await timelineRef.update(timelineData);
         } else {
@@ -72,23 +62,10 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        return NextResponse.json({
-            success: true,
-            data: { timelineId: scenarioId },
-            meta: { timestamp: new Date().toISOString() },
-        });
+        return successResponse({ timelineId: scenarioId });
     } catch (error) {
         console.error("Error saving timeline:", error);
-        return NextResponse.json(
-            {
-                success: false,
-                error: {
-                    code: "SAVE_TIMELINE_ERROR",
-                    message: "Failed to save timeline",
-                },
-            },
-            { status: 500 },
-        );
+        return errorResponse("Failed to save timeline", "SAVE_TIMELINE_ERROR");
     }
 }
 
@@ -97,36 +74,19 @@ export async function GET(request: NextRequest) {
     try {
         const session = await auth();
         if (!session?.user?.id) {
-            return NextResponse.json(
-                { error: "Unauthorized" },
-                { status: 401 },
-            );
+            return unauthorizedResponse();
         }
 
         const { searchParams } = new URL(request.url);
         const scenarioIdParam = searchParams.get("scenarioId");
 
         if (!scenarioIdParam) {
-            return NextResponse.json(
-                { error: "scenarioId is required" },
-                { status: 400 },
-            );
+            return errorResponse("scenarioId is required", "VALIDATION_ERROR", 400);
         }
 
         const idResult = z.string().min(1).safeParse(scenarioIdParam);
         if (!idResult.success) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: {
-                        code: "VALIDATION_ERROR",
-                        message: "Invalid scenarioId",
-                        details: idResult.error.format(),
-                    },
-                    meta: { timestamp: new Date().toISOString() },
-                },
-                { status: 400 },
-            );
+            return validationErrorResponse(idResult.error.format(), "Invalid scenarioId");
         }
         const scenarioId = idResult.data;
 
@@ -134,46 +94,20 @@ export async function GET(request: NextRequest) {
         const timelineDoc = await timelineRef.get();
 
         if (!timelineDoc.exists) {
-            return NextResponse.json({
-                success: true,
-                data: { timeline: null },
-                meta: { timestamp: new Date().toISOString() },
-            });
+            return successResponse({ timeline: null });
         }
 
         const data = timelineDoc.data();
 
         // Verify ownership
         if (data?.userId !== session.user.id) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: {
-                        code: "FORBIDDEN",
-                        message: "Unauthorized",
-                    },
-                },
-                { status: 403 },
-            );
+            return forbiddenResponse();
         }
 
-        return NextResponse.json({
-            success: true,
-            data: { timeline: data },
-            meta: { timestamp: new Date().toISOString() },
-        });
+        return successResponse({ timeline: data });
     } catch (error) {
         console.error("Error loading timeline:", error);
-        return NextResponse.json(
-            {
-                success: false,
-                error: {
-                    code: "LOAD_TIMELINE_ERROR",
-                    message: "Failed to load timeline",
-                },
-            },
-            { status: 500 },
-        );
+        return errorResponse("Failed to load timeline", "LOAD_TIMELINE_ERROR");
     }
 }
 
@@ -182,36 +116,19 @@ export async function DELETE(request: NextRequest) {
     try {
         const session = await auth();
         if (!session?.user?.id) {
-            return NextResponse.json(
-                { error: "Unauthorized" },
-                { status: 401 },
-            );
+            return unauthorizedResponse();
         }
 
         const { searchParams } = new URL(request.url);
         const scenarioIdParam = searchParams.get("scenarioId");
 
         if (!scenarioIdParam) {
-            return NextResponse.json(
-                { error: "scenarioId is required" },
-                { status: 400 },
-            );
+            return errorResponse("scenarioId is required", "VALIDATION_ERROR", 400);
         }
 
         const idResult = z.string().min(1).safeParse(scenarioIdParam);
         if (!idResult.success) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: {
-                        code: "VALIDATION_ERROR",
-                        message: "Invalid scenarioId",
-                        details: idResult.error.format(),
-                    },
-                    meta: { timestamp: new Date().toISOString() },
-                },
-                { status: 400 },
-            );
+            return validationErrorResponse(idResult.error.format(), "Invalid scenarioId");
         }
         const scenarioId = idResult.data;
 
@@ -223,31 +140,15 @@ export async function DELETE(request: NextRequest) {
 
             // Verify ownership before deleting
             if (data?.userId !== session.user.id) {
-                return NextResponse.json(
-                    { error: "Unauthorized" },
-                    { status: 403 },
-                );
+                return forbiddenResponse();
             }
 
             await timelineRef.delete();
         }
 
-        return NextResponse.json({
-            success: true,
-            data: { success: true },
-            meta: { timestamp: new Date().toISOString() },
-        });
+        return successResponse({ success: true });
     } catch (error) {
         console.error("Error deleting timeline:", error);
-        return NextResponse.json(
-            {
-                success: false,
-                error: {
-                    code: "DELETE_TIMELINE_ERROR",
-                    message: "Failed to delete timeline",
-                },
-            },
-            { status: 500 },
-        );
+        return errorResponse("Failed to delete timeline", "DELETE_TIMELINE_ERROR");
     }
 }

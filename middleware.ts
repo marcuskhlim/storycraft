@@ -15,7 +15,14 @@ export default auth(async (req) => {
         } catch {
             return NextResponse.json(
                 {
-                    error: "Too many requests. Please try again in a minute.",
+                    success: false,
+                    error: {
+                        code: "RATE_LIMIT_EXCEEDED",
+                        message: "Too many requests. Please try again in a minute.",
+                    },
+                    meta: {
+                        timestamp: new Date().toISOString(),
+                    },
                 },
                 { status: 429 },
             );

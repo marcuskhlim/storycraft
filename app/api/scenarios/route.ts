@@ -6,6 +6,14 @@ import { Scene } from "@/app/types";
 import logger from "@/app/logger";
 import { scenarioSchema } from "@/app/schemas";
 import { z } from "zod";
+import { 
+    successResponse, 
+    unauthorizedResponse, 
+    forbiddenResponse, 
+    errorResponse, 
+    notFoundResponse, 
+    validationErrorResponse 
+} from "@/lib/api/response";
 
 const postSchema = z.object({
     scenario: scenarioSchema,
@@ -16,10 +24,7 @@ export async function POST(request: NextRequest) {
     try {
         const session = await auth();
         if (!session?.user?.id) {
-            return NextResponse.json(
-                { error: "Unauthorized" },
-                { status: 401 },
-            );
+            return unauthorizedResponse();
         }
 
         const userId = session.user.id;
@@ -28,19 +33,9 @@ export async function POST(request: NextRequest) {
         // Validate request body
         const parseResult = postSchema.safeParse(body);
         if (!parseResult.success) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: {
-                        code: "VALIDATION_ERROR",
-                        message: "Invalid request body",
-                        details: parseResult.error.format(),
-                    },
-                    meta: { timestamp: new Date().toISOString() },
-                },
-                { status: 400 },
-            );
+            return validationErrorResponse(parseResult.error.format());
         }
+// ... (rest of the code)
 
         const { scenario, scenarioId } = parseResult.data;
 
@@ -103,10 +98,7 @@ export async function POST(request: NextRequest) {
             // Check if user owns this scenario
             const existingData = scenarioDoc.data();
             if (existingData?.userId !== userId) {
-                return NextResponse.json(
-                    { error: "Unauthorized" },
-                    { status: 403 },
-                );
+                return forbiddenResponse();
             }
 
             // Update existing scenario
@@ -125,23 +117,10 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        return NextResponse.json({
-            success: true,
-            data: { scenarioId: id },
-            meta: { timestamp: new Date().toISOString() },
-        });
+        return successResponse({ scenarioId: id });
     } catch (error) {
         logger.error(`Error saving scenario: ${error}`);
-        return NextResponse.json(
-            {
-                success: false,
-                error: {
-                    code: "SAVE_ERROR",
-                    message: "Failed to save scenario",
-                },
-            },
-            { status: 500 },
-        );
+        return errorResponse("Failed to save scenario", "SAVE_ERROR");
     }
 }
 
@@ -149,10 +128,7 @@ export async function GET(request: NextRequest) {
     try {
         const session = await auth();
         if (!session?.user?.id) {
-            return NextResponse.json(
-                { error: "Unauthorized" },
-                { status: 401 },
-            );
+            return unauthorizedResponse();
         }
 
         const userId = session.user.id;
@@ -164,18 +140,7 @@ export async function GET(request: NextRequest) {
         if (scenarioIdParam) {
             const idResult = z.string().safeParse(scenarioIdParam);
             if (!idResult.success) {
-                return NextResponse.json(
-                    {
-                        success: false,
-                        error: {
-                            code: "VALIDATION_ERROR",
-                            message: "Invalid scenario ID",
-                            details: idResult.error.format(),
-                        },
-                        meta: { timestamp: new Date().toISOString() },
-                    },
-                    { status: 400 },
-                );
+                return validationErrorResponse(idResult.error.format(), "Invalid scenario ID");
             }
             scenarioId = idResult.data;
         }
@@ -188,29 +153,19 @@ export async function GET(request: NextRequest) {
             const scenarioDoc = await scenarioRef.get();
 
             if (!scenarioDoc.exists) {
-                return NextResponse.json(
-                    { error: "Scenario not found" },
-                    { status: 404 },
-                );
+                return notFoundResponse("Scenario not found");
             }
 
             const scenarioData = scenarioDoc.data();
 
             // Check if user owns this scenario
             if (scenarioData?.userId !== userId) {
-                return NextResponse.json(
-                    { error: "Unauthorized" },
-                    { status: 403 },
-                );
+                return forbiddenResponse();
             }
 
-            return NextResponse.json({
-                success: true,
-                data: {
-                    id: scenarioId,
-                    ...scenarioData,
-                },
-                meta: { timestamp: new Date().toISOString() },
+            return successResponse({
+                id: scenarioId,
+                ...scenarioData,
             });
         } else {
             // Get all scenarios for user
@@ -225,24 +180,11 @@ export async function GET(request: NextRequest) {
                 ...doc.data(),
             }));
 
-            return NextResponse.json({
-                success: true,
-                data: { scenarios },
-                meta: { timestamp: new Date().toISOString() },
-            });
+            return successResponse({ scenarios });
         }
     } catch (error) {
         logger.error(`Error fetching scenarios: ${error}`);
-        return NextResponse.json(
-            {
-                success: false,
-                error: {
-                    code: "FETCH_ERROR",
-                    message: "Failed to fetch scenarios",
-                },
-            },
-            { status: 500 },
-        );
+        return errorResponse("Failed to fetch scenarios", "FETCH_ERROR");
     }
 }
 
@@ -250,10 +192,7 @@ export async function DELETE(request: NextRequest) {
     try {
         const session = await auth();
         if (!session?.user?.id) {
-            return NextResponse.json(
-                { error: "Unauthorized" },
-                { status: 401 },
-            );
+            return unauthorizedResponse();
         }
 
         const userId = session.user.id;
@@ -261,26 +200,12 @@ export async function DELETE(request: NextRequest) {
         const scenarioIdParam = searchParams.get("id");
 
         if (!scenarioIdParam) {
-            return NextResponse.json(
-                { error: "Scenario ID is required" },
-                { status: 400 },
-            );
+            return errorResponse("Scenario ID is required", "VALIDATION_ERROR", 400);
         }
 
         const idResult = z.string().safeParse(scenarioIdParam);
         if (!idResult.success) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: {
-                        code: "VALIDATION_ERROR",
-                        message: "Invalid scenario ID",
-                        details: idResult.error.format(),
-                    },
-                    meta: { timestamp: new Date().toISOString() },
-                },
-                { status: 400 },
-            );
+            return validationErrorResponse(idResult.error.format(), "Invalid scenario ID");
         }
         const scenarioId = idResult.data;
 
@@ -289,41 +214,22 @@ export async function DELETE(request: NextRequest) {
         const scenarioDoc = await scenarioRef.get();
 
         if (!scenarioDoc.exists) {
-            return NextResponse.json(
-                { error: "Scenario not found" },
-                { status: 404 },
-            );
+            return notFoundResponse("Scenario not found");
         }
 
         const scenarioData = scenarioDoc.data();
 
         // Check if user owns this scenario
         if (scenarioData?.userId !== userId) {
-            return NextResponse.json(
-                { error: "Unauthorized" },
-                { status: 403 },
-            );
+            return forbiddenResponse();
         }
 
         // Delete the scenario
         await scenarioRef.delete();
 
-        return NextResponse.json({
-            success: true,
-            data: { success: true },
-            meta: { timestamp: new Date().toISOString() },
-        });
+        return successResponse({ success: true });
     } catch (error) {
         logger.error(`Error deleting scenario: ${error}`);
-        return NextResponse.json(
-            {
-                success: false,
-                error: {
-                    code: "DELETE_ERROR",
-                    message: "Failed to delete scenario",
-                },
-            },
-            { status: 500 },
-        );
+        return errorResponse("Failed to delete scenario", "DELETE_ERROR");
     }
 }

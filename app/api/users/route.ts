@@ -3,15 +3,18 @@ import { firestore } from "@/lib/storage/firestore";
 import { auth } from "@/auth";
 import { Timestamp } from "@google-cloud/firestore";
 import type { FirestoreUser } from "@/types/firestore";
+import { 
+    successResponse, 
+    unauthorizedResponse, 
+    errorResponse, 
+    notFoundResponse 
+} from "@/lib/api/response";
 
 export async function POST() {
     try {
         const session = await auth();
         if (!session?.user?.id || !session?.user?.email) {
-            return NextResponse.json(
-                { error: "Unauthorized" },
-                { status: 401 },
-            );
+            return unauthorizedResponse();
         }
 
         const userId = session.user.id;
@@ -32,13 +35,9 @@ export async function POST() {
             });
 
             const updatedUserData = await userRef.get();
-            return NextResponse.json({
-                success: true,
-                data: {
-                    id: userId,
-                    ...updatedUserData.data(),
-                },
-                meta: { timestamp: new Date().toISOString() },
+            return successResponse({
+                id: userId,
+                ...updatedUserData.data(),
             });
         } else {
             // Create new user
@@ -51,27 +50,14 @@ export async function POST() {
 
             await userRef.set(newUser);
 
-            return NextResponse.json({
-                success: true,
-                data: {
-                    id: userId,
-                    ...newUser,
-                },
-                meta: { timestamp: new Date().toISOString() },
+            return successResponse({
+                id: userId,
+                ...newUser,
             });
         }
     } catch (error) {
         console.error("Error managing user:", error);
-        return NextResponse.json(
-            {
-                success: false,
-                error: {
-                    code: "USER_MANAGEMENT_ERROR",
-                    message: "Failed to manage user",
-                },
-            },
-            { status: 500 },
-        );
+        return errorResponse("Failed to manage user", "USER_MANAGEMENT_ERROR");
     }
 }
 
@@ -79,10 +65,7 @@ export async function GET() {
     try {
         const session = await auth();
         if (!session?.user?.id) {
-            return NextResponse.json(
-                { error: "Unauthorized" },
-                { status: 401 },
-            );
+            return unauthorizedResponse();
         }
 
         const userId = session.user.id;
@@ -90,37 +73,15 @@ export async function GET() {
         const userDoc = await userRef.get();
 
         if (!userDoc.exists) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: {
-                        code: "NOT_FOUND",
-                        message: "User not found",
-                    },
-                },
-                { status: 404 },
-            );
+            return notFoundResponse("User not found");
         }
 
-        return NextResponse.json({
-            success: true,
-            data: {
-                id: userId,
-                ...userDoc.data(),
-            },
-            meta: { timestamp: new Date().toISOString() },
+        return successResponse({
+            id: userId,
+            ...userDoc.data(),
         });
     } catch (error) {
         console.error("Error fetching user:", error);
-        return NextResponse.json(
-            {
-                success: false,
-                error: {
-                    code: "FETCH_USER_ERROR",
-                    message: "Failed to fetch user",
-                },
-            },
-            { status: 500 },
-        );
+        return errorResponse("Failed to fetch user", "FETCH_USER_ERROR");
     }
 }

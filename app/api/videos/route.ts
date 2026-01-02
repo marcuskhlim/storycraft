@@ -9,6 +9,12 @@ import { getRAIUserMessage } from "@/lib/utils/rai";
 import { DEFAULT_SETTINGS } from "@/lib/ai-config";
 import { z } from "zod";
 import { sceneSchema, scenarioSchema } from "@/app/schemas";
+import { 
+    successResponse, 
+    unauthorizedResponse, 
+    errorResponse, 
+    validationErrorResponse 
+} from "@/lib/api/response";
 
 const USE_COSMO = process.env.USE_COSMO === "true";
 const GCS_VIDEOS_STORAGE_URI = process.env.GCS_VIDEOS_STORAGE_URI;
@@ -47,7 +53,7 @@ const postSchema = z.object({
 export async function POST(req: Request): Promise<Response> {
     const session = await auth();
     if (!session?.user?.id) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return unauthorizedResponse();
     }
 
     const body = await req.json();
@@ -55,18 +61,7 @@ export async function POST(req: Request): Promise<Response> {
     // Validate request body
     const parseResult = postSchema.safeParse(body);
     if (!parseResult.success) {
-        return NextResponse.json(
-            {
-                success: false,
-                error: {
-                    code: "VALIDATION_ERROR",
-                    message: "Invalid request body",
-                    details: parseResult.error.format(),
-                },
-                meta: { timestamp: new Date().toISOString() },
-            },
-            { status: 400 },
-        );
+        return validationErrorResponse(parseResult.error.format());
     }
 
     const {
@@ -163,15 +158,12 @@ export async function POST(req: Request): Promise<Response> {
 
         const videoUrls = await Promise.all(videoGenerationTasks);
 
-        return Response.json({ success: true, videoUrls }); // Return response data if needed
+        return successResponse({ videoUrls });
     } catch (error) {
         logger.error("Error in generateVideo:", error);
-        return Response.json({
-            success: false,
-            error:
-                error instanceof Error
-                    ? error.message
-                    : "Failed to generate video(s)",
-        });
+        return errorResponse(
+            error instanceof Error ? error.message : "Failed to generate video(s)",
+            "VIDEO_GENERATION_ERROR"
+        );
     }
 }

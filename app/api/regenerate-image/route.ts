@@ -13,6 +13,12 @@ import { auth } from "@/auth";
 import { DEFAULT_SETTINGS } from "@/lib/ai-config";
 import { z } from "zod";
 import { imagePromptSchema, scenarioSchema } from "@/app/schemas";
+import { 
+    successResponse, 
+    unauthorizedResponse, 
+    errorResponse, 
+    validationErrorResponse 
+} from "@/lib/api/response";
 
 const postSchema = z.object({
     prompt: imagePromptSchema,
@@ -29,7 +35,7 @@ const putSchema = z.object({
 export async function POST(request: NextRequest) {
     const session = await auth();
     if (!session?.user?.id) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return unauthorizedResponse();
     }
 
     try {
@@ -38,18 +44,7 @@ export async function POST(request: NextRequest) {
         // Validate request body
         const parseResult = postSchema.safeParse(body);
         if (!parseResult.success) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: {
-                        code: "VALIDATION_ERROR",
-                        message: "Invalid request body",
-                        details: parseResult.error.format(),
-                    },
-                    meta: { timestamp: new Date().toISOString() },
-                },
-                { status: 400 },
-            );
+            return validationErrorResponse(parseResult.error.format());
         }
 
         const {
@@ -158,7 +153,7 @@ export async function POST(request: NextRequest) {
                     modelName,
                 );
             }
-            return NextResponse.json(result);
+            return successResponse(result);
         } else {
             // Convert structured prompt to string if needed
             const promptString =
@@ -180,23 +175,18 @@ export async function POST(request: NextRequest) {
                 logger.debug(
                     `Generated image: ${resultJson.predictions[0].gcsUri}`,
                 );
-                return NextResponse.json({
-                    success: true,
+                return successResponse({
                     imageGcsUri: resultJson.predictions[0].gcsUri,
                 });
             }
         }
     } catch (error) {
         logger.error("Error regenerating image:", error);
-        const errorMessage =
-            error instanceof Error ? error.message : "Unknown error";
-        return NextResponse.json(
-            {
-                success: false,
-                error: "Failed to regenerate image",
-                errorMessage,
-            },
-            { status: 500 },
+        return errorResponse(
+            "Failed to regenerate image",
+            "IMAGE_REGEN_ERROR",
+            500,
+            error instanceof Error ? error.message : "Unknown error"
         );
     }
 }
@@ -204,7 +194,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
     const session = await auth();
     if (!session?.user?.id) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return unauthorizedResponse();
     }
 
     try {
@@ -213,18 +203,7 @@ export async function PUT(request: NextRequest) {
         // Validate request body
         const parseResult = putSchema.safeParse(body);
         if (!parseResult.success) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: {
-                        code: "VALIDATION_ERROR",
-                        message: "Invalid request body",
-                        details: parseResult.error.format(),
-                    },
-                    meta: { timestamp: new Date().toISOString() },
-                },
-                { status: 400 },
-            );
+            return validationErrorResponse(parseResult.error.format());
         }
 
         const { prompt } = parseResult.data;
@@ -241,22 +220,17 @@ export async function PUT(request: NextRequest) {
             logger.debug(
                 `Generated character image: ${resultJson.predictions[0].gcsUri}`,
             );
-            return NextResponse.json({
-                success: true,
+            return successResponse({
                 imageGcsUri: resultJson.predictions[0].gcsUri,
             });
         }
     } catch (error) {
         logger.error("Error regenerating character image:", error);
-        const errorMessage =
-            error instanceof Error ? error.message : "Unknown error";
-        return NextResponse.json(
-            {
-                success: false,
-                error: "Failed to regenerate character image",
-                errorMessage,
-            },
-            { status: 500 },
+        return errorResponse(
+            "Failed to regenerate character image",
+            "CHAR_IMAGE_REGEN_ERROR",
+            500,
+            error instanceof Error ? error.message : "Unknown error"
         );
     }
 }
