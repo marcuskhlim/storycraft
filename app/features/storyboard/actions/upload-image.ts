@@ -35,16 +35,14 @@ export async function saveImageToPublic(
         const filePath = path.join(uploadDir, uniqueFilename);
 
         // Create the directory if it doesn't exist
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
+        await fs.promises.mkdir(uploadDir, { recursive: true });
 
         // Remove the data URL prefix and convert base64 to buffer
         const base64Data = base64String.split(",")[1];
         const buffer = Buffer.from(base64Data, "base64");
 
         // Write the file to the public directory
-        fs.writeFileSync(filePath, buffer);
+        await fs.promises.writeFile(filePath, buffer);
 
         // Return the public URL path to the saved image
         return `/uploads/${uniqueFilename}`;

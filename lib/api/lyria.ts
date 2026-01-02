@@ -56,7 +56,7 @@ export async function generateMusicRest(prompt: string): Promise<string> {
             const outputDir = path.join(publicDir, "music");
 
             // Ensure the directory exists
-            fs.mkdirSync(outputDir, { recursive: true });
+            await fs.promises.mkdir(outputDir, { recursive: true });
 
             // Generate a unique filename, e.g., using a timestamp or a UUID
             const uuid = uuidv4();

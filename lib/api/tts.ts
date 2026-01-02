@@ -83,7 +83,7 @@ export async function tts(
         const outputDir = path.join(publicDir, "tts"); // Example: public/audio
 
         // Ensure the directory exists
-        fs.mkdirSync(outputDir, { recursive: true });
+        await fs.promises.mkdir(outputDir, { recursive: true });
 
         // Generate a unique filename, e.g., using a timestamp or a UUID
         const uuid = uuidv4();

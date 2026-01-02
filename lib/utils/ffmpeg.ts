@@ -469,7 +469,9 @@ export async function exportMovie(
     const outputFileNameWithAudio = `${id}_with_audio.mp4`;
     const outputFileNameWithVoiceover = `${id}_with_voiceover.mp4`;
     let finalOutputPath;
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "video-concat-"));
+    const tempDir = await fs.promises.mkdtemp(
+        path.join(os.tmpdir(), "video-concat-"),
+    );
     const publicDir = path.join(process.cwd(), "public");
 
     const videoLayer = layers.find((layer) => layer.id === "videos");
@@ -631,7 +633,7 @@ export async function exportMovie(
         );
     } finally {
         // Clean up temporary files
-        fs.rmSync(tempDir, { recursive: true, force: true });
+        await fs.promises.rm(tempDir, { recursive: true, force: true });
     }
 }
 
@@ -682,13 +684,15 @@ export async function concatenateMusicWithFade(
         }
 
         // Create a temporary directory for processing
-        const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "audio-concat-"));
+        const tempDir = await fs.promises.mkdtemp(
+            path.join(os.tmpdir(), "audio-concat-"),
+        );
         const tempInputPath = path.join(tempDir, `input.${inputFormat}`);
         const tempOutputPath = path.join(tempDir, `output.mp3`);
 
         try {
             // Write input buffer to temporary file
-            fs.writeFileSync(tempInputPath, inputAudioBuffer);
+            await fs.promises.writeFile(tempInputPath, inputAudioBuffer);
 
             // Run FFmpeg command
             await new Promise<void>((resolve, reject) => {
@@ -762,14 +766,17 @@ export async function concatenateMusicWithFade(
             });
 
             // Read the output file
-            const outputBuffer = fs.readFileSync(tempOutputPath);
+            const outputBuffer = await fs.promises.readFile(tempOutputPath);
             resolve(outputBuffer);
         } catch (error) {
             reject(error);
         } finally {
             // Clean up temporary files
             try {
-                fs.rmSync(tempDir, { recursive: true, force: true });
+                await fs.promises.rm(tempDir, {
+                    recursive: true,
+                    force: true,
+                });
             } catch (cleanupErr) {
                 logger.warn("Error cleaning up temp files:", cleanupErr);
             }
@@ -789,22 +796,25 @@ function getAudioDurationFromBuffer(
     audioBuffer: Buffer,
     inputFormat: string,
 ): Promise<number> {
-    return new Promise((resolve, reject) => {
-        // Create a temporary file to store the buffer
-        const tempDir = fs.mkdtempSync(
+    return new Promise(async (resolve, reject) => {
+        // Create a temporary directory to store the buffer
+        const tempDir = await fs.promises.mkdtemp(
             path.join(os.tmpdir(), "audio-duration-"),
         );
         const tempFilePath = path.join(tempDir, `temp_audio.${inputFormat}`);
 
         try {
             // Write buffer to temporary file
-            fs.writeFileSync(tempFilePath, audioBuffer);
+            await fs.promises.writeFile(tempFilePath, audioBuffer);
 
             // Use ffprobe on the temporary file instead of the buffer directly
-            ffmpeg.ffprobe(tempFilePath, (err, data) => {
+            ffmpeg.ffprobe(tempFilePath, async (err, data) => {
                 // Clean up temp file and directory
                 try {
-                    fs.rmSync(tempDir, { recursive: true, force: true });
+                    await fs.promises.rm(tempDir, {
+                        recursive: true,
+                        force: true,
+                    });
                 } catch (cleanupErr) {
                     logger.warn("Error cleaning up temp files:", cleanupErr);
                 }
@@ -848,7 +858,10 @@ function getAudioDurationFromBuffer(
         } catch (error) {
             // Clean up temp file and directory in case of error
             try {
-                fs.rmSync(tempDir, { recursive: true, force: true });
+                await fs.promises.rm(tempDir, {
+                    recursive: true,
+                    force: true,
+                });
             } catch (cleanupErr) {
                 logger.warn("Error cleaning up temp files:", cleanupErr);
             }
