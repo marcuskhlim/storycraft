@@ -5,6 +5,8 @@ import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { saveImageToPublicSchema } from "@/app/schemas";
 
+import logger from "@/app/logger";
+
 export async function saveImageToPublic(
     base64String: string,
     originalFilename: string,
@@ -37,7 +39,7 @@ export async function saveImageToPublic(
         // Return the public URL path to the saved image
         return `/uploads/${uniqueFilename}`;
     } catch (error) {
-        console.error("Error saving image:", error);
+        logger.error(`Error saving image: ${error}`);
         throw new Error("Failed to save image");
     }
 }

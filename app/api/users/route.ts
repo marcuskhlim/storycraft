@@ -2,6 +2,7 @@ import { firestore } from "@/lib/storage/firestore";
 import { auth } from "@/auth";
 import { Timestamp } from "@google-cloud/firestore";
 import type { FirestoreUser } from "@/types/firestore";
+import logger from "@/app/logger";
 import {
     successResponse,
     unauthorizedResponse,
@@ -55,7 +56,7 @@ export async function POST() {
             });
         }
     } catch (error) {
-        console.error("Error managing user:", error);
+        logger.error(`Error managing user: ${error}`);
         return errorResponse("Failed to manage user", "USER_MANAGEMENT_ERROR");
     }
 }
@@ -80,7 +81,7 @@ export async function GET() {
             ...userDoc.data(),
         });
     } catch (error) {
-        console.error("Error fetching user:", error);
+        logger.error(`Error fetching user: ${error}`);
         return errorResponse("Failed to fetch user", "FETCH_USER_ERROR");
     }
 }

@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { Timestamp } from "@google-cloud/firestore";
 import { timelineLayerSchema } from "@/app/schemas";
 import { z } from "zod";
+import logger from "@/app/logger";
 import {
     successResponse,
     unauthorizedResponse,
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
 
         return successResponse({ timelineId: scenarioId });
     } catch (error) {
-        console.error("Error saving timeline:", error);
+        logger.error(`Error saving timeline: ${error}`);
         return errorResponse("Failed to save timeline", "SAVE_TIMELINE_ERROR");
     }
 }
@@ -113,7 +114,7 @@ export async function GET(request: NextRequest) {
 
         return successResponse({ timeline: data });
     } catch (error) {
-        console.error("Error loading timeline:", error);
+        logger.error(`Error loading timeline: ${error}`);
         return errorResponse("Failed to load timeline", "LOAD_TIMELINE_ERROR");
     }
 }
@@ -162,7 +163,7 @@ export async function DELETE(request: NextRequest) {
 
         return successResponse({ success: true });
     } catch (error) {
-        console.error("Error deleting timeline:", error);
+        logger.error(`Error deleting timeline: ${error}`);
         return errorResponse(
             "Failed to delete timeline",
             "DELETE_TIMELINE_ERROR",

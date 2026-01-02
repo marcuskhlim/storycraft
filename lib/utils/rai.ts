@@ -1,5 +1,7 @@
+import logger from "@/app/logger";
+
 export function getRAIUserMessage(reasonString: string): string {
-    console.warn(
+    logger.warn(
         `Media generation blocked due to RAI filter reason: ${reasonString}`,
     );
 
@@ -73,7 +75,7 @@ export function getRAIUserMessage(reasonString: string): string {
             "Media generation blocked: Detected vulgar language or content.";
     } else {
         // Optional: Log if no known code was found in the string
-        console.warn(
+        logger.warn(
             `RAI filter reason string did not contain any specific known codes from the list.`,
         );
     }
