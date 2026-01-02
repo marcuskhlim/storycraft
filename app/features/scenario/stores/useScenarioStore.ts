@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 import { Scenario, Language } from "@/app/types";
-import { toast } from "sonner";
 
 const DEFAULT_LANGUAGE: Language = {
     name: "English (United States)",
@@ -76,9 +75,6 @@ export const useScenarioStore = create<ScenarioState>()(
         setScenario: (scenario) => set({ scenario }, false, "setScenario"),
 
         setErrorMessage: (errorMessage) => {
-            if (errorMessage) {
-                toast.error(errorMessage);
-            }
             set({ errorMessage }, false, "setErrorMessage");
         },
 

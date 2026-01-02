@@ -6,6 +6,7 @@ import { useScenarioStore } from "@/app/features/scenario/stores/useScenarioStor
 import { clientLogger } from "@/lib/utils/client-logger";
 import { exportVideoClient } from "@/lib/utils/client-export";
 import { TimelineLayer } from "@/app/types";
+import { toast } from "sonner";
 
 export function useEditorActions() {
     const { setLoading } = useLoadingStore();
@@ -36,11 +37,12 @@ export function useEditorActions() {
             setVttUri(null);
         } catch (error) {
             clientLogger.error("Error generating video:", error);
-            setErrorMessage(
+            const message =
                 error instanceof Error
                     ? error.message
-                    : "An unknown error occurred while generating video",
-            );
+                    : "An unknown error occurred while generating video";
+            setErrorMessage(message);
+            toast.error(message);
             setVttUri(null);
         } finally {
             setLoading("video", false);

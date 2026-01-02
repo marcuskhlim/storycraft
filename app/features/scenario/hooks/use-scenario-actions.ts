@@ -13,6 +13,7 @@ import {
     regeneratePropAndScenarioFromImage,
 } from "@/app/features/scenario/actions/modify-scenario";
 import { resizeImage } from "@/app/features/storyboard/actions/resize-image";
+import { toast } from "sonner";
 
 export function useScenarioActions() {
     const {
@@ -47,11 +48,12 @@ export function useScenarioActions() {
             setActiveTab("storyboard");
         } catch (error) {
             clientLogger.error("Error generating storyboard:", error);
-            setErrorMessage(
+            const message =
                 error instanceof Error
                     ? error.message
-                    : "An unknown error occurred while generating storyboard",
-            );
+                    : "An unknown error occurred while generating storyboard";
+            setErrorMessage(message);
+            toast.error(message);
             setActiveTab("scenario");
         } finally {
             setLoading("scenario", false);
@@ -97,9 +99,9 @@ export function useScenarioActions() {
             });
         } catch (error) {
             clientLogger.error("Error regenerating character image:", error);
-            setErrorMessage(
-                `Failed to regenerate character image: ${error instanceof Error ? error.message : "Unknown error"}`,
-            );
+            const message = `Failed to regenerate character image: ${error instanceof Error ? error.message : "Unknown error"}`;
+            setErrorMessage(message);
+            toast.error(message);
         } finally {
             stopLoading("characters", characterIndex);
         }
@@ -166,11 +168,12 @@ export function useScenarioActions() {
             });
         } catch (error) {
             clientLogger.error("Error uploading character image:", error);
-            setErrorMessage(
+            const message =
                 error instanceof Error
                     ? error.message
-                    : "An unknown error occurred while uploading the character image",
-            );
+                    : "An unknown error occurred while uploading the character image";
+            setErrorMessage(message);
+            toast.error(message);
         } finally {
             stopLoading("characters", characterIndex);
         }
@@ -214,9 +217,9 @@ export function useScenarioActions() {
             });
         } catch (error) {
             clientLogger.error("Error regenerating setting image:", error);
-            setErrorMessage(
-                `Failed to regenerate setting image: ${error instanceof Error ? error.message : "Unknown error"}`,
-            );
+            const message = `Failed to regenerate setting image: ${error instanceof Error ? error.message : "Unknown error"}`;
+            setErrorMessage(message);
+            toast.error(message);
         } finally {
             stopLoading("settings", settingIndex);
         }
@@ -274,11 +277,12 @@ export function useScenarioActions() {
             });
         } catch (error) {
             clientLogger.error("Error uploading setting image:", error);
-            setErrorMessage(
+            const message =
                 error instanceof Error
                     ? error.message
-                    : "An unknown error occurred while uploading the setting image",
-            );
+                    : "An unknown error occurred while uploading the setting image";
+            setErrorMessage(message);
+            toast.error(message);
         } finally {
             stopLoading("settings", settingIndex);
         }
@@ -321,9 +325,9 @@ export function useScenarioActions() {
             });
         } catch (error) {
             clientLogger.error("Error regenerating prop image:", error);
-            setErrorMessage(
-                `Failed to regenerate prop image: ${error instanceof Error ? error.message : "Unknown error"}`,
-            );
+            const message = `Failed to regenerate prop image: ${error instanceof Error ? error.message : "Unknown error"}`;
+            setErrorMessage(message);
+            toast.error(message);
         } finally {
             stopLoading("props", propIndex);
         }
@@ -378,11 +382,12 @@ export function useScenarioActions() {
             });
         } catch (error) {
             clientLogger.error("Error uploading prop image:", error);
-            setErrorMessage(
+            const message =
                 error instanceof Error
                     ? error.message
-                    : "An unknown error occurred while uploading the prop image",
-            );
+                    : "An unknown error occurred while uploading the prop image";
+            setErrorMessage(message);
+            toast.error(message);
         } finally {
             stopLoading("props", propIndex);
         }

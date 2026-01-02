@@ -6,6 +6,7 @@ import { useEditorStore } from "@/app/features/editor/stores/useEditorStore";
 import { useSettings } from "@/app/features/shared/hooks/use-settings";
 import { clientLogger } from "@/lib/utils/client-logger";
 import { generateScenario } from "@/app/features/scenario/actions/generate-scenes";
+import { toast } from "sonner";
 
 export function useCreateActions() {
     const {
@@ -60,11 +61,12 @@ export function useCreateActions() {
             setActiveTab("scenario"); // Switch to scenario tab after successful generation
         } catch (error) {
             clientLogger.error("Error generating scenes:", error);
-            setErrorMessage(
+            const message =
                 error instanceof Error
                     ? error.message
-                    : "An unknown error occurred while generating scenes",
-            );
+                    : "An unknown error occurred while generating scenes";
+            setErrorMessage(message);
+            toast.error(message);
         } finally {
             setLoading("scenario", false);
         }

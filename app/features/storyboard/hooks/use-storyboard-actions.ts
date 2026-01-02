@@ -11,6 +11,7 @@ import { resizeImage } from "@/app/features/storyboard/actions/resize-image";
 import { Scene } from "@/app/types";
 import { ApiResponse } from "@/types/api";
 import pLimit from "p-limit";
+import { toast } from "sonner";
 
 export function useStoryboardActions() {
     const { scenario, setScenario, setErrorMessage } = useScenarioStore();
@@ -67,9 +68,9 @@ export function useStoryboardActions() {
             });
         } catch (error) {
             clientLogger.error("Error regenerating images:", error);
-            setErrorMessage(
-                `${error instanceof Error ? error.message : "Unknown error"}`,
-            );
+            const message = `${error instanceof Error ? error.message : "Unknown error"}`;
+            setErrorMessage(message);
+            toast.error(message);
         } finally {
             stopLoading("scenes", index);
         }
@@ -208,11 +209,12 @@ export function useStoryboardActions() {
             }
         } catch (error) {
             clientLogger.error("[Client] Error generating video:", error);
-            setErrorMessage(
+            const message =
                 error instanceof Error
                     ? error.message
-                    : "An unknown error occurred while generating video",
-            );
+                    : "An unknown error occurred while generating video";
+            setErrorMessage(message);
+            toast.error(message);
 
             const updatedScenes = scenario.scenes.map((s, i) => {
                 if (i === index) {
@@ -293,11 +295,12 @@ export function useStoryboardActions() {
             });
         } catch (error) {
             clientLogger.error("Error uploading image:", error);
-            setErrorMessage(
+            const message =
                 error instanceof Error
                     ? error.message
-                    : "An unknown error occurred while uploading the image",
-            );
+                    : "An unknown error occurred while uploading the image";
+            setErrorMessage(message);
+            toast.error(message);
         } finally {
             stopLoading("scenes", index);
         }
