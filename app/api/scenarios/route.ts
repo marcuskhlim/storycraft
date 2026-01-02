@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { firestore } from "@/lib/storage/firestore";
 import { auth } from "@/auth";
 import { Timestamp } from "@google-cloud/firestore";
@@ -6,13 +6,13 @@ import { Scene } from "@/app/types";
 import logger from "@/app/logger";
 import { scenarioSchema } from "@/app/schemas";
 import { z } from "zod";
-import { 
-    successResponse, 
-    unauthorizedResponse, 
-    forbiddenResponse, 
-    errorResponse, 
-    notFoundResponse, 
-    validationErrorResponse 
+import {
+    successResponse,
+    unauthorizedResponse,
+    forbiddenResponse,
+    errorResponse,
+    notFoundResponse,
+    validationErrorResponse,
 } from "@/lib/api/response";
 
 const postSchema = z.object({
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
         if (!parseResult.success) {
             return validationErrorResponse(parseResult.error.format());
         }
-// ... (rest of the code)
+        // ... (rest of the code)
 
         const { scenario, scenarioId } = parseResult.data;
 
@@ -140,7 +140,10 @@ export async function GET(request: NextRequest) {
         if (scenarioIdParam) {
             const idResult = z.string().safeParse(scenarioIdParam);
             if (!idResult.success) {
-                return validationErrorResponse(idResult.error.format(), "Invalid scenario ID");
+                return validationErrorResponse(
+                    idResult.error.format(),
+                    "Invalid scenario ID",
+                );
             }
             scenarioId = idResult.data;
         }
@@ -200,12 +203,19 @@ export async function DELETE(request: NextRequest) {
         const scenarioIdParam = searchParams.get("id");
 
         if (!scenarioIdParam) {
-            return errorResponse("Scenario ID is required", "VALIDATION_ERROR", 400);
+            return errorResponse(
+                "Scenario ID is required",
+                "VALIDATION_ERROR",
+                400,
+            );
         }
 
         const idResult = z.string().safeParse(scenarioIdParam);
         if (!idResult.success) {
-            return validationErrorResponse(idResult.error.format(), "Invalid scenario ID");
+            return validationErrorResponse(
+                idResult.error.format(),
+                "Invalid scenario ID",
+            );
         }
         const scenarioId = idResult.data;
 

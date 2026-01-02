@@ -1,15 +1,15 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { firestore } from "@/lib/storage/firestore";
 import { auth } from "@/auth";
 import { Timestamp } from "@google-cloud/firestore";
 import { timelineLayerSchema } from "@/app/schemas";
 import { z } from "zod";
-import { 
-    successResponse, 
-    unauthorizedResponse, 
-    forbiddenResponse, 
-    errorResponse, 
-    validationErrorResponse 
+import {
+    successResponse,
+    unauthorizedResponse,
+    forbiddenResponse,
+    errorResponse,
+    validationErrorResponse,
 } from "@/lib/api/response";
 
 const postSchema = z.object({
@@ -81,12 +81,19 @@ export async function GET(request: NextRequest) {
         const scenarioIdParam = searchParams.get("scenarioId");
 
         if (!scenarioIdParam) {
-            return errorResponse("scenarioId is required", "VALIDATION_ERROR", 400);
+            return errorResponse(
+                "scenarioId is required",
+                "VALIDATION_ERROR",
+                400,
+            );
         }
 
         const idResult = z.string().min(1).safeParse(scenarioIdParam);
         if (!idResult.success) {
-            return validationErrorResponse(idResult.error.format(), "Invalid scenarioId");
+            return validationErrorResponse(
+                idResult.error.format(),
+                "Invalid scenarioId",
+            );
         }
         const scenarioId = idResult.data;
 
@@ -123,12 +130,19 @@ export async function DELETE(request: NextRequest) {
         const scenarioIdParam = searchParams.get("scenarioId");
 
         if (!scenarioIdParam) {
-            return errorResponse("scenarioId is required", "VALIDATION_ERROR", 400);
+            return errorResponse(
+                "scenarioId is required",
+                "VALIDATION_ERROR",
+                400,
+            );
         }
 
         const idResult = z.string().min(1).safeParse(scenarioIdParam);
         if (!idResult.success) {
-            return validationErrorResponse(idResult.error.format(), "Invalid scenarioId");
+            return validationErrorResponse(
+                idResult.error.format(),
+                "Invalid scenarioId",
+            );
         }
         const scenarioId = idResult.data;
 
@@ -149,6 +163,9 @@ export async function DELETE(request: NextRequest) {
         return successResponse({ success: true });
     } catch (error) {
         console.error("Error deleting timeline:", error);
-        return errorResponse("Failed to delete timeline", "DELETE_TIMELINE_ERROR");
+        return errorResponse(
+            "Failed to delete timeline",
+            "DELETE_TIMELINE_ERROR",
+        );
     }
 }

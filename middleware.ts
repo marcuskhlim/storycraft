@@ -18,7 +18,8 @@ export default auth(async (req) => {
                     success: false,
                     error: {
                         code: "RATE_LIMIT_EXCEEDED",
-                        message: "Too many requests. Please try again in a minute.",
+                        message:
+                            "Too many requests. Please try again in a minute.",
                     },
                     meta: {
                         timestamp: new Date().toISOString(),

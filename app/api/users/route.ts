@@ -1,13 +1,12 @@
-import { NextResponse } from "next/server";
 import { firestore } from "@/lib/storage/firestore";
 import { auth } from "@/auth";
 import { Timestamp } from "@google-cloud/firestore";
 import type { FirestoreUser } from "@/types/firestore";
-import { 
-    successResponse, 
-    unauthorizedResponse, 
-    errorResponse, 
-    notFoundResponse 
+import {
+    successResponse,
+    unauthorizedResponse,
+    errorResponse,
+    notFoundResponse,
 } from "@/lib/api/response";
 
 export async function POST() {

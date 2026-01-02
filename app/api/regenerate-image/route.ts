@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { generateImageRest } from "@/lib/api/imagen";
 import { imagePromptToString } from "@/lib/utils/prompt-utils";
 import { ImagePrompt } from "@/app/types";
@@ -13,11 +13,11 @@ import { auth } from "@/auth";
 import { DEFAULT_SETTINGS } from "@/lib/ai-config";
 import { z } from "zod";
 import { imagePromptSchema, scenarioSchema } from "@/app/schemas";
-import { 
-    successResponse, 
-    unauthorizedResponse, 
-    errorResponse, 
-    validationErrorResponse 
+import {
+    successResponse,
+    unauthorizedResponse,
+    errorResponse,
+    validationErrorResponse,
 } from "@/lib/api/response";
 
 const postSchema = z.object({
@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
             "Failed to regenerate image",
             "IMAGE_REGEN_ERROR",
             500,
-            error instanceof Error ? error.message : "Unknown error"
+            error instanceof Error ? error.message : "Unknown error",
         );
     }
 }
@@ -230,7 +230,7 @@ export async function PUT(request: NextRequest) {
             "Failed to regenerate character image",
             "CHAR_IMAGE_REGEN_ERROR",
             500,
-            error instanceof Error ? error.message : "Unknown error"
+            error instanceof Error ? error.message : "Unknown error",
         );
     }
 }

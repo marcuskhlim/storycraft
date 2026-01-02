@@ -2,18 +2,17 @@ import { Scene, Scenario } from "@/app/types";
 import { videoPromptToString } from "@/lib/utils/prompt-utils";
 import { generateSceneVideo, waitForOperation } from "@/lib/api/veo";
 import { auth } from "@/auth";
-import { NextResponse } from "next/server";
 
 import logger from "@/app/logger";
 import { getRAIUserMessage } from "@/lib/utils/rai";
 import { DEFAULT_SETTINGS } from "@/lib/ai-config";
 import { z } from "zod";
 import { sceneSchema, scenarioSchema } from "@/app/schemas";
-import { 
-    successResponse, 
-    unauthorizedResponse, 
-    errorResponse, 
-    validationErrorResponse 
+import {
+    successResponse,
+    unauthorizedResponse,
+    errorResponse,
+    validationErrorResponse,
 } from "@/lib/api/response";
 
 const USE_COSMO = process.env.USE_COSMO === "true";
@@ -162,8 +161,10 @@ export async function POST(req: Request): Promise<Response> {
     } catch (error) {
         logger.error("Error in generateVideo:", error);
         return errorResponse(
-            error instanceof Error ? error.message : "Failed to generate video(s)",
-            "VIDEO_GENERATION_ERROR"
+            error instanceof Error
+                ? error.message
+                : "Failed to generate video(s)",
+            "VIDEO_GENERATION_ERROR",
         );
     }
 }

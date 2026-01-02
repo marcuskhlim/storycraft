@@ -1,11 +1,10 @@
 import logger from "@/app/logger";
 import { auth } from "@/auth";
-import { NextResponse } from "next/server";
 import { z } from "zod";
-import { 
-    successResponse, 
-    unauthorizedResponse, 
-    validationErrorResponse 
+import {
+    successResponse,
+    unauthorizedResponse,
+    validationErrorResponse,
 } from "@/lib/api/response";
 
 const postSchema = z.object({

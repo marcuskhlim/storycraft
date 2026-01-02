@@ -45,7 +45,9 @@ export function useStoryboardActions() {
             }>;
 
             if (!result.success) {
-                throw new Error(result.error?.message || "Failed to regenerate image");
+                throw new Error(
+                    result.error?.message || "Failed to regenerate image",
+                );
             }
 
             const { imageGcsUri, errorMessage } = result.data || {};
@@ -125,7 +127,9 @@ export function useStoryboardActions() {
                             videoUri: result.data.videoUrls[0] || undefined,
                         };
                     } else {
-                        throw new Error(result.error?.message || "Failed to generate video");
+                        throw new Error(
+                            result.error?.message || "Failed to generate video",
+                        );
                     }
                 } catch (error) {
                     clientLogger.error("Error regenerating video:", error);
@@ -192,7 +196,9 @@ export function useStoryboardActions() {
                     scenes: updatedScenes,
                 });
             } else {
-                throw new Error(result.error?.message || "Failed to generate video");
+                throw new Error(
+                    result.error?.message || "Failed to generate video",
+                );
             }
         } catch (error) {
             clientLogger.error("[Client] Error generating video:", error);
