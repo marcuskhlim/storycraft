@@ -8,12 +8,18 @@ import { generateImage } from "@/lib/api/gemini";
 import logger from "@/app/logger";
 import { getRAIUserMessage } from "@/lib/utils/rai";
 import { createCollage } from "@/app/features/storyboard/actions/resize-image";
+import { auth } from "@/auth";
 
 import { DEFAULT_SETTINGS } from "@/lib/ai-config";
 
 //export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
+    const session = await auth();
+    if (!session?.user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     try {
         const body = await request.json();
         const {
@@ -177,6 +183,11 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+    const session = await auth();
+    if (!session?.user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     try {
         const body = await request.json();
         const { prompt } = body;

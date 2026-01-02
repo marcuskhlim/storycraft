@@ -1,6 +1,8 @@
 import { Scene, Scenario } from "@/app/types";
 import { videoPromptToString } from "@/lib/utils/prompt-utils";
 import { generateSceneVideo, waitForOperation } from "@/lib/api/veo";
+import { auth } from "@/auth";
+import { NextResponse } from "next/server";
 
 import logger from "@/app/logger";
 import { getRAIUserMessage } from "@/lib/utils/rai";
@@ -32,6 +34,11 @@ const placeholderVideoUrls916 = [
  *          with either a success flag and the generated video URLs or an error message.
  */
 export async function POST(req: Request): Promise<Response> {
+    const session = await auth();
+    if (!session?.user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const {
         scenes,
         scenario,

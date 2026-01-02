@@ -1,6 +1,13 @@
 import logger from "@/app/logger";
+import { auth } from "@/auth";
+import { NextResponse } from "next/server";
 
 export async function POST(req: Request): Promise<Response> {
+    const session = await auth();
+    if (!session?.user?.id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const scene: {
         imagePrompt: string;
         description: string;
