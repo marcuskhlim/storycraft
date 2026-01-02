@@ -5,6 +5,7 @@ import * as path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { concatenateMusicWithFade } from "@/lib/utils/ffmpeg";
 import logger from "@/app/logger";
+import { withRetry } from "@/lib/utils/retry";
 
 const GCS_VIDEOS_STORAGE_URI = process.env.GCS_VIDEOS_STORAGE_URI || "";
 const LOCATION = process.env.LOCATION;
@@ -31,12 +32,10 @@ async function getAccessToken(): Promise<string> {
 
 export async function generateMusicRest(prompt: string): Promise<string> {
     const token = await getAccessToken();
-    const maxRetries = 1; // Maximum number of retries
-    const initialDelay = 1000; // Initial delay in milliseconds (1 second)
     logger.debug(MODEL);
 
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
+    return withRetry(
+        async () => {
             const response = await fetch(
                 `https://${LOCATION}-aiplatform.googleapis.com/v1/projects/${PROJECT_ID}/locations/${LOCATION}/publishers/google/models/${MODEL}:predict`,
                 {
@@ -102,23 +101,7 @@ export async function generateMusicRest(prompt: string): Promise<string> {
             });
 
             return file.cloudStorageURI.href;
-        } catch (error) {
-            if (attempt < maxRetries) {
-                const baseDelay = initialDelay * Math.pow(2, attempt); // Exponential backoff
-                const jitter = Math.random() * 2000; // Random value between 0 and baseDelay
-                const delay = baseDelay + jitter;
-                logger.warn(
-                    `Attempt ${attempt + 1} failed. Retrying in ${delay}ms...`,
-                    error,
-                );
-                await new Promise((resolve) => setTimeout(resolve, delay));
-            } else {
-                logger.error(`Failed after ${maxRetries} attempts.`, error);
-                throw error; // Re-throw the error after maximum retries
-            }
-        }
-    }
-    throw new Error(
-        "Function should have returned or thrown an error before this line.",
+        },
+        { maxRetries: 1 },
     );
 }

@@ -9,6 +9,7 @@ import { uploadImage } from "@/lib/storage/storage";
 import logger from "@/app/logger";
 import { env } from "@/lib/utils/env";
 import { DEFAULT_SETTINGS } from "@/lib/ai-config";
+import { withRetry } from "@/lib/utils/retry";
 
 const PROJECT_ID = env.PROJECT_ID;
 
@@ -75,11 +76,8 @@ export async function generateImage(
 ): Promise<GenerateNanoBananaImageResponse> {
     logger.debug(JSON.stringify(prompt, null, 2));
 
-    const maxRetries = 5; // Maximum number of retries
-    const initialDelay = 1000; // Initial delay in milliseconds (1 second)
-
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
+    return withRetry(
+        async () => {
             const ai = new GoogleGenAI({
                 vertexai: true,
                 project: env.PROJECT_ID,
@@ -122,27 +120,15 @@ export async function generateImage(
             }
             // If we reach here, no inlineData was found but no error occurred, so break retry loop.
             return { success: false, errorMessage: response.text };
-        } catch (error) {
-            logger.error(error);
-            if (attempt < maxRetries) {
-                const baseDelay = initialDelay * Math.pow(2, attempt); // Exponential backoff
-                const jitter = Math.random() * 2000; // Random value between 0 and baseDelay
-                const delay = baseDelay + jitter;
+        },
+        {
+            maxRetries: 5,
+            onRetry: (attempt, error, delay) => {
                 logger.warn(
-                    `Attempt ${attempt + 1} failed for generateImage. Retrying in ${delay}ms...`,
+                    `Attempt ${attempt} failed for generateImage. Retrying in ${Math.round(delay)}ms...`,
                     error,
                 );
-                await new Promise((resolve) => setTimeout(resolve, delay));
-            } else {
-                logger.error(
-                    `Failed generateImage after ${maxRetries} attempts.`,
-                    error,
-                );
-                throw error; // Re-throw the error after maximum retries
-            }
-        }
-    }
-    throw new Error(
-        "generateImage function should have returned or thrown an error before this line.",
+            },
+        },
     );
 }
