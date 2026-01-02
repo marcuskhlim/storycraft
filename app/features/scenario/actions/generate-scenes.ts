@@ -521,8 +521,8 @@ export async function generateStoryboard(
         );
 
         newScenario.scenes = scenesWithImages;
-        // Create a fresh copy to ensure proper serialization
-        return JSON.parse(JSON.stringify(newScenario));
+        // Return the fresh copy
+        return newScenario;
     } catch (error) {
         logger.error("Error generating scenes:", error);
         throw new Error(

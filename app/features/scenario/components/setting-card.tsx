@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { Loader2, Pencil, RefreshCw, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +28,7 @@ interface SettingCardProps {
     isInitiallyEditing?: boolean;
 }
 
-export function SettingCard({
+export const SettingCard = memo(function SettingCard({
     setting,
     index,
     isLoading,
@@ -222,4 +222,4 @@ export function SettingCard({
             </div>
         </div>
     );
-}
+});

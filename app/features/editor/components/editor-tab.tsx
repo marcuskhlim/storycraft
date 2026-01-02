@@ -3,7 +3,7 @@
 import { TimelineLayer, TimelineItem } from "@/app/types";
 import { Button } from "@/components/ui/button";
 import { Film, Loader2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { MediabunnyPlayer } from "./mediabunny-player";
 import { MusicParams, MusicSelectionDialog } from "./music-selection-dialog";
 import { Voice, VoiceSelectionDialog } from "./voice-selection-dialog";
@@ -20,7 +20,7 @@ import { TimelineEditor } from "./TimelineEditor";
 import { getAudioDuration, getVideoDuration } from "../utils/editor-utils";
 import { useEditorActions } from "@/app/features/editor/hooks/use-editor-actions";
 
-export function EditorTab() {
+export const EditorTab = memo(function EditorTab() {
     const { scenario, logoOverlay } = useScenarioStore();
     const scenarioId = scenario?.id || null;
     const { video: isExporting } = useLoadingStore();
@@ -312,14 +312,21 @@ export function EditorTab() {
         const resolveLayerUrlsProgressively = async (
             baseLayers: TimelineLayer[],
         ) => {
-            // Create a deep copy to work with
-            const workingLayers = JSON.parse(
-                JSON.stringify(baseLayers),
-            ) as TimelineLayer[];
+            // Create a deep copy to work with using standard mapping
+            const workingLayers = baseLayers.map((layer) => ({
+                ...layer,
+                items: layer.items.map((item) => ({
+                    ...item,
+                    metadata: item.metadata ? { ...item.metadata } : undefined,
+                })),
+            })) as TimelineLayer[];
 
             // 1. Resolve Videos
-            const videoLayer = workingLayers.find((l) => l.id === "videos");
-            if (videoLayer) {
+            const videoLayerIndex = workingLayers.findIndex(
+                (l) => l.id === "videos",
+            );
+            if (videoLayerIndex !== -1) {
+                const videoLayer = workingLayers[videoLayerIndex];
                 for (let i = 0; i < videoLayer.items.length; i++) {
                     const item = videoLayer.items[i];
                     const sceneIndex = parseInt(item.id.replace("video-", ""));
@@ -344,10 +351,8 @@ export function EditorTab() {
                                         trimStart: 0,
                                     };
                                 }
-                                // Update state after each video is resolved
-                                setLayers(
-                                    JSON.parse(JSON.stringify(workingLayers)),
-                                );
+                                // Update state with a fresh copy
+                                setLayers([...workingLayers]);
                             }
                         } catch (error) {
                             clientLogger.error(
@@ -360,10 +365,11 @@ export function EditorTab() {
             }
 
             // 2. Resolve Voiceovers
-            const voiceoverLayer = workingLayers.find(
+            const voiceoverLayerIndex = workingLayers.findIndex(
                 (l) => l.id === "voiceovers",
             );
-            if (voiceoverLayer) {
+            if (voiceoverLayerIndex !== -1) {
+                const voiceoverLayer = workingLayers[voiceoverLayerIndex];
                 // If it's a fresh initialization from scenario, we need to populate voiceover items
                 if (voiceoverLayer.items.length === 0) {
                     const voiceScenes = scenario?.scenes || [];
@@ -390,12 +396,8 @@ export function EditorTab() {
                                             trimStart: 0,
                                         },
                                     });
-                                    // Update state after each voiceover is resolved
-                                    setLayers(
-                                        JSON.parse(
-                                            JSON.stringify(workingLayers),
-                                        ),
-                                    );
+                                    // Update state with a fresh copy
+                                    setLayers([...workingLayers]);
                                 }
                             } catch (error) {
                                 clientLogger.error(
@@ -419,11 +421,7 @@ export function EditorTab() {
                                 );
                                 if (result?.url) {
                                     item.content = result.url;
-                                    setLayers(
-                                        JSON.parse(
-                                            JSON.stringify(workingLayers),
-                                        ),
-                                    );
+                                    setLayers([...workingLayers]);
                                 }
                             } catch (error) {
                                 clientLogger.error(
@@ -437,8 +435,11 @@ export function EditorTab() {
             }
 
             // 3. Resolve Music
-            const musicLayer = workingLayers.find((l) => l.id === "music");
-            if (musicLayer && scenario?.musicUrl) {
+            const musicLayerIndex = workingLayers.findIndex(
+                (l) => l.id === "music",
+            );
+            if (musicLayerIndex !== -1 && scenario?.musicUrl) {
+                const musicLayer = workingLayers[musicLayerIndex];
                 if (
                     musicLayer.items.length === 0 ||
                     !musicLayer.items[0].content
@@ -469,9 +470,7 @@ export function EditorTab() {
                             } else {
                                 musicLayer.items[0].content = result.url;
                             }
-                            setLayers(
-                                JSON.parse(JSON.stringify(workingLayers)),
-                            );
+                            setLayers([...workingLayers]);
                         }
                     } catch (error) {
                         clientLogger.error("Error resolving music URL:", error);
@@ -485,7 +484,6 @@ export function EditorTab() {
 
         initializeTimeline();
     }, [scenario, scenarioId, SCENE_DURATION, isAuthenticated, loadTimeline]);
-
     // Auto-save timeline
     useEffect(() => {
         if (
@@ -627,4 +625,4 @@ export function EditorTab() {
             />
         </div>
     );
-}
+});

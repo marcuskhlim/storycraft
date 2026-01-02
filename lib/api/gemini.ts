@@ -87,6 +87,7 @@ export async function generateImage(
             });
 
             logger.debug("Generate Image : " + model);
+            logger.debug("Config : " + JSON.stringify(config, null, 2));
             const response = await ai.models.generateContent({
                 model,
                 config,

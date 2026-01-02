@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { Pencil } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -9,7 +9,10 @@ interface MusicEditorProps {
     onSave: (newMusic: string) => void;
 }
 
-export function MusicEditor({ music, onSave }: MusicEditorProps) {
+export const MusicEditor = memo(function MusicEditor({
+    music,
+    onSave,
+}: MusicEditorProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [editedMusic, setEditedMusic] = useState(music);
     const [isHovering, setIsHovering] = useState(false);
@@ -81,4 +84,4 @@ export function MusicEditor({ music, onSave }: MusicEditorProps) {
             </div>
         </div>
     );
-}
+});

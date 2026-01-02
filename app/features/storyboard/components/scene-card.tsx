@@ -11,7 +11,7 @@ import {
     GripVertical,
     MessageCircle,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef, useState, memo } from "react";
 import { Scene, Scenario } from "@/app/types";
 import { EditSceneModal } from "./edit-scene-modal";
 import { ConversationalEditModal } from "./conversational-edit-modal";
@@ -39,7 +39,7 @@ interface SceneCardProps {
     onDrop?: (e: React.DragEvent) => void;
 }
 
-export function SceneCard({
+export const SceneCard = memo(function SceneCard({
     scene,
     sceneNumber,
     scenario,
@@ -116,7 +116,7 @@ export function SceneCard({
                     <GcsImage
                         gcsUri={scene.imageGcsUri || null}
                         alt={`Scene ${sceneNumber}`}
-                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                        className="h-full w-full object-contain transition-transform duration-700 group-hover:scale-105"
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
                 )}
@@ -241,4 +241,4 @@ export function SceneCard({
             />
         </div>
     );
-}
+});

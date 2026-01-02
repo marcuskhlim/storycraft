@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/utils";
 import {
@@ -26,7 +27,7 @@ interface StoryboardHeaderProps {
     isAnySceneGenerating: boolean;
 }
 
-export function StoryboardHeader({
+export const StoryboardHeader = memo(function StoryboardHeader({
     viewMode,
     setViewMode,
     displayMode,
@@ -136,4 +137,4 @@ export function StoryboardHeader({
             </div>
         </div>
     );
-}
+});

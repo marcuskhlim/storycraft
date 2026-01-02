@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Loader2 } from "lucide-react";
 import { LoadingMessages } from "@/app/features/shared/components/ui/loading-messages";
@@ -10,7 +11,7 @@ interface CreateHeaderProps {
     canGenerate: boolean;
 }
 
-export function CreateHeader({
+export const CreateHeader = memo(function CreateHeader({
     isLoading,
     onGenerate,
     canGenerate,
@@ -48,4 +49,4 @@ export function CreateHeader({
             </div>
         </div>
     );
-}
+});

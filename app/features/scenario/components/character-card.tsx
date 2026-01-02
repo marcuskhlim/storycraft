@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { Loader2, Pencil, RefreshCw, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,7 @@ interface CharacterCardProps {
     isInitiallyEditing?: boolean;
 }
 
-export function CharacterCard({
+export const CharacterCard = memo(function CharacterCard({
     character,
     index,
     isLoading,
@@ -249,4 +249,4 @@ export function CharacterCard({
             </div>
         </div>
     );
-}
+});

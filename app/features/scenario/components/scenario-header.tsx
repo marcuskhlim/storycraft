@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { LayoutGrid, Loader2 } from "lucide-react";
 import { LoadingMessages } from "@/app/features/shared/components/ui/loading-messages";
@@ -9,7 +10,7 @@ interface ScenarioHeaderProps {
     onGenerateStoryboard: () => void;
 }
 
-export function ScenarioHeader({
+export const ScenarioHeader = memo(function ScenarioHeader({
     isLoading,
     onGenerateStoryboard,
 }: ScenarioHeaderProps) {
@@ -46,4 +47,4 @@ export function ScenarioHeader({
             </div>
         </div>
     );
-}
+});
