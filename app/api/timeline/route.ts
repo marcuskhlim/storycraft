@@ -53,11 +53,21 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        return NextResponse.json({ success: true, timelineId: scenarioId });
+        return NextResponse.json({
+            success: true,
+            data: { timelineId: scenarioId },
+            meta: { timestamp: new Date().toISOString() },
+        });
     } catch (error) {
         console.error("Error saving timeline:", error);
         return NextResponse.json(
-            { error: "Failed to save timeline" },
+            {
+                success: false,
+                error: {
+                    code: "SAVE_TIMELINE_ERROR",
+                    message: "Failed to save timeline",
+                },
+            },
             { status: 500 },
         );
     }
@@ -88,7 +98,11 @@ export async function GET(request: NextRequest) {
         const timelineDoc = await timelineRef.get();
 
         if (!timelineDoc.exists) {
-            return NextResponse.json({ timeline: null });
+            return NextResponse.json({
+                success: true,
+                data: { timeline: null },
+                meta: { timestamp: new Date().toISOString() },
+            });
         }
 
         const data = timelineDoc.data();
@@ -96,16 +110,32 @@ export async function GET(request: NextRequest) {
         // Verify ownership
         if (data?.userId !== session.user.id) {
             return NextResponse.json(
-                { error: "Unauthorized" },
+                {
+                    success: false,
+                    error: {
+                        code: "FORBIDDEN",
+                        message: "Unauthorized",
+                    },
+                },
                 { status: 403 },
             );
         }
 
-        return NextResponse.json({ timeline: data });
+        return NextResponse.json({
+            success: true,
+            data: { timeline: data },
+            meta: { timestamp: new Date().toISOString() },
+        });
     } catch (error) {
         console.error("Error loading timeline:", error);
         return NextResponse.json(
-            { error: "Failed to load timeline" },
+            {
+                success: false,
+                error: {
+                    code: "LOAD_TIMELINE_ERROR",
+                    message: "Failed to load timeline",
+                },
+            },
             { status: 500 },
         );
     }
@@ -149,11 +179,21 @@ export async function DELETE(request: NextRequest) {
             await timelineRef.delete();
         }
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({
+            success: true,
+            data: { success: true },
+            meta: { timestamp: new Date().toISOString() },
+        });
     } catch (error) {
         console.error("Error deleting timeline:", error);
         return NextResponse.json(
-            { error: "Failed to delete timeline" },
+            {
+                success: false,
+                error: {
+                    code: "DELETE_TIMELINE_ERROR",
+                    message: "Failed to delete timeline",
+                },
+            },
             { status: 500 },
         );
     }

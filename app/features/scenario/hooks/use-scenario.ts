@@ -1,6 +1,7 @@
 import { useCallback, useRef } from "react";
 import { useAuth } from "@/app/features/shared/hooks/use-auth";
 import type { Scenario } from "@/app/types";
+import { ApiResponse } from "@/types/api";
 import { clientLogger } from "@/lib/utils/client-logger";
 import {
     useSaveScenarioMutation,
@@ -103,7 +104,13 @@ export function useScenario() {
                     throw new Error("Failed to load scenario");
                 }
 
-                const scenarioData = (await response.json()) as ScenarioWithId;
+                const result =
+                    (await response.json()) as ApiResponse<ScenarioWithId>;
+                const scenarioData = result.data;
+
+                if (!scenarioData) {
+                    return null;
+                }
 
                 queryClient.setQueryData(
                     SCENARIO_KEYS.detail(scenarioId),

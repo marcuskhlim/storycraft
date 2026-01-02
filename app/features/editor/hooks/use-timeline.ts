@@ -1,6 +1,7 @@
 import { useCallback, useRef } from "react";
 import { useAuth } from "@/app/features/shared/hooks/use-auth";
 import type { TimelineLayer } from "@/app/types";
+import { ApiResponse } from "@/types/api";
 import { clientLogger } from "@/lib/utils/client-logger";
 import {
     useSaveTimelineMutation,
@@ -31,7 +32,7 @@ export function useTimeline() {
                     scenarioId,
                     layers,
                 });
-                return result.timelineId;
+                return result?.timelineId || null;
             } catch (error) {
                 // Error is already logged in the mutation hook
                 throw error;
@@ -89,8 +90,10 @@ export function useTimeline() {
                     throw new Error("Failed to load timeline");
                 }
 
-                const { timeline } = await response.json();
-                const layers = timeline?.layers || null;
+                const result = (await response.json()) as ApiResponse<{
+                    timeline: { layers: TimelineLayer[] } | null;
+                }>;
+                const layers = result.data?.timeline?.layers || null;
 
                 // Seed the cache
                 if (layers) {

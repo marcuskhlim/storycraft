@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { TimelineLayer } from "@/app/types";
 import { clientLogger } from "@/lib/utils/client-logger";
+import { ApiResponse } from "@/types/api";
 
 export const TIMELINE_KEYS = {
     all: ["timeline"] as const,
@@ -21,8 +22,10 @@ export function useTimelineQuery(scenarioId: string) {
                 throw new Error("Failed to load timeline");
             }
 
-            const { timeline } = await response.json();
-            return (timeline?.layers as TimelineLayer[]) || null;
+            const result = (await response.json()) as ApiResponse<{
+                timeline: { layers: TimelineLayer[] } | null;
+            }>;
+            return (result.data?.timeline?.layers as TimelineLayer[]) || null;
         },
         enabled: !!scenarioId,
     });
@@ -49,7 +52,15 @@ export function useSaveTimelineMutation() {
                 throw new Error("Failed to save timeline");
             }
 
-            return await response.json();
+            const result = (await response.json()) as ApiResponse<{
+                timelineId: string;
+            }>;
+            if (!result.success) {
+                throw new Error(
+                    result.error?.message || "Failed to save timeline",
+                );
+            }
+            return result.data;
         },
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({
@@ -78,7 +89,15 @@ export function useResetTimelineMutation() {
                 throw new Error("Failed to reset timeline");
             }
 
-            return await response.json();
+            const result = (await response.json()) as ApiResponse<{
+                success: boolean;
+            }>;
+            if (!result.success) {
+                throw new Error(
+                    result.error?.message || "Failed to reset timeline",
+                );
+            }
+            return result.data;
         },
         onSuccess: (_, scenarioId) => {
             queryClient.invalidateQueries({

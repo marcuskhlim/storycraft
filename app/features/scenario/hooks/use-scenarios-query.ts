@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Scenario } from "@/app/types";
 import { clientLogger } from "@/lib/utils/client-logger";
+import { ApiResponse } from "@/types/api";
 
 export const SCENARIO_KEYS = {
     all: ["scenarios"] as const,
@@ -23,8 +24,10 @@ export function useScenarios() {
             if (!response.ok) {
                 throw new Error("Failed to fetch scenarios");
             }
-            const result = await response.json();
-            return (result.scenarios as ScenarioWithId[]) || [];
+            const result = (await response.json()) as ApiResponse<{
+                scenarios: ScenarioWithId[];
+            }>;
+            return result.data?.scenarios || [];
         },
     });
 }
@@ -39,7 +42,9 @@ export function useScenarioById(id: string | null) {
                 if (response.status === 404) return null;
                 throw new Error("Failed to fetch scenario");
             }
-            return (await response.json()) as ScenarioWithId;
+            const result =
+                (await response.json()) as ApiResponse<ScenarioWithId>;
+            return result.data || null;
         },
         enabled: !!id,
     });
@@ -71,10 +76,15 @@ export function useSaveScenarioMutation() {
                 throw new Error("Failed to save scenario");
             }
 
-            return (await response.json()) as {
-                success: boolean;
+            const result = (await response.json()) as ApiResponse<{
                 scenarioId: string;
-            };
+            }>;
+            if (!result.success || !result.data) {
+                throw new Error(
+                    result.error?.message || "Failed to save scenario",
+                );
+            }
+            return result.data;
         },
         onSuccess: (data) => {
             // Invalidate lists
@@ -107,7 +117,15 @@ export function useDeleteScenarioMutation() {
                 throw new Error("Failed to delete scenario");
             }
 
-            return await response.json();
+            const result = (await response.json()) as ApiResponse<{
+                success: boolean;
+            }>;
+            if (!result.success) {
+                throw new Error(
+                    result.error?.message || "Failed to delete scenario",
+                );
+            }
+            return result.data;
         },
         onSuccess: (_, id) => {
             queryClient.invalidateQueries({ queryKey: SCENARIO_KEYS.lists() });

@@ -33,8 +33,12 @@ export async function POST() {
 
             const updatedUserData = await userRef.get();
             return NextResponse.json({
-                id: userId,
-                ...updatedUserData.data(),
+                success: true,
+                data: {
+                    id: userId,
+                    ...updatedUserData.data(),
+                },
+                meta: { timestamp: new Date().toISOString() },
             });
         } else {
             // Create new user
@@ -48,14 +52,24 @@ export async function POST() {
             await userRef.set(newUser);
 
             return NextResponse.json({
-                id: userId,
-                ...newUser,
+                success: true,
+                data: {
+                    id: userId,
+                    ...newUser,
+                },
+                meta: { timestamp: new Date().toISOString() },
             });
         }
     } catch (error) {
         console.error("Error managing user:", error);
         return NextResponse.json(
-            { error: "Failed to manage user" },
+            {
+                success: false,
+                error: {
+                    code: "USER_MANAGEMENT_ERROR",
+                    message: "Failed to manage user",
+                },
+            },
             { status: 500 },
         );
     }
@@ -77,19 +91,35 @@ export async function GET() {
 
         if (!userDoc.exists) {
             return NextResponse.json(
-                { error: "User not found" },
+                {
+                    success: false,
+                    error: {
+                        code: "NOT_FOUND",
+                        message: "User not found",
+                    },
+                },
                 { status: 404 },
             );
         }
 
         return NextResponse.json({
-            id: userId,
-            ...userDoc.data(),
+            success: true,
+            data: {
+                id: userId,
+                ...userDoc.data(),
+            },
+            meta: { timestamp: new Date().toISOString() },
         });
     } catch (error) {
         console.error("Error fetching user:", error);
         return NextResponse.json(
-            { error: "Failed to fetch user" },
+            {
+                success: false,
+                error: {
+                    code: "FETCH_USER_ERROR",
+                    message: "Failed to fetch user",
+                },
+            },
             { status: 500 },
         );
     }

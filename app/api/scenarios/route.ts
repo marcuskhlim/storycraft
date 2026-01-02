@@ -100,12 +100,19 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
             success: true,
-            scenarioId: id,
+            data: { scenarioId: id },
+            meta: { timestamp: new Date().toISOString() },
         });
     } catch (error) {
         logger.error(`Error saving scenario: ${error}`);
         return NextResponse.json(
-            { error: "Failed to save scenario" },
+            {
+                success: false,
+                error: {
+                    code: "SAVE_ERROR",
+                    message: "Failed to save scenario",
+                },
+            },
             { status: 500 },
         );
     }
@@ -150,8 +157,12 @@ export async function GET(request: NextRequest) {
             }
 
             return NextResponse.json({
-                id: scenarioId,
-                ...scenarioData,
+                success: true,
+                data: {
+                    id: scenarioId,
+                    ...scenarioData,
+                },
+                meta: { timestamp: new Date().toISOString() },
             });
         } else {
             // Get all scenarios for user
@@ -166,12 +177,22 @@ export async function GET(request: NextRequest) {
                 ...doc.data(),
             }));
 
-            return NextResponse.json({ scenarios });
+            return NextResponse.json({
+                success: true,
+                data: { scenarios },
+                meta: { timestamp: new Date().toISOString() },
+            });
         }
     } catch (error) {
         logger.error(`Error fetching scenarios: ${error}`);
         return NextResponse.json(
-            { error: "Failed to fetch scenarios" },
+            {
+                success: false,
+                error: {
+                    code: "FETCH_ERROR",
+                    message: "Failed to fetch scenarios",
+                },
+            },
             { status: 500 },
         );
     }
@@ -222,11 +243,21 @@ export async function DELETE(request: NextRequest) {
         // Delete the scenario
         await scenarioRef.delete();
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({
+            success: true,
+            data: { success: true },
+            meta: { timestamp: new Date().toISOString() },
+        });
     } catch (error) {
         logger.error(`Error deleting scenario: ${error}`);
         return NextResponse.json(
-            { error: "Failed to delete scenario" },
+            {
+                success: false,
+                error: {
+                    code: "DELETE_ERROR",
+                    message: "Failed to delete scenario",
+                },
+            },
             { status: 500 },
         );
     }
