@@ -19,7 +19,7 @@ const nextConfig = {
         ],
     },
     eslint: {
-        ignoreDuringBuilds: true,
+        ignoreDuringBuilds: false,
     },
     async headers() {
         return [

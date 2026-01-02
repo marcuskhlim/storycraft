@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Scenario } from "@/app/types";
 import { clientLogger } from "@/lib/utils/client-logger";
 import { ApiResponse } from "@/types/api";
+import { FirestoreTimestamp } from "@/types/firestore";
 import { toast } from "sonner";
 
 export const SCENARIO_KEYS = {
@@ -13,8 +14,8 @@ export const SCENARIO_KEYS = {
 
 export type ScenarioWithId = Scenario & {
     id: string;
-    updatedAt?: unknown;
-    createdAt?: unknown;
+    updatedAt?: FirestoreTimestamp;
+    createdAt?: FirestoreTimestamp;
 };
 
 export function useScenarios() {

@@ -14,6 +14,7 @@ import { BookOpen, Calendar, Clock, Play, Plus, Trash2 } from "lucide-react";
 import { Scenario } from "@/app/types";
 import { GcsImage } from "@/app/features/shared/components/ui/gcs-image";
 import { toast } from "sonner";
+import { FirestoreTimestamp } from "@/types/firestore";
 
 interface StoriesTabProps {
     onSelectScenario: (scenario: Scenario, scenarioId?: string) => void;
@@ -74,22 +75,32 @@ export function StoriesTab({
         }
     };
 
-    const formatDate = (timestamp: unknown) => {
+    const formatDate = (timestamp?: FirestoreTimestamp) => {
         if (!timestamp) return "Unknown";
 
         let date: Date;
-        // Type assertion to access potential properties safely
-        const ts = timestamp as { toDate?: () => Date; _seconds?: number };
 
-        if (typeof ts.toDate === "function") {
-            // Firestore Timestamp
-            date = ts.toDate();
-        } else if (typeof ts._seconds === "number") {
-            // Firestore Timestamp object
-            date = new Date(ts._seconds * 1000);
+        if (timestamp instanceof Date) {
+            date = timestamp;
+        } else if (
+            timestamp &&
+            typeof timestamp === "object" &&
+            "toDate" in timestamp &&
+            typeof (timestamp as { toDate: () => Date }).toDate === "function"
+        ) {
+            // Firestore Timestamp (class instance)
+            date = (timestamp as { toDate: () => Date }).toDate();
+        } else if (
+            timestamp &&
+            typeof timestamp === "object" &&
+            "seconds" in timestamp &&
+            typeof (timestamp as { seconds: number }).seconds === "number"
+        ) {
+            // Firestore Timestamp-like object (JSON serialized)
+            date = new Date((timestamp as { seconds: number }).seconds * 1000);
         } else {
-            // Regular Date or string
-            date = new Date(timestamp as string | number | Date);
+            // Fallback for string or number
+            date = new Date(timestamp as unknown as string);
         }
 
         return date.toLocaleDateString("en-US", {

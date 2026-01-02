@@ -75,3 +75,7 @@ The application requires a `.env.local` file with the following key configuratio
 - **Google Cloud:** `PROJECT_ID`, `LOCATION`, `GCS_VIDEOS_STORAGE_URI`, `FIRESTORE_DATABASE_ID`
 - **Authentication:** `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `NEXTAUTH_URL`
 - **App Config:** `MODEL`, `USE_COSMO`, `LOG_LEVEL`
+
+## General Instructions
+
+- For every task : run `npm run check && npm run format && npm run lint` to verify the code quality; fix errors and re-run to verify you didn't introduced nex problems; Do that until everything is fixed.

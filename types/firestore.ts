@@ -1,7 +1,11 @@
 import { Scenario, TimelineState } from "@/app/types";
+import { Timestamp } from "@google-cloud/firestore";
 
 // Type for Firestore timestamps that can be various forms
-type FirestoreTimestamp = { seconds: number; nanoseconds: number } | Date;
+export type FirestoreTimestamp =
+    | Timestamp
+    | Date
+    | { seconds: number; nanoseconds: number };
 
 export interface FirestoreUser {
     email: string;
