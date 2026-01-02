@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { firestore } from "@/lib/storage/firestore";
 import { auth } from "@/auth";
 import { Timestamp } from "@google-cloud/firestore";
-import { timelineLayerSchema } from "@/app/schemas";
+import { timelineApiPostSchema } from "@/app/schemas";
 import { z } from "zod";
 import logger from "@/app/logger";
 import {
@@ -12,11 +12,6 @@ import {
     errorResponse,
     validationErrorResponse,
 } from "@/lib/api/response";
-
-const postSchema = z.object({
-    scenarioId: z.string().min(1),
-    layers: z.array(timelineLayerSchema),
-});
 
 // Save or update timeline state
 export async function POST(request: NextRequest) {
@@ -30,7 +25,7 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
 
         // Validate request body
-        const parseResult = postSchema.safeParse(body);
+        const parseResult = timelineApiPostSchema.safeParse(body);
         if (!parseResult.success) {
             return validationErrorResponse(parseResult.error.format());
         }

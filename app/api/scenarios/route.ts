@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { Timestamp } from "@google-cloud/firestore";
 import { Scene } from "@/app/types";
 import logger from "@/app/logger";
-import { scenarioSchema } from "@/app/schemas";
+import { scenarioApiPostSchema } from "@/app/schemas";
 import { z } from "zod";
 import {
     successResponse,
@@ -14,11 +14,6 @@ import {
     notFoundResponse,
     validationErrorResponse,
 } from "@/lib/api/response";
-
-const postSchema = z.object({
-    scenario: scenarioSchema,
-    scenarioId: z.string().optional(),
-});
 
 export async function POST(request: NextRequest) {
     try {
@@ -31,7 +26,7 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
 
         // Validate request body
-        const parseResult = postSchema.safeParse(body);
+        const parseResult = scenarioApiPostSchema.safeParse(body);
         if (!parseResult.success) {
             return validationErrorResponse(parseResult.error.format());
         }

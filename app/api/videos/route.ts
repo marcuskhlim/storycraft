@@ -7,8 +7,7 @@ import pLimit from "p-limit";
 import logger from "@/app/logger";
 import { getRAIUserMessage } from "@/lib/utils/rai";
 import { DEFAULT_SETTINGS } from "@/lib/ai-config";
-import { z } from "zod";
-import { sceneSchema, scenarioSchema } from "@/app/schemas";
+import { videoApiPostSchema } from "@/app/schemas";
 import {
     successResponse,
     unauthorizedResponse,
@@ -33,15 +32,6 @@ const placeholderVideoUrls916 = [
     `${GCS_VIDEOS_STORAGE_URI}dog_2_9_16.mp4`,
 ];
 
-const postSchema = z.object({
-    scenes: z.array(sceneSchema),
-    scenario: scenarioSchema,
-    aspectRatio: z.string(),
-    model: z.string().optional(),
-    generateAudio: z.boolean().optional(),
-    durationSeconds: z.number().optional(),
-});
-
 /**
  * Handles POST requests to generate videos from a list of scenes. test
  *
@@ -59,7 +49,7 @@ export async function POST(req: Request): Promise<Response> {
     const body = await req.json();
 
     // Validate request body
-    const parseResult = postSchema.safeParse(body);
+    const parseResult = videoApiPostSchema.safeParse(body);
     if (!parseResult.success) {
         return validationErrorResponse(parseResult.error.format());
     }

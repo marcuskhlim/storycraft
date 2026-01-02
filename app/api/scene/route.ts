@@ -1,18 +1,11 @@
 import logger from "@/app/logger";
 import { auth } from "@/auth";
-import { z } from "zod";
+import { sceneApiPostSchema } from "@/app/schemas";
 import {
     successResponse,
     unauthorizedResponse,
     validationErrorResponse,
 } from "@/lib/api/response";
-
-const postSchema = z.object({
-    imagePrompt: z.string().min(1),
-    description: z.string().min(1),
-    voiceover: z.string().min(1),
-    imageBase64: z.string().optional(),
-});
 
 export async function POST(req: Request): Promise<Response> {
     const session = await auth();
@@ -23,7 +16,7 @@ export async function POST(req: Request): Promise<Response> {
     const body = await req.json();
 
     // Validate request body
-    const parseResult = postSchema.safeParse(body);
+    const parseResult = sceneApiPostSchema.safeParse(body);
     if (!parseResult.success) {
         return validationErrorResponse(parseResult.error.format());
     }

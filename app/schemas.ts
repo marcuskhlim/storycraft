@@ -203,6 +203,47 @@ export const uploadStyleImageToGCSSchema = z.object({
     filename: z.string(),
 });
 
+// Shared Schemas
+export const idSchema = z.string().min(1);
+
+// API Request Schemas
+
+export const scenarioApiPostSchema = z.object({
+    scenario: scenarioSchema,
+    scenarioId: z.string().optional(),
+});
+
+export const videoApiPostSchema = z.object({
+    scenes: z.array(sceneSchema),
+    scenario: scenarioSchema,
+    aspectRatio: z.enum(["16:9", "9:16"]),
+    model: z.string().optional(),
+    generateAudio: z.boolean().optional(),
+    durationSeconds: z.number().optional(),
+});
+
+export const regenerateImageApiPostSchema = z.object({
+    prompt: imagePromptSchema,
+    scenario: scenarioSchema,
+    modelName: z.string().optional(),
+});
+
+export const regenerateImageApiPutSchema = z.object({
+    prompt: z.string().min(1),
+});
+
+export const sceneApiPostSchema = z.object({
+    imagePrompt: z.string().min(1),
+    description: z.string().min(1),
+    voiceover: z.string().min(1),
+    imageBase64: z.string().optional(),
+});
+
+export const timelineApiPostSchema = z.object({
+    scenarioId: z.string().min(1),
+    layers: z.array(timelineLayerSchema),
+});
+
 // Modify Scenario Schemas
 export const deleteCharacterSchema = z.object({
     currentScenario: z.string(),

@@ -11,24 +11,16 @@ import { createCollage } from "@/app/features/storyboard/actions/resize-image";
 import { auth } from "@/auth";
 
 import { DEFAULT_SETTINGS } from "@/lib/ai-config";
-import { z } from "zod";
-import { imagePromptSchema, scenarioSchema } from "@/app/schemas";
+import {
+    regenerateImageApiPostSchema,
+    regenerateImageApiPutSchema,
+} from "@/app/schemas";
 import {
     successResponse,
     unauthorizedResponse,
     errorResponse,
     validationErrorResponse,
 } from "@/lib/api/response";
-
-const postSchema = z.object({
-    prompt: imagePromptSchema,
-    scenario: scenarioSchema,
-    modelName: z.string().optional(),
-});
-
-const putSchema = z.object({
-    prompt: z.string().min(1),
-});
 
 //export const runtime = 'nodejs';
 
@@ -42,7 +34,7 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
 
         // Validate request body
-        const parseResult = postSchema.safeParse(body);
+        const parseResult = regenerateImageApiPostSchema.safeParse(body);
         if (!parseResult.success) {
             return validationErrorResponse(parseResult.error.format());
         }
@@ -201,7 +193,7 @@ export async function PUT(request: NextRequest) {
         const body = await request.json();
 
         // Validate request body
-        const parseResult = putSchema.safeParse(body);
+        const parseResult = regenerateImageApiPutSchema.safeParse(body);
         if (!parseResult.success) {
             return validationErrorResponse(parseResult.error.format());
         }
