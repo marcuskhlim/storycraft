@@ -49,199 +49,31 @@ export const EditorTab = memo(function EditorTab() {
     const [layers, setLayers] = useState<TimelineLayer[]>([]);
     const lastSavedLayersRef = useRef<string | null>(null);
 
+    // Sync logoOverlay from store to layers
     useEffect(() => {
-        if (scenario && layers.length === 0) {
-            const initialLayers: TimelineLayer[] = [
-                {
-                    id: "videos",
-                    name: "Videos",
-                    type: "video",
-                    items: scenario.scenes.map((scene, index) => ({
-                        id: `video-${index}`,
-                        startTime: index * SCENE_DURATION,
-                        duration: SCENE_DURATION,
-                        content: "",
-                        type: "video",
-                        metadata: {
-                            logoOverlay: scenario.logoOverlay || undefined,
-                        },
-                    })),
-                },
-                {
-                    id: "voiceovers",
-                    name: "Voiceovers",
-                    type: "voiceover",
-                    items: [],
-                },
-                {
-                    id: "music",
-                    name: "Music",
-                    type: "music",
-                    items: [],
-                },
-            ];
-            setLayers(initialLayers);
-            lastSavedLayersRef.current = JSON.stringify(initialLayers);
-        }
-    }, [scenario, SCENE_DURATION, layers.length]);
+        if (!isTimelineLoaded || !logoOverlay) return;
 
-    // Voice selection handlers
-    const handleOpenVoiceDialog = () => setIsVoiceDialogOpen(true);
-    const handleCloseVoiceDialog = () => setIsVoiceDialogOpen(false);
-    const handleVoiceSelect = async (voice: Voice) => {
-        setIsVoiceDialogOpen(false);
-        await handleGenerateVoiceoverInternal(voice);
-    };
-
-    // Music selection handlers
-    const handleOpenMusicDialog = () => setIsMusicDialogOpen(true);
-    const handleCloseMusicDialog = () => setIsMusicDialogOpen(false);
-    const handleMusicGenerate = async (params: MusicParams) => {
-        setIsMusicDialogOpen(false);
-        await handleGenerateMusicInternal(params);
-    };
-
-    // Internal handler: Remove voiceover from timeline (not scenario)
-    const handleRemoveVoiceoverFromTimeline = useCallback((itemId: string) => {
         setLayers((prevLayers) =>
             prevLayers.map((layer) => {
-                if (layer.id !== "voiceovers") return layer;
+                if (layer.id !== "videos") return layer;
                 return {
                     ...layer,
-                    items: layer.items.filter((i) => i.id !== itemId),
+                    items: layer.items.map((item) => ({
+                        ...item,
+                        metadata: {
+                            ...item.metadata,
+                            logoOverlay,
+                        },
+                    })),
                 };
             }),
         );
-    }, []);
-
-    // Internal handler: Remove music from timeline (not scenario)
-    const handleRemoveMusicFromTimeline = useCallback(() => {
-        setLayers((prevLayers) =>
-            prevLayers.map((layer) => {
-                if (layer.id !== "music") return layer;
-                return { ...layer, items: [] };
-            }),
-        );
-    }, []);
-
-    // Internal handler: Generate voiceover and add to timeline
-    const handleGenerateVoiceoverInternal = useCallback(
-        async (voice?: Voice) => {
-            if (!scenario?.scenes || scenario.scenes.length === 0) return;
-
-            setIsGeneratingVoiceover(true);
-            try {
-                const voiceoverUrls = await generateVoiceover(
-                    scenario?.scenes || [],
-                    scenario?.language || { name: "English", code: "en-US" },
-                    voice?.name,
-                );
-
-                // Convert URLs and calculate durations
-                const voiceoverItems: TimelineItem[] = await Promise.all(
-                    voiceoverUrls.map(async (url, index) => {
-                        const result = await getDynamicImageUrl(url);
-                        const dynamicUrl = result.url || url;
-                        const duration = await getAudioDuration(
-                            dynamicUrl,
-                            SCENE_DURATION,
-                        );
-
-                        // Find the video item at this index to align start time
-                        const videoLayer = layers.find(
-                            (l) => l.id === "videos",
-                        );
-                        const videoItem = videoLayer?.items[index];
-                        const startTime =
-                            videoItem?.startTime ?? index * SCENE_DURATION;
-
-                        return {
-                            id: `voiceover-${index}`,
-                            startTime,
-                            duration,
-                            content: dynamicUrl,
-                            type: "voiceover" as const,
-                            metadata: {
-                                originalDuration: duration,
-                                trimStart: 0,
-                            },
-                        };
-                    }),
-                );
-
-                // Update voiceovers layer
-                setLayers((prevLayers) =>
-                    prevLayers.map((layer) => {
-                        if (layer.id !== "voiceovers") return layer;
-                        return { ...layer, items: voiceoverItems };
-                    }),
-                );
-            } catch (error) {
-                clientLogger.error("Error generating voiceover:", error);
-            } finally {
-                setIsGeneratingVoiceover(false);
-            }
-        },
-        [scenario?.scenes, scenario?.language, layers, SCENE_DURATION],
-    );
-
-    // Internal handler: Generate music and add to timeline
-    const handleGenerateMusicInternal = useCallback(
-        async (params?: MusicParams) => {
-            setIsGeneratingMusic(true);
-            try {
-                const prompt =
-                    params?.description ||
-                    `Create background music for a video advertisement`;
-                const musicUrl = await generateMusic(prompt);
-                const result = await getDynamicImageUrl(musicUrl);
-                const dynamicUrl = result.url || musicUrl;
-                const duration = await getAudioDuration(
-                    dynamicUrl,
-                    SCENE_DURATION,
-                );
-
-                // Calculate total timeline duration from video items
-                const videoLayer = layers.find((l) => l.id === "videos");
-                const totalVideoDuration =
-                    videoLayer?.items.reduce(
-                        (max, item) =>
-                            Math.max(max, item.startTime + item.duration),
-                        0,
-                    ) ?? (scenario?.scenes?.length || 0) * SCENE_DURATION;
-
-                const musicItem: TimelineItem = {
-                    id: "music-0",
-                    startTime: 0,
-                    duration: Math.min(duration, totalVideoDuration),
-                    content: dynamicUrl,
-                    type: "music" as const,
-                    metadata: {
-                        originalDuration: duration,
-                        trimStart: 0,
-                    },
-                };
-
-                // Update music layer
-                setLayers((prevLayers) =>
-                    prevLayers.map((layer) => {
-                        if (layer.id !== "music") return layer;
-                        return { ...layer, items: [musicItem] };
-                    }),
-                );
-            } catch (error) {
-                clientLogger.error("Error generating music:", error);
-            } finally {
-                setIsGeneratingMusic(false);
-            }
-        },
-        [layers, scenario?.scenes?.length, SCENE_DURATION],
-    );
+    }, [logoOverlay, isTimelineLoaded]);
 
     // Initialize timeline
     useEffect(() => {
         const initializeTimeline = async () => {
-            if (isInitializingRef.current) return;
+            if (isInitializingRef.current || !scenario) return;
             isInitializingRef.current = true;
 
             try {
@@ -254,72 +86,66 @@ export const EditorTab = memo(function EditorTab() {
                             "Loaded saved timeline from Firestore",
                         );
                         initialLayers = savedLayers;
-                        setLayers(initialLayers);
-                        setIsTimelineLoaded(true);
-
-                        // Resolve URLs progressively
-                        await resolveLayerUrlsProgressively(initialLayers);
-                        isInitializingRef.current = false;
-                        return;
                     }
                 }
 
-                clientLogger.info("Initializing timeline from scenario");
-                initialLayers = createInitialLayersStructure();
+                if (initialLayers.length === 0) {
+                    clientLogger.info("Initializing timeline from scenario");
+                    initialLayers = [
+                        {
+                            id: "videos",
+                            name: "Videos",
+                            type: "video",
+                            items: (scenario?.scenes || []).map(
+                                (scene, index) => ({
+                                    id: `video-${index}`,
+                                    startTime: index * SCENE_DURATION,
+                                    duration: SCENE_DURATION,
+                                    content: "",
+                                    type: "video" as const,
+                                    metadata: {
+                                        logoOverlay:
+                                            scenario?.logoOverlay || undefined,
+                                    },
+                                }),
+                            ),
+                        },
+                        {
+                            id: "voiceovers",
+                            name: "Voiceovers",
+                            type: "voiceover",
+                            items: [],
+                        },
+                        {
+                            id: "music",
+                            name: "Music",
+                            type: "music",
+                            items: [],
+                        },
+                    ];
+                }
+
                 setLayers(initialLayers);
+                lastSavedLayersRef.current = JSON.stringify(initialLayers);
                 setIsTimelineLoaded(true);
 
                 // Resolve URLs progressively
                 await resolveLayerUrlsProgressively(initialLayers);
             } catch (error) {
                 clientLogger.error("Error initializing timeline:", error);
-                const initialLayers = createInitialLayersStructure();
-                setLayers(initialLayers);
                 setIsTimelineLoaded(true);
-                await resolveLayerUrlsProgressively(initialLayers);
             } finally {
                 isInitializingRef.current = false;
             }
         };
 
-        const createInitialLayersStructure = (): TimelineLayer[] => {
-            return [
-                {
-                    id: "videos",
-                    name: "Videos",
-                    type: "video",
-                    items: (scenario?.scenes || []).map((scene, index) => ({
-                        id: `video-${index}`,
-                        startTime: index * SCENE_DURATION,
-                        duration: SCENE_DURATION,
-                        content: "",
-                        type: "video" as const,
-                        metadata: {
-                            logoOverlay: scenario?.logoOverlay || undefined,
-                        },
-                    })),
-                },
-                {
-                    id: "voiceovers",
-                    name: "Voiceovers",
-                    type: "voiceover",
-                    items: [],
-                },
-                { id: "music", name: "Music", type: "music", items: [] },
-            ];
-        };
-
         const resolveLayerUrlsProgressively = async (
             baseLayers: TimelineLayer[],
         ) => {
-            // Create a deep copy to work with using standard mapping
-            const workingLayers = baseLayers.map((layer) => ({
-                ...layer,
-                items: layer.items.map((item) => ({
-                    ...item,
-                    metadata: item.metadata ? { ...item.metadata } : undefined,
-                })),
-            })) as TimelineLayer[];
+            // Create a deep copy to work with
+            const workingLayers = JSON.parse(
+                JSON.stringify(baseLayers),
+            ) as TimelineLayer[];
 
             // 1. Resolve Videos
             const videoLayerIndex = workingLayers.findIndex(
@@ -351,8 +177,11 @@ export const EditorTab = memo(function EditorTab() {
                                         trimStart: 0,
                                     };
                                 }
-                                // Update state with a fresh copy
-                                setLayers([...workingLayers]);
+                                setLayers(
+                                    JSON.parse(JSON.stringify(workingLayers)),
+                                );
+                                lastSavedLayersRef.current =
+                                    JSON.stringify(workingLayers);
                             }
                         } catch (error) {
                             clientLogger.error(
@@ -370,7 +199,6 @@ export const EditorTab = memo(function EditorTab() {
             );
             if (voiceoverLayerIndex !== -1) {
                 const voiceoverLayer = workingLayers[voiceoverLayerIndex];
-                // If it's a fresh initialization from scenario, we need to populate voiceover items
                 if (voiceoverLayer.items.length === 0) {
                     const voiceScenes = scenario?.scenes || [];
                     for (let i = 0; i < voiceScenes.length; i++) {
@@ -396,8 +224,13 @@ export const EditorTab = memo(function EditorTab() {
                                             trimStart: 0,
                                         },
                                     });
-                                    // Update state with a fresh copy
-                                    setLayers([...workingLayers]);
+                                    setLayers(
+                                        JSON.parse(
+                                            JSON.stringify(workingLayers),
+                                        ),
+                                    );
+                                    lastSavedLayersRef.current =
+                                        JSON.stringify(workingLayers);
                                 }
                             } catch (error) {
                                 clientLogger.error(
@@ -408,7 +241,6 @@ export const EditorTab = memo(function EditorTab() {
                         }
                     }
                 } else {
-                    // Just resolve URLs for existing items
                     for (const item of voiceoverLayer.items) {
                         const sceneIndex = parseInt(
                             item.id.replace("voiceover-", ""),
@@ -421,7 +253,13 @@ export const EditorTab = memo(function EditorTab() {
                                 );
                                 if (result?.url) {
                                     item.content = result.url;
-                                    setLayers([...workingLayers]);
+                                    setLayers(
+                                        JSON.parse(
+                                            JSON.stringify(workingLayers),
+                                        ),
+                                    );
+                                    lastSavedLayersRef.current =
+                                        JSON.stringify(workingLayers);
                                 }
                             } catch (error) {
                                 clientLogger.error(
@@ -470,20 +308,22 @@ export const EditorTab = memo(function EditorTab() {
                             } else {
                                 musicLayer.items[0].content = result.url;
                             }
-                            setLayers([...workingLayers]);
+                            setLayers(
+                                JSON.parse(JSON.stringify(workingLayers)),
+                            );
+                            lastSavedLayersRef.current =
+                                JSON.stringify(workingLayers);
                         }
                     } catch (error) {
                         clientLogger.error("Error resolving music URL:", error);
                     }
                 }
             }
-
-            // Final sync of the last saved layers to prevent immediate auto-save
-            lastSavedLayersRef.current = JSON.stringify(workingLayers);
         };
 
         initializeTimeline();
     }, [scenario, scenarioId, SCENE_DURATION, isAuthenticated, loadTimeline]);
+
     // Auto-save timeline
     useEffect(() => {
         if (
@@ -495,7 +335,10 @@ export const EditorTab = memo(function EditorTab() {
             return;
 
         const currentContent = JSON.stringify(layers);
-        if (currentContent !== lastSavedLayersRef.current) {
+        if (
+            lastSavedLayersRef.current !== null &&
+            currentContent !== lastSavedLayersRef.current
+        ) {
             lastSavedLayersRef.current = currentContent;
             clientLogger.info("Auto-saving timeline to Firestore...");
             saveTimelineDebounced(scenarioId, layers);
@@ -514,6 +357,154 @@ export const EditorTab = memo(function EditorTab() {
         setIsPlaying(false);
         onTimeUpdate(0);
     }, [onTimeUpdate]);
+
+    // Voice selection handlers
+    const handleOpenVoiceDialog = () => setIsVoiceDialogOpen(true);
+    const handleCloseVoiceDialog = () => setIsVoiceDialogOpen(false);
+    const handleVoiceSelect = async (voice: Voice) => {
+        setIsVoiceDialogOpen(false);
+        await handleGenerateVoiceoverInternal(voice);
+    };
+
+    // Music selection handlers
+    const handleOpenMusicDialog = () => setIsMusicDialogOpen(true);
+    const handleCloseMusicDialog = () => setIsMusicDialogOpen(false);
+    const handleMusicGenerate = async (params: MusicParams) => {
+        setIsMusicDialogOpen(false);
+        await handleGenerateMusicInternal(params);
+    };
+
+    // Internal handler: Remove voiceover from timeline
+    const handleRemoveVoiceoverFromTimeline = useCallback((itemId: string) => {
+        setLayers((prevLayers) =>
+            prevLayers.map((layer) => {
+                if (layer.id !== "voiceovers") return layer;
+                return {
+                    ...layer,
+                    items: layer.items.filter((i) => i.id !== itemId),
+                };
+            }),
+        );
+    }, []);
+
+    // Internal handler: Remove music from timeline
+    const handleRemoveMusicFromTimeline = useCallback(() => {
+        setLayers((prevLayers) =>
+            prevLayers.map((layer) => {
+                if (layer.id !== "music") return layer;
+                return { ...layer, items: [] };
+            }),
+        );
+    }, []);
+
+    // Internal handler: Generate voiceover and add to timeline
+    const handleGenerateVoiceoverInternal = useCallback(
+        async (voice?: Voice) => {
+            if (!scenario?.scenes || scenario.scenes.length === 0) return;
+
+            setIsGeneratingVoiceover(true);
+            try {
+                const voiceoverUrls = await generateVoiceover(
+                    scenario?.scenes || [],
+                    scenario?.language || { name: "English", code: "en-US" },
+                    voice?.name,
+                );
+
+                const voiceoverItems: TimelineItem[] = await Promise.all(
+                    voiceoverUrls.map(async (url, index) => {
+                        const result = await getDynamicImageUrl(url);
+                        const dynamicUrl = result.url || url;
+                        const duration = await getAudioDuration(
+                            dynamicUrl,
+                            SCENE_DURATION,
+                        );
+
+                        const videoLayer = layers.find(
+                            (l) => l.id === "videos",
+                        );
+                        const videoItem = videoLayer?.items[index];
+                        const startTime =
+                            videoItem?.startTime ?? index * SCENE_DURATION;
+
+                        return {
+                            id: `voiceover-${index}`,
+                            startTime,
+                            duration,
+                            content: dynamicUrl,
+                            type: "voiceover" as const,
+                            metadata: {
+                                originalDuration: duration,
+                                trimStart: 0,
+                            },
+                        };
+                    }),
+                );
+
+                setLayers((prevLayers) =>
+                    prevLayers.map((layer) => {
+                        if (layer.id !== "voiceovers") return layer;
+                        return { ...layer, items: voiceoverItems };
+                    }),
+                );
+            } catch (error) {
+                clientLogger.error("Error generating voiceover:", error);
+            } finally {
+                setIsGeneratingVoiceover(false);
+            }
+        },
+        [scenario?.scenes, scenario?.language, layers, SCENE_DURATION],
+    );
+
+    // Internal handler: Generate music and add to timeline
+    const handleGenerateMusicInternal = useCallback(
+        async (params?: MusicParams) => {
+            setIsGeneratingMusic(true);
+            try {
+                const prompt =
+                    params?.description ||
+                    `Create background music for a video advertisement`;
+                const musicUrl = await generateMusic(prompt);
+                const result = await getDynamicImageUrl(musicUrl);
+                const dynamicUrl = result.url || musicUrl;
+                const duration = await getAudioDuration(
+                    dynamicUrl,
+                    SCENE_DURATION,
+                );
+
+                const videoLayer = layers.find((l) => l.id === "videos");
+                const totalVideoDuration =
+                    videoLayer?.items.reduce(
+                        (max, item) =>
+                            Math.max(max, item.startTime + item.duration),
+                        0,
+                    ) ?? (scenario?.scenes?.length || 0) * SCENE_DURATION;
+
+                const musicItem: TimelineItem = {
+                    id: "music-0",
+                    startTime: 0,
+                    duration: Math.min(duration, totalVideoDuration),
+                    content: dynamicUrl,
+                    type: "music" as const,
+                    metadata: {
+                        originalDuration: duration,
+                        trimStart: 0,
+                    },
+                };
+
+                setLayers((prevLayers) =>
+                    prevLayers.map((layer) => {
+                        if (layer.id !== "music") return layer;
+                        return { ...layer, items: [musicItem] };
+                    }),
+                );
+            } catch (error) {
+                clientLogger.error("Error generating music:", error);
+            } finally {
+                setIsGeneratingMusic(false);
+            }
+        },
+        [layers, scenario?.scenes?.length, SCENE_DURATION],
+    );
 
     // Keyboard controls
     useEffect(() => {
