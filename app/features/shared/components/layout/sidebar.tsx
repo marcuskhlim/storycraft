@@ -1,11 +1,12 @@
 "use client";
 
-import { Plus, BookOpen, PanelLeft, Settings } from "lucide-react";
+import { Plus, BookOpen, PanelLeft, Settings, Library } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useScenario } from "@/app/features/scenario/hooks/use-scenario";
 import { Scenario } from "@/app/types";
 import { cn } from "@/lib/utils/utils";
 import { useScenarioStore } from "@/app/features/scenario/stores/useScenarioStore";
+import { useEditorStore } from "@/app/features/editor/stores/useEditorStore";
 import { useSidebarActions } from "@/app/features/shared/hooks/use-sidebar-actions";
 import {
     useSettings,
@@ -35,6 +36,7 @@ export const Sidebar = memo(function Sidebar() {
     const { scenarios, isLoading, loadScenario, setCurrentScenarioId } =
         useScenario();
     const { scenario: currentScenario } = useScenarioStore();
+    const { activeTab, setActiveTab } = useEditorStore();
     const {
         handleSelectScenario,
         handleCreateNewStory,
@@ -153,6 +155,33 @@ export const Sidebar = memo(function Sidebar() {
             </div>
 
             <div className="scrollbar-hide flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-3">
+                <div className="mb-2">
+                    <button
+                        onClick={() => setActiveTab("stories")}
+                        className={cn(
+                            "flex h-12 w-full items-center overflow-hidden rounded-full transition-all duration-200",
+                            activeTab === "stories"
+                                ? "bg-secondary text-secondary-foreground"
+                                : "text-foreground hover:bg-muted",
+                        )}
+                        title="Your Stories"
+                    >
+                        <div className="flex h-full w-[46px] shrink-0 items-center justify-center">
+                            <Library className="h-4 w-4" />
+                        </div>
+                        <span
+                            className={cn(
+                                "truncate text-left transition-all duration-300",
+                                isCollapsed
+                                    ? "w-0 opacity-0"
+                                    : "w-auto flex-1 pr-4 opacity-100",
+                            )}
+                        >
+                            Your Stories
+                        </span>
+                    </button>
+                </div>
+
                 <div
                     className={cn(
                         "flex h-8 items-center overflow-hidden whitespace-nowrap text-xs font-medium uppercase tracking-wider text-muted-foreground transition-all duration-300",
@@ -161,7 +190,7 @@ export const Sidebar = memo(function Sidebar() {
                             : "w-full px-2 opacity-100",
                     )}
                 >
-                    Your Stories
+                    Recent
                 </div>
 
                 {isLoading ? (

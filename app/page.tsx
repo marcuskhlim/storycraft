@@ -8,6 +8,8 @@ import dynamic from "next/dynamic";
 
 import { CreateTab } from "@/app/features/create/components/create-tab";
 import { TabSkeleton } from "@/app/features/shared/components/tab-skeleton";
+import { toast } from "sonner";
+import { Scenario } from "@/app/types";
 
 const EditorTab = dynamic(
     () =>
@@ -40,6 +42,16 @@ const StoryboardTab = dynamic(
     },
 );
 
+const StoriesTab = dynamic(
+    () =>
+        import("@/app/features/stories/components/stories-tab").then(
+            (mod) => mod.StoriesTab,
+        ),
+    {
+        loading: () => <TabSkeleton />,
+    },
+);
+
 import { UserProfile } from "@/app/features/shared/components/user-profile";
 import { Sidebar } from "@/app/features/shared/components/layout/sidebar";
 import { TopNav } from "@/app/features/shared/components/layout/top-nav";
@@ -55,11 +67,15 @@ export default function Home() {
 
     const { activeTab, isSidebarCollapsed } = useEditorStore();
 
-    const { handleCreateNewStory } = useSidebarActions();
+    const { handleCreateNewStory, handleSelectScenario } = useSidebarActions();
 
     // Scenario auto-save functionality
-    const { saveScenarioDebounced, getCurrentScenarioId, isAuthenticated } =
-        useScenario();
+    const {
+        saveScenarioDebounced,
+        getCurrentScenarioId,
+        isAuthenticated,
+        loadScenario,
+    } = useScenario();
 
     const lastSavedScenarioRef = useRef<string | null>(null);
 
@@ -94,6 +110,28 @@ export default function Home() {
         isScenarioLoading,
         setField,
     ]);
+
+    const handleStorySelect = async (
+        selectedScenario: Scenario,
+        scenarioId?: string,
+    ) => {
+        if (!scenarioId) return;
+
+        try {
+            // Fetch fresh data from Firestore
+            const freshScenario = await loadScenario(scenarioId);
+
+            if (freshScenario) {
+                handleSelectScenario(freshScenario, scenarioId);
+            } else {
+                handleSelectScenario(selectedScenario, scenarioId);
+            }
+        } catch (error) {
+            toast.error("Failed to load scenario details");
+            console.error("Error loading fresh scenario:", error);
+            handleSelectScenario(selectedScenario, scenarioId);
+        }
+    };
 
     return (
         <div className="flex h-screen overflow-hidden bg-background font-sans">
@@ -141,22 +179,31 @@ export default function Home() {
 
                         {activeTab === "editor" && scenario && <EditorTab />}
 
-                        {!scenario && activeTab !== "create" && (
-                            <div className="flex h-[50vh] flex-col items-center justify-center text-muted-foreground">
-                                <BookOpen className="mb-4 h-12 w-12 opacity-50" />
-                                <p className="text-lg font-medium">
-                                    Select a story from the sidebar or create a
-                                    new one.
-                                </p>
-                                <Button
-                                    onClick={handleCreateNewStory}
-                                    variant="link"
-                                    className="mt-2"
-                                >
-                                    Create New Story
-                                </Button>
-                            </div>
+                        {activeTab === "stories" && (
+                            <StoriesTab
+                                onSelectScenario={handleStorySelect}
+                                onCreateNewStory={handleCreateNewStory}
+                            />
                         )}
+
+                        {!scenario &&
+                            activeTab !== "create" &&
+                            activeTab !== "stories" && (
+                                <div className="flex h-[50vh] flex-col items-center justify-center text-muted-foreground">
+                                    <BookOpen className="mb-4 h-12 w-12 opacity-50" />
+                                    <p className="text-lg font-medium">
+                                        Select a story from the sidebar or
+                                        create a new one.
+                                    </p>
+                                    <Button
+                                        onClick={handleCreateNewStory}
+                                        variant="link"
+                                        className="mt-2"
+                                    >
+                                        Create New Story
+                                    </Button>
+                                </div>
+                            )}
                     </div>
                 </div>
             </main>
