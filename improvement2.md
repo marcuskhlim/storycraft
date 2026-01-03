@@ -573,17 +573,6 @@ coverage: {
 }
 ```
 
-**playwright.config.ts:** Only tests Chromium
-
-```typescript
-// Add Firefox and Safari
-projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
-    { name: "firefox", use: { ...devices["Desktop Firefox"] } },
-    { name: "webkit", use: { ...devices["Desktop Safari"] } },
-];
-```
-
 ---
 
 ## 9. Configuration Issues
