@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
-import { firestore } from "@/lib/storage/firestore";
+import { firestore, Timestamp } from "@/lib/storage/firestore";
 import { auth } from "@/auth";
-import { Timestamp, FieldPath } from "@google-cloud/firestore";
 import { Scene } from "@/app/types";
 import logger from "@/app/logger";
 import { scenarioApiPostSchema } from "@/app/schemas";
@@ -151,19 +150,23 @@ export async function GET(request: NextRequest) {
 
         if (scenarioId) {
             // Get specific scenario for this user
-            const scenarioSnapshot = await firestore
+            const scenarioDoc = await firestore
                 .collection("scenarios")
-                .where(FieldPath.documentId(), "==", scenarioId)
-                .where("userId", "==", userId)
-                .limit(1)
+                .doc(scenarioId)
                 .get();
 
-            if (scenarioSnapshot.empty) {
+            if (!scenarioDoc.exists) {
                 return notFoundResponse("Scenario not found");
             }
 
-            const scenarioDoc = scenarioSnapshot.docs[0];
             const scenarioData = scenarioDoc.data();
+
+            // Verify ownership
+            if (scenarioData?.userId !== userId) {
+                // Return 404 to avoid leaking existence of other users' scenarios, or 403 if preferred.
+                // Using notFoundResponse to mimic the previous query behavior (which wouldn't find it).
+                return notFoundResponse("Scenario not found");
+            }
 
             return successResponse({
                 id: scenarioId,

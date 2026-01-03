@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
-import { firestore } from "@/lib/storage/firestore";
+import { firestore, Timestamp } from "@/lib/storage/firestore";
 import { auth } from "@/auth";
-import { Timestamp, FieldPath } from "@google-cloud/firestore";
 import { timelineApiPostSchema } from "@/app/schemas";
 import { z } from "zod";
 import logger from "@/app/logger";
@@ -99,18 +98,21 @@ export async function GET(request: NextRequest) {
         }
         const scenarioId = idResult.data;
 
-        const timelineSnapshot = await firestore
+        const timelineDoc = await firestore
             .collection("timelines")
-            .where(FieldPath.documentId(), "==", scenarioId)
-            .where("userId", "==", session.user.id)
-            .limit(1)
+            .doc(scenarioId)
             .get();
 
-        if (timelineSnapshot.empty) {
+        if (!timelineDoc.exists) {
             return successResponse({ timeline: null });
         }
 
-        const data = timelineSnapshot.docs[0].data();
+        const data = timelineDoc.data();
+
+        if (data?.userId !== session.user.id) {
+            // Treat as not found/null for security
+            return successResponse({ timeline: null });
+        }
 
         return successResponse({ timeline: data });
     } catch (error) {

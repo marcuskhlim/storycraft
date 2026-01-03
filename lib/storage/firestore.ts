@@ -1,4 +1,4 @@
-import { Firestore } from "@google-cloud/firestore";
+import { Firestore, Timestamp } from "@google-cloud/firestore";
 import { env } from "@/lib/utils/env";
 
 // Use a global variable to ensure the client is reused across HMR in development
@@ -20,4 +20,4 @@ if (process.env.NODE_ENV !== "production") {
     globalForFirestore.firestore = firestore;
 }
 
-export { firestore };
+export { firestore, Timestamp };

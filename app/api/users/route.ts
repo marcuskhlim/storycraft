@@ -1,6 +1,5 @@
-import { firestore } from "@/lib/storage/firestore";
+import { firestore, Timestamp } from "@/lib/storage/firestore";
 import { auth } from "@/auth";
-import { Timestamp } from "@google-cloud/firestore";
 import type { FirestoreUser } from "@/types/firestore";
 import logger from "@/app/logger";
 import {

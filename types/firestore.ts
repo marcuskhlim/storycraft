@@ -1,5 +1,5 @@
 import { Scenario, TimelineState } from "@/app/types";
-import { Timestamp } from "@google-cloud/firestore";
+import { Timestamp } from "@/lib/storage/firestore";
 
 // Type for Firestore timestamps that can be various forms
 export type FirestoreTimestamp =
