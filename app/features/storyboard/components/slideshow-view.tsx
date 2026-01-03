@@ -57,6 +57,7 @@ export function SlideshowView({
                         gcsUri={currentScene.imageGcsUri || null}
                         alt={`Scene ${effectiveCurrentSlide + 1}`}
                         className="h-full w-full object-contain"
+                        sizes="(max-width: 896px) 100vw, 896px"
                     />
                 )}
                 <Button

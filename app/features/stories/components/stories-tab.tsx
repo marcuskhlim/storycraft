@@ -167,7 +167,7 @@ export function StoriesTab({
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold">Your Stories</h2>
+                    <h2 className="text-xl font-bold">Your Stories</h2>
                     <p className="text-muted-foreground">
                         Select a story to continue working on it or create a new
                         one
@@ -230,6 +230,7 @@ export function StoriesTab({
                                         alt={`${scenario.name || "Story"} preview`}
                                         className="object-cover"
                                         fill={true}
+                                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                                     />
                                 </div>
                             )}

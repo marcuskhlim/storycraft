@@ -10,8 +10,8 @@ export default auth(async (req) => {
         const userId = session?.user?.id || "anonymous";
 
         try {
-            // Allow 50 requests per minute per user
-            await limiter.check(50, userId);
+            // Allow 200 requests per minute per user
+            await limiter.check(200, userId);
         } catch {
             return NextResponse.json(
                 {

@@ -17,7 +17,7 @@ export const ScenarioHeader = memo(function ScenarioHeader({
     return (
         <div className="flex items-center justify-between">
             <div className="space-y-1">
-                <h2 className="text-3xl font-bold tracking-tight">
+                <h2 className="text-xl font-bold tracking-tight">
                     Review your scenario
                 </h2>
                 <p className="text-muted-foreground">

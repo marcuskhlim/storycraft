@@ -286,6 +286,7 @@ export function EditSceneModal({
                                     gcsUri={editedScene.imageGcsUri || null}
                                     alt={`Scene ${sceneNumber}`}
                                     className="h-full w-full object-contain object-center"
+                                    sizes="(max-width: 1024px) 100vw, 33vw"
                                 />
                             )}
                         </div>

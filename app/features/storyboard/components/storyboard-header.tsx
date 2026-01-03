@@ -40,7 +40,7 @@ export const StoryboardHeader = memo(function StoryboardHeader({
     return (
         <div className="flex items-center justify-between">
             <div className="space-y-1">
-                <h2 className="text-3xl font-bold tracking-tight">
+                <h2 className="text-xl font-bold tracking-tight">
                     Visualize your story
                 </h2>
                 <p className="text-muted-foreground">

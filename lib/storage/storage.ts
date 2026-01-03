@@ -38,7 +38,17 @@ export async function uploadImage(
     try {
         // Decode the base64 string into a buffer
         // Remove the data URI prefix if it exists (e.g., "data:image/jpeg;base64,")
-        const base64Data = base64.includes(",") ? base64.split(",")[1] : base64;
+        const matches = base64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        let base64Data = base64;
+        let contentType = "image/png";
+
+        if (matches && matches.length === 3) {
+            contentType = matches[1];
+            base64Data = matches[2];
+        } else if (base64.includes(",")) {
+            base64Data = base64.split(",")[1];
+        }
+
         const buffer = Buffer.from(base64Data, "base64");
 
         // Get the bucket name from the storage URI
@@ -59,10 +69,6 @@ export async function uploadImage(
 
         // Create a reference to the file object
         const file = bucket.file(filename);
-
-        // Upload the buffer to GCS
-        // We determine the content type; adjust if you expect other types
-        const contentType = "data:image/png";
 
         await file.save(buffer, {
             metadata: {

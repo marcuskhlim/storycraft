@@ -79,3 +79,4 @@ The application requires a `.env.local` file with the following key configuratio
 ## General Instructions
 
 - For every task : run `npm run check && npm run format && npm run lint` to verify the code quality; fix errors and re-run to verify you didn't introduced nex problems; Do that until everything is fixed.
+- Do not use git unless explicitly asked to.
