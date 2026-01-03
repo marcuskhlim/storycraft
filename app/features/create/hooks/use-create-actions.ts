@@ -5,7 +5,7 @@ import { useLoadingStore } from "@/app/features/shared/stores/useLoadingStore";
 import { useEditorStore } from "@/app/features/editor/stores/useEditorStore";
 import { useSettings } from "@/app/features/shared/hooks/use-settings";
 import { clientLogger } from "@/lib/utils/client-logger";
-import { generateScenario } from "@/app/features/scenario/actions/generate-scenes";
+import { generateScenario } from "@/app/features/create/actions/generate-scenario";
 import { toast } from "sonner";
 
 export function useCreateActions() {

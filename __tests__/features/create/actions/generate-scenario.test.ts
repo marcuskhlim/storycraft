@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { generateScenario } from "@/app/features/scenario/actions/generate-scenes";
+import { generateScenario } from "@/app/features/create/actions/generate-scenario";
 
 // Mock the AI APIs
 vi.mock("@/lib/api/gemini", () => ({
