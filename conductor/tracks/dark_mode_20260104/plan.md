@@ -3,12 +3,12 @@
 This plan outlines the implementation of dark mode support for StoryCraft, including theme configuration, persistence, and a header toggle.
 
 ## Phase 1: Foundation & Theme Configuration
-- [ ] Task: Configure Tailwind CSS for class-based dark mode
-    - [ ] Sub-task: Update `tailwind.config.ts` to include `darkMode: 'class'`
-    - [ ] Sub-task: Verify base dark mode styles in `globals.css`
-- [ ] Task: Define dark theme color tokens
-    - [ ] Sub-task: Define CSS variables for dark mode in `globals.css`
-    - [ ] Sub-task: Map Radix UI/Tailwind colors to dark mode variants
+- [x] Task: Configure Tailwind CSS for class-based dark mode 6316233
+    - [x] Sub-task: Update `tailwind.config.ts` to include `darkMode: 'class'`
+    - [x] Sub-task: Verify base dark mode styles in `globals.css`
+- [x] Task: Define dark theme color tokens 6316233
+    - [x] Sub-task: Define CSS variables for dark mode in `globals.css`
+    - [x] Sub-task: Map Radix UI/Tailwind colors to dark mode variants
 - [ ] Task: Conductor - User Manual Verification 'Foundation & Theme Configuration' (Protocol in workflow.md)
 
 ## Phase 2: Theme Management Logic
