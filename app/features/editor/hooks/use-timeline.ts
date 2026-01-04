@@ -1,12 +1,12 @@
 import { useCallback, useRef } from "react";
 import { useAuth } from "@/app/features/shared/hooks/use-auth";
 import type { TimelineLayer } from "@/app/types";
-import { ApiResponse } from "@/types/api";
 import { clientLogger } from "@/lib/utils/client-logger";
 import {
     useSaveTimelineMutation,
     useResetTimelineMutation,
     TIMELINE_KEYS,
+    fetchTimeline,
 } from "./use-timeline-query";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -71,39 +71,10 @@ export function useTimeline() {
             }
 
             try {
-                // Try to get from cache first
-                const cachedData = queryClient.getQueryData<TimelineLayer[]>(
-                    TIMELINE_KEYS.detail(scenarioId),
-                );
-                if (cachedData) {
-                    return cachedData;
-                }
-
-                const response = await fetch(
-                    `/api/timeline?scenarioId=${scenarioId}`,
-                );
-
-                if (!response.ok) {
-                    if (response.status === 404) {
-                        return null;
-                    }
-                    throw new Error("Failed to load timeline");
-                }
-
-                const result = (await response.json()) as ApiResponse<{
-                    timeline: { layers: TimelineLayer[] } | null;
-                }>;
-                const layers = result.data?.timeline?.layers || null;
-
-                // Seed the cache
-                if (layers) {
-                    queryClient.setQueryData(
-                        TIMELINE_KEYS.detail(scenarioId),
-                        layers,
-                    );
-                }
-
-                return layers;
+                return await queryClient.fetchQuery({
+                    queryKey: TIMELINE_KEYS.detail(scenarioId),
+                    queryFn: () => fetchTimeline(scenarioId),
+                });
             } catch (error) {
                 clientLogger.error("Error loading timeline:", error);
                 return null;

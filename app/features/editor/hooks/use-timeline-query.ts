@@ -8,25 +8,25 @@ export const TIMELINE_KEYS = {
     detail: (scenarioId: string) => [...TIMELINE_KEYS.all, scenarioId] as const,
 };
 
+export async function fetchTimeline(scenarioId: string) {
+    if (!scenarioId) return null;
+    const response = await fetch(`/api/timeline?scenarioId=${scenarioId}`);
+
+    if (!response.ok) {
+        if (response.status === 404) return null;
+        throw new Error("Failed to load timeline");
+    }
+
+    const result = (await response.json()) as ApiResponse<{
+        timeline: { layers: TimelineLayer[] } | null;
+    }>;
+    return (result.data?.timeline?.layers as TimelineLayer[]) || null;
+}
+
 export function useTimelineQuery(scenarioId: string) {
     return useQuery({
         queryKey: TIMELINE_KEYS.detail(scenarioId),
-        queryFn: async () => {
-            if (!scenarioId) return null;
-            const response = await fetch(
-                `/api/timeline?scenarioId=${scenarioId}`,
-            );
-
-            if (!response.ok) {
-                if (response.status === 404) return null;
-                throw new Error("Failed to load timeline");
-            }
-
-            const result = (await response.json()) as ApiResponse<{
-                timeline: { layers: TimelineLayer[] } | null;
-            }>;
-            return (result.data?.timeline?.layers as TimelineLayer[]) || null;
-        },
+        queryFn: () => fetchTimeline(scenarioId),
         enabled: !!scenarioId,
     });
 }
@@ -62,7 +62,11 @@ export function useSaveTimelineMutation() {
             }
             return result.data;
         },
-        onSuccess: (_, variables) => {
+        onSuccess: (data, variables) => {
+            queryClient.setQueryData(
+                TIMELINE_KEYS.detail(variables.scenarioId),
+                variables.layers,
+            );
             queryClient.invalidateQueries({
                 queryKey: TIMELINE_KEYS.detail(variables.scenarioId),
             });

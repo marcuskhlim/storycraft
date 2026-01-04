@@ -158,7 +158,8 @@ export const EditorTab = memo(function EditorTab() {
                     const sceneIndex = parseInt(item.id.replace("video-", ""));
                     const scene = scenario?.scenes?.[sceneIndex];
 
-                    if (scene?.videoUri && !item.content) {
+                    // Always refresh signed URLs - they expire after 1 hour
+                    if (scene?.videoUri) {
                         promises.push(
                             (async () => {
                                 try {
@@ -248,7 +249,8 @@ export const EditorTab = memo(function EditorTab() {
                             item.id.replace("voiceover-", ""),
                         );
                         const scene = scenario?.scenes?.[sceneIndex];
-                        if (scene?.voiceoverAudioUri && !item.content) {
+                        // Always refresh signed URLs - they expire after 1 hour
+                        if (scene?.voiceoverAudioUri) {
                             promises.push(
                                 (async () => {
                                     try {
@@ -274,58 +276,52 @@ export const EditorTab = memo(function EditorTab() {
                 }
             }
 
-            // 3. Prepare Music Resolution
+            // 3. Prepare Music Resolution - always refresh signed URLs
             const musicLayerIndex = workingLayers.findIndex(
                 (l) => l.id === "music",
             );
             if (musicLayerIndex !== -1 && scenario?.musicUrl) {
                 const musicLayer = workingLayers[musicLayerIndex];
-                if (
-                    musicLayer.items.length === 0 ||
-                    !musicLayer.items[0].content
-                ) {
-                    promises.push(
-                        (async () => {
-                            try {
-                                const response = await fetch(
-                                    `/api/media?uri=${encodeURIComponent(scenario.musicUrl!)}`,
-                                );
-                                if (!response.ok)
-                                    throw new Error("Failed to fetch");
-                                const result = await response.json();
-                                if (result?.url) {
-                                    if (musicLayer.items.length === 0) {
-                                        const duration = await getAudioDuration(
-                                            result.url,
-                                            SCENE_DURATION,
-                                        );
-                                        musicLayer.items = [
-                                            {
-                                                id: "background-music",
-                                                startTime: 0,
-                                                duration,
-                                                content: result.url,
-                                                type: "music",
-                                                metadata: {
-                                                    originalDuration: duration,
-                                                    trimStart: 0,
-                                                },
+                promises.push(
+                    (async () => {
+                        try {
+                            const response = await fetch(
+                                `/api/media?uri=${encodeURIComponent(scenario.musicUrl!)}`,
+                            );
+                            if (!response.ok)
+                                throw new Error("Failed to fetch");
+                            const result = await response.json();
+                            if (result?.url) {
+                                if (musicLayer.items.length === 0) {
+                                    const duration = await getAudioDuration(
+                                        result.url,
+                                        SCENE_DURATION,
+                                    );
+                                    musicLayer.items = [
+                                        {
+                                            id: "background-music",
+                                            startTime: 0,
+                                            duration,
+                                            content: result.url,
+                                            type: "music",
+                                            metadata: {
+                                                originalDuration: duration,
+                                                trimStart: 0,
                                             },
-                                        ];
-                                    } else {
-                                        musicLayer.items[0].content =
-                                            result.url;
-                                    }
+                                        },
+                                    ];
+                                } else {
+                                    musicLayer.items[0].content = result.url;
                                 }
-                            } catch (error) {
-                                clientLogger.error(
-                                    "Error resolving music URL:",
-                                    error,
-                                );
                             }
-                        })(),
-                    );
-                }
+                        } catch (error) {
+                            clientLogger.error(
+                                "Error resolving music URL:",
+                                error,
+                            );
+                        }
+                    })(),
+                );
             }
 
             // Resolve all in parallel (the loader will batch them)
