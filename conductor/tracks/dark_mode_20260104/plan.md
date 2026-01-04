@@ -30,8 +30,8 @@ This plan outlines the implementation of dark mode support for StoryCraft, inclu
 - [x] Task: Conductor - User Manual Verification 'UI Implementation' (Protocol in workflow.md) [checkpoint: f605764]
 
 ## Phase 4: Final Polishing
-- [ ] Task: Ensure accessibility compliance
-    - [ ] Sub-task: Verify contrast ratios in dark mode using automated tools/manual check
-- [ ] Task: Final end-to-end verification
-    - [ ] Sub-task: Verify theme persistence across page reloads and browser sessions
-- [ ] Task: Conductor - User Manual Verification 'Final Polishing' (Protocol in workflow.md)
+- [x] Task: Ensure accessibility compliance 214a4b8
+    - [x] Sub-task: Verify contrast ratios in dark mode using automated tools/manual check
+- [x] Task: Final end-to-end verification 214a4b8
+    - [x] Sub-task: Verify theme persistence across page reloads and browser sessions
+- [x] Task: Conductor - User Manual Verification 'Final Polishing' (Protocol in workflow.md) [checkpoint: 214a4b8]
