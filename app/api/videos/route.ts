@@ -11,9 +11,11 @@ import { videoApiPostSchema } from "@/app/schemas";
 import {
     successResponse,
     unauthorizedResponse,
+    forbiddenResponse,
     errorResponse,
     validationErrorResponse,
 } from "@/lib/api/response";
+import { verifyScenarioOwnership } from "@/lib/api/ownership";
 
 const USE_COSMO = process.env.USE_COSMO === "true";
 const GCS_VIDEOS_STORAGE_URI = process.env.GCS_VIDEOS_STORAGE_URI;
@@ -45,6 +47,7 @@ export async function POST(req: Request): Promise<Response> {
     if (!session?.user?.id) {
         return unauthorizedResponse();
     }
+    const userId = session.user.id;
 
     try {
         const body = await req.json();
@@ -63,6 +66,14 @@ export async function POST(req: Request): Promise<Response> {
             generateAudio,
             durationSeconds,
         } = parseResult.data;
+
+        // Verify ownership if scenario has an ID
+        if (scenario.id) {
+            const isOwner = await verifyScenarioOwnership(scenario.id, userId);
+            if (!isOwner) {
+                return forbiddenResponse();
+            }
+        }
 
         logger.debug("Generating videos in parallel...");
         logger.debug(`model: ${model}`);

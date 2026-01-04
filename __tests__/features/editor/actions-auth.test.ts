@@ -25,25 +25,33 @@ describe("Editor Actions Authentication", () => {
     });
 
     it("conversationalEdit should throw Unauthorized when user is not authenticated", async () => {
-        vi.mocked(auth).mockResolvedValue(null as any);
-        await expect(conversationalEdit({} as any)).rejects.toThrow(
+        vi.mocked(auth).mockResolvedValue(
+            null as unknown as Awaited<ReturnType<typeof auth>>,
+        );
+        await expect(conversationalEdit({} as never)).rejects.toThrow(
             "Unauthorized",
         );
     });
 
     it("generateMusic should throw Unauthorized when user is not authenticated", async () => {
-        vi.mocked(auth).mockResolvedValue(null as any);
+        vi.mocked(auth).mockResolvedValue(
+            null as unknown as Awaited<ReturnType<typeof auth>>,
+        );
         await expect(generateMusic("prompt")).rejects.toThrow("Unauthorized");
     });
 
     it("exportMovieAction should throw Unauthorized when user is not authenticated", async () => {
-        vi.mocked(auth).mockResolvedValue(null as any);
+        vi.mocked(auth).mockResolvedValue(
+            null as unknown as Awaited<ReturnType<typeof auth>>,
+        );
         await expect(exportMovieAction([])).rejects.toThrow("Unauthorized");
     });
 
     it("generateVoiceover should throw Unauthorized when user is not authenticated", async () => {
-        vi.mocked(auth).mockResolvedValue(null as any);
-        await expect(generateVoiceover([], {} as any)).rejects.toThrow(
+        vi.mocked(auth).mockResolvedValue(
+            null as unknown as Awaited<ReturnType<typeof auth>>,
+        );
+        await expect(generateVoiceover([], {} as never)).rejects.toThrow(
             "Unauthorized",
         );
     });

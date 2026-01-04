@@ -30,35 +30,45 @@ describe("Shared Actions Authentication", () => {
     });
 
     it("generateImageForScenario should throw Unauthorized when user is not authenticated", async () => {
-        vi.mocked(auth).mockResolvedValue(null as any);
-        await expect(generateImageForScenario({} as any)).rejects.toThrow(
+        vi.mocked(auth).mockResolvedValue(
+            null as unknown as Awaited<ReturnType<typeof auth>>,
+        );
+        await expect(generateImageForScenario({} as never)).rejects.toThrow(
             "Unauthorized",
         );
     });
 
     it("uploadStyleImageToGCS should throw Unauthorized when user is not authenticated", async () => {
-        vi.mocked(auth).mockResolvedValue(null as any);
+        vi.mocked(auth).mockResolvedValue(
+            null as unknown as Awaited<ReturnType<typeof auth>>,
+        );
         await expect(
             uploadStyleImageToGCS("base64", "file.png"),
         ).rejects.toThrow("Unauthorized");
     });
 
     it("getSignedUrlAction should throw Unauthorized when user is not authenticated", async () => {
-        vi.mocked(auth).mockResolvedValue(null as any);
+        vi.mocked(auth).mockResolvedValue(
+            null as unknown as Awaited<ReturnType<typeof auth>>,
+        );
         await expect(getSignedUrlAction("gs://test")).rejects.toThrow(
             "Unauthorized",
         );
     });
 
     it("getDynamicImageUrl should throw Unauthorized when user is not authenticated", async () => {
-        vi.mocked(auth).mockResolvedValue(null as any);
+        vi.mocked(auth).mockResolvedValue(
+            null as unknown as Awaited<ReturnType<typeof auth>>,
+        );
         await expect(getDynamicImageUrl("gs://test")).rejects.toThrow(
             "Unauthorized",
         );
     });
 
     it("uploadImageToGCS should throw Unauthorized when user is not authenticated", async () => {
-        vi.mocked(auth).mockResolvedValue(null as any);
+        vi.mocked(auth).mockResolvedValue(
+            null as unknown as Awaited<ReturnType<typeof auth>>,
+        );
         await expect(uploadImageToGCS("base64")).rejects.toThrow(
             "Unauthorized",
         );

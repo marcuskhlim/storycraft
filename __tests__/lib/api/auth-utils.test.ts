@@ -15,7 +15,9 @@ describe("requireAuth", () => {
         const mockSession = {
             user: { id: "user-123", email: "test@example.com" },
         };
-        vi.mocked(auth).mockResolvedValue(mockSession as any);
+        vi.mocked(auth).mockResolvedValue(
+            mockSession as unknown as Awaited<ReturnType<typeof auth>>,
+        );
 
         const session = await requireAuth();
 
@@ -24,14 +26,18 @@ describe("requireAuth", () => {
     });
 
     it("should throw an error when user is not authenticated", async () => {
-        vi.mocked(auth).mockResolvedValue(null as any);
+        vi.mocked(auth).mockResolvedValue(
+            null as unknown as Awaited<ReturnType<typeof auth>>,
+        );
 
         await expect(requireAuth()).rejects.toThrow("Unauthorized");
         expect(auth).toHaveBeenCalledTimes(1);
     });
 
     it("should throw an error when session exists but user is missing", async () => {
-        vi.mocked(auth).mockResolvedValue({} as any);
+        vi.mocked(auth).mockResolvedValue(
+            {} as unknown as Awaited<ReturnType<typeof auth>>,
+        );
 
         await expect(requireAuth()).rejects.toThrow("Unauthorized");
         expect(auth).toHaveBeenCalledTimes(1);

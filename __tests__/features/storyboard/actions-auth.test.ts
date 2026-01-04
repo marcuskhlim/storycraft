@@ -27,7 +27,9 @@ describe("Storyboard Actions Authentication", () => {
 
     describe("resizeImage", () => {
         it("should throw Unauthorized when user is not authenticated", async () => {
-            vi.mocked(auth).mockResolvedValue(null as any);
+            vi.mocked(auth).mockResolvedValue(
+                null as unknown as Awaited<ReturnType<typeof auth>>,
+            );
 
             await expect(
                 resizeImage("data:image/png;base64,test", 100, 100),
@@ -37,7 +39,9 @@ describe("Storyboard Actions Authentication", () => {
 
     describe("createCollage", () => {
         it("should throw Unauthorized when user is not authenticated", async () => {
-            vi.mocked(auth).mockResolvedValue(null as any);
+            vi.mocked(auth).mockResolvedValue(
+                null as unknown as Awaited<ReturnType<typeof auth>>,
+            );
 
             await expect(createCollage([], [], "16:9")).rejects.toThrow(
                 "Unauthorized",
@@ -47,7 +51,9 @@ describe("Storyboard Actions Authentication", () => {
 
     describe("saveImageToPublic", () => {
         it("should throw Unauthorized when user is not authenticated", async () => {
-            vi.mocked(auth).mockResolvedValue(null as any);
+            vi.mocked(auth).mockResolvedValue(
+                null as unknown as Awaited<ReturnType<typeof auth>>,
+            );
 
             await expect(
                 saveImageToPublic("data:image/png;base64,test", "test.png"),

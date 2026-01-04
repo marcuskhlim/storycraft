@@ -12,15 +12,18 @@ import {
 import {
     successResponse,
     unauthorizedResponse,
+    forbiddenResponse,
     errorResponse,
     validationErrorResponse,
 } from "@/lib/api/response";
+import { verifyScenarioOwnership } from "@/lib/api/ownership";
 
 export async function POST(request: NextRequest) {
     const session = await auth();
     if (!session?.user?.id) {
         return unauthorizedResponse();
     }
+    const userId = session.user.id;
 
     try {
         const body = await request.json();
@@ -36,6 +39,14 @@ export async function POST(request: NextRequest) {
             scenario,
             modelName = DEFAULT_SETTINGS.imageModel,
         } = parseResult.data;
+
+        // Verify ownership if scenario has an ID
+        if (scenario.id) {
+            const isOwner = await verifyScenarioOwnership(scenario.id, userId);
+            if (!isOwner) {
+                return forbiddenResponse();
+            }
+        }
 
         const result = await generateImageForScenario({
             scenario,
@@ -73,15 +84,9 @@ export async function PUT(request: NextRequest) {
 
         const { prompt } = parseResult.data;
 
-        // For PUT (character/entity regeneration), we can still use generateImageForScenario
-        // if we provide a minimal scenario and the entity description.
-        // However, the current regenerateImageApiPutSchema is very minimal.
-        // To maintain backward compatibility while using the centralized action,
-        // we'll need to adapt it.
-
-        // Actually, looking at modify-scenario.ts, PUT is NOT used.
-        // It seems PUT might be legacy or unused from client side.
-        // But let's refactor it to use the new action assuming prompt is the entity description.
+        // Note: PUT currently doesn't receive a scenario ID, so it's technically
+        // not checking ownership of any specific scenario.
+        // However, if it were to be used, it should probably include a scenario ID.
 
         const result = await generateImageForScenario({
             scenario: {

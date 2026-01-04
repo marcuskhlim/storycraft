@@ -24,11 +24,13 @@ describe("Scenario Actions Authentication", () => {
 
     describe("generateStoryboard", () => {
         it("should throw Unauthorized when user is not authenticated", async () => {
-            vi.mocked(auth).mockResolvedValue(null as any);
+            vi.mocked(auth).mockResolvedValue(
+                null as unknown as Awaited<ReturnType<typeof auth>>,
+            );
 
             await expect(
                 generateStoryboard(
-                    { scenario: "test", scenes: [] } as any,
+                    { scenario: "test", scenes: [] } as never,
                     1,
                     "style",
                     { name: "English", code: "en" },
@@ -39,7 +41,9 @@ describe("Scenario Actions Authentication", () => {
 
     describe("deleteCharacterFromScenario", () => {
         it("should throw Unauthorized when user is not authenticated", async () => {
-            vi.mocked(auth).mockResolvedValue(null as any);
+            vi.mocked(auth).mockResolvedValue(
+                null as unknown as Awaited<ReturnType<typeof auth>>,
+            );
 
             await expect(
                 deleteCharacterFromScenario("scenario", "char", "desc"),

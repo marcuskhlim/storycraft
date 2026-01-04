@@ -3,6 +3,7 @@ import { POST, PUT } from "@/app/api/regenerate-image/route";
 import { NextRequest } from "next/server";
 import { auth } from "@/auth";
 import * as imageGen from "@/app/features/shared/actions/image-generation";
+import { verifyScenarioOwnership } from "@/lib/api/ownership";
 
 vi.mock("@/auth", () => ({
     auth: vi.fn(),
@@ -10,6 +11,10 @@ vi.mock("@/auth", () => ({
 
 vi.mock("@/app/features/shared/actions/image-generation", () => ({
     generateImageForScenario: vi.fn(),
+}));
+
+vi.mock("@/lib/api/ownership", () => ({
+    verifyScenarioOwnership: vi.fn(),
 }));
 
 vi.mock("@/app/logger", () => ({
@@ -29,9 +34,58 @@ describe("regenerate-image API integration", () => {
             success: true,
             imageGcsUri: "gs://bucket/mock-regen-image.png",
         });
+        (verifyScenarioOwnership as Mock).mockResolvedValue(true);
     });
 
-    it("POST should call generateImageForScenario for scene regeneration", async () => {
+    it("POST should return 403 when user does not own the scenario", async () => {
+        (verifyScenarioOwnership as Mock).mockResolvedValue(false);
+
+        const body = {
+            prompt: {
+                Style: "Photographic",
+                Scene: "A test scene",
+                Composition: {
+                    shot_type: "Wide Shot",
+                    lighting: "Natural",
+                    overall_mood: "Calm",
+                },
+                Subject: [],
+                Context: [],
+                Prop: [],
+            },
+            scenario: {
+                id: "other-user-scenario",
+                name: "Test",
+                pitch: "Test",
+                scenario: "Test",
+                style: "Photographic",
+                aspectRatio: "16:9",
+                durationSeconds: 10,
+                genre: "Test",
+                mood: "Test",
+                music: "Test",
+                language: { name: "English", code: "en-US" },
+                characters: [],
+                settings: [],
+                props: [],
+                scenes: [],
+            },
+        };
+
+        const request = new NextRequest(
+            "http://localhost/api/regenerate-image",
+            {
+                method: "POST",
+                body: JSON.stringify(body),
+            },
+        );
+
+        const response = await POST(request);
+        expect(response.status).toBe(403);
+        expect(imageGen.generateImageForScenario).not.toHaveBeenCalled();
+    });
+
+    it("POST should call generateImageForScenario for scene regeneration when owned", async () => {
         const body = {
             prompt: {
                 Style: "Photographic",

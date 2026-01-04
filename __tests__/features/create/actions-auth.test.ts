@@ -23,7 +23,9 @@ describe("Create Actions Authentication", () => {
 
     describe("generateScenario", () => {
         it("should throw Unauthorized when user is not authenticated", async () => {
-            vi.mocked(auth).mockResolvedValue(null as any);
+            vi.mocked(auth).mockResolvedValue(
+                null as unknown as Awaited<ReturnType<typeof auth>>,
+            );
 
             await expect(
                 generateScenario("name", "pitch", 1, "style", "16:9", 60, {
