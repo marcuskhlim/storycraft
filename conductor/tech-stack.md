@@ -4,6 +4,7 @@
 - **Framework**: [Next.js 15](https://nextjs.org/) (App Router)
 - **Library**: [React 18](https://react.dev/)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/) with [Radix UI](https://www.radix-ui.com/) and [Framer Motion](https://www.framer.com/motion/)
+- **Theme Management**: [next-themes](https://github.com/pacocoursey/next-themes)
 - **State Management**: [Zustand](https://zustand-demo.pmnd.rs/) (Client-side) and [TanStack Query](https://tanstack.com/query/latest) (Server-side)
 
 ## Backend & Infrastructure
