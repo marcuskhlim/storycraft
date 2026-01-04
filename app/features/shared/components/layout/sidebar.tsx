@@ -108,11 +108,11 @@ export const Sidebar = memo(function Sidebar() {
     return (
         <aside
             className={cn(
-                "fixed bottom-0 left-0 top-0 z-30 flex h-screen flex-shrink-0 flex-col border-r border-gray-200 bg-card/50 transition-all duration-300 ease-in-out",
+                "fixed bottom-0 left-0 top-0 z-30 flex h-screen flex-shrink-0 flex-col border-r border-border bg-card/50 transition-all duration-300 ease-in-out",
                 isCollapsed ? "w-[70px]" : "w-[280px]",
             )}
         >
-            <div className="flex h-16 items-center border-gray-200 px-3 transition-all duration-300">
+            <div className="flex h-16 items-center border-border px-3 transition-all duration-300">
                 {/* Toggle Button - Centered in Rail (46px zone) */}
                 <div className="flex w-[46px] shrink-0 justify-center">
                     <Button
@@ -242,7 +242,7 @@ export const Sidebar = memo(function Sidebar() {
                 )}
             </div>
 
-            <div className="overflow-hidden border-t border-gray-200 p-2">
+            <div className="overflow-hidden border-t border-border p-2">
                 <Dialog>
                     <DialogTrigger asChild>
                         <button

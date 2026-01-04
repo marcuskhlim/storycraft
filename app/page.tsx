@@ -143,7 +143,7 @@ export default function Home() {
                 className={`flex flex-1 flex-col transition-all duration-300 ${isSidebarCollapsed ? "ml-[70px]" : "ml-[280px]"}`}
             >
                 {/* Top Navigation Bar */}
-                <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-gray-200 bg-card/50 px-6 backdrop-blur-sm">
+                <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-border bg-card/50 px-6 backdrop-blur-sm">
                     <div className="flex w-1/3 items-center gap-4">
                         <div className="flex items-center gap-2 text-xl font-bold text-primary">
                             <Image
