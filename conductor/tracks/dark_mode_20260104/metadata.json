@@ -1,0 +1,8 @@
+{
+  "track_id": "dark_mode_20260104",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-01-04T12:00:00Z",
+  "updated_at": "2026-01-04T12:00:00Z",
+  "description": "Add a dark mode to the design system and a toggle to the header"
+}
