@@ -20,14 +20,14 @@ This plan outlines the implementation of dark mode support for StoryCraft, inclu
 - [ ] Task: Conductor - User Manual Verification 'Theme Management Logic' (Protocol in workflow.md)
 
 ## Phase 3: UI Implementation
-- [ ] Task: Implement Theme Toggle Component
-    - [ ] Sub-task: Write unit tests for `ThemeToggle` component
-    - [ ] Sub-task: Create `ThemeToggle` component using Radix UI primitives and Lucide icons (Sun/Moon)
-- [ ] Task: Add Toggle to Header
-    - [ ] Sub-task: Update header component to include `ThemeToggle` next to the user profile
-- [ ] Task: Audit existing components for dark mode compatibility
-    - [ ] Sub-task: Ensure all core UI components (buttons, cards, inputs) look correct in dark mode
-- [ ] Task: Conductor - User Manual Verification 'UI Implementation' (Protocol in workflow.md)
+- [x] Task: Implement Theme Toggle Component f605764
+    - [x] Sub-task: Write unit tests for `ThemeToggle` component
+    - [x] Sub-task: Create `ThemeToggle` component using Radix UI primitives and Lucide icons (Sun/Moon)
+- [x] Task: Add Toggle to Header f605764
+    - [x] Sub-task: Update header component to include `ThemeToggle` next to the user profile
+- [x] Task: Audit existing components for dark mode compatibility f605764
+    - [x] Sub-task: Ensure all core UI components (buttons, cards, inputs) look correct in dark mode
+- [x] Task: Conductor - User Manual Verification 'UI Implementation' (Protocol in workflow.md) [checkpoint: f605764]
 
 ## Phase 4: Final Polishing
 - [ ] Task: Ensure accessibility compliance
