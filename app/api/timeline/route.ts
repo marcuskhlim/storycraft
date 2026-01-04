@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { firestore, Timestamp } from "@/lib/storage/firestore";
+import { firestore } from "@/lib/storage/firestore";
 import { auth } from "@/auth";
 import { timelineApiPostSchema } from "@/app/schemas";
 import { z } from "zod";
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
                 scenarioId,
                 userId,
                 layers,
-                updatedAt: Timestamp.now(),
+                updatedAt: new Date(),
             };
 
             if (existingDoc.exists) {
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
             } else {
                 transaction.set(timelineRef, {
                     ...timelineData,
-                    createdAt: Timestamp.now(),
+                    createdAt: new Date(),
                 });
             }
         });

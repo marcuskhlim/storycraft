@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { firestore, Timestamp } from "@/lib/storage/firestore";
+import { firestore } from "@/lib/storage/firestore";
 import { auth } from "@/auth";
 import { Scene } from "@/app/types";
 import logger from "@/app/logger";
@@ -27,6 +27,9 @@ export async function POST(request: NextRequest) {
         // Validate request body
         const parseResult = scenarioApiPostSchema.safeParse(body);
         if (!parseResult.success) {
+            logger.error(
+                `Scenario validation failed: ${JSON.stringify(parseResult.error.format())}`,
+            );
             return validationErrorResponse(parseResult.error.format());
         }
         // ... (rest of the code)
@@ -101,15 +104,15 @@ export async function POST(request: NextRequest) {
                 logger.info(`Updating scenario: ${id}`);
                 transaction.update(scenarioRef, {
                     ...firestoreScenario,
-                    updatedAt: Timestamp.now(),
+                    updatedAt: new Date(),
                 });
             } else {
                 // Create new scenario
                 logger.info(`Creating new scenario: ${id}`);
                 transaction.set(scenarioRef, {
                     ...firestoreScenario,
-                    createdAt: Timestamp.now(),
-                    updatedAt: Timestamp.now(),
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
                 });
             }
         });

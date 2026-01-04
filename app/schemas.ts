@@ -93,12 +93,12 @@ export const scenarioSchema: z.ZodType<Scenario> = z.object({
     music: z.string(),
     musicUrl: z.string().optional(),
     language: languageSchema,
-    characters: z.array(characterSchema),
-    settings: z.array(settingSchema),
-    props: z.array(propSchema),
+    characters: z.array(characterSchema).default([]),
+    settings: z.array(settingSchema).default([]),
+    props: z.array(propSchema).default([]),
     logoOverlay: z.string().optional(),
     styleImageUri: z.string().optional(),
-    scenes: z.array(sceneSchema),
+    scenes: z.array(sceneSchema).default([]),
 });
 
 export const timelineItemSchema: z.ZodType<TimelineItem> = z.object({

@@ -1,4 +1,4 @@
-import { firestore, Timestamp } from "@/lib/storage/firestore";
+import { firestore } from "@/lib/storage/firestore";
 import { auth } from "@/auth";
 import type { FirestoreUser } from "@/types/firestore";
 import logger from "@/app/logger";
@@ -47,7 +47,7 @@ export async function POST() {
                     email: userEmail,
                     displayName,
                     photoURL,
-                    createdAt: Timestamp.now(),
+                    createdAt: new Date(),
                 };
 
                 transaction.set(userRef, newUser);
