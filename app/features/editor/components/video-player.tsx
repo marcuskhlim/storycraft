@@ -2,7 +2,6 @@
 
 import { useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getDynamicImageUrl } from "@/app/features/shared/actions/upload-to-gcs";
 import { Loader2 } from "lucide-react";
 import { clientLogger } from "@/lib/utils/client-logger";
 
@@ -32,7 +31,15 @@ export function VideoPlayer({
                 return null;
             }
             try {
-                const result = await getDynamicImageUrl(videoGcsUri);
+                const response = await fetch(
+                    `/api/media?uri=${encodeURIComponent(videoGcsUri)}`,
+                );
+                if (!response.ok) {
+                    throw new Error(
+                        `Failed to fetch video URL: ${response.status}`,
+                    );
+                }
+                const result = await response.json();
                 return result;
             } catch (error) {
                 clientLogger.error("Error fetching video URL:", error);

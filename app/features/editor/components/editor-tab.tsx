@@ -7,7 +7,6 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { MediabunnyPlayer } from "./mediabunny-player";
 import { MusicParams, MusicSelectionDialog } from "./music-selection-dialog";
 import { Voice, VoiceSelectionDialog } from "./voice-selection-dialog";
-import { getDynamicImageUrl } from "@/app/features/shared/actions/upload-to-gcs";
 import { useTimeline } from "@/app/features/editor/hooks/use-timeline";
 import { generateVoiceover } from "@/app/features/editor/actions/generate-voiceover";
 import { generateMusic } from "@/app/features/editor/actions/generate-music";
@@ -147,53 +146,56 @@ export const EditorTab = memo(function EditorTab() {
                 JSON.stringify(baseLayers),
             ) as TimelineLayer[];
 
-            // 1. Resolve Videos
+            const promises: Promise<void>[] = [];
+
+            // 1. Prepare Video Resolutions
             const videoLayerIndex = workingLayers.findIndex(
                 (l) => l.id === "videos",
             );
             if (videoLayerIndex !== -1) {
                 const videoLayer = workingLayers[videoLayerIndex];
-                for (let i = 0; i < videoLayer.items.length; i++) {
-                    const item = videoLayer.items[i];
+                videoLayer.items.forEach((item) => {
                     const sceneIndex = parseInt(item.id.replace("video-", ""));
                     const scene = scenario?.scenes?.[sceneIndex];
 
                     if (scene?.videoUri && !item.content) {
-                        try {
-                            const result = await getDynamicImageUrl(
-                                scene.videoUri,
-                            );
-                            if (result?.url) {
-                                item.content = result.url;
-                                if (!item.metadata?.originalDuration) {
-                                    const originalDuration =
-                                        await getVideoDuration(
-                                            result.url,
-                                            SCENE_DURATION,
-                                        );
-                                    item.metadata = {
-                                        ...item.metadata,
-                                        originalDuration,
-                                        trimStart: 0,
-                                    };
+                        promises.push(
+                            (async () => {
+                                try {
+                                    const response = await fetch(
+                                        `/api/media?uri=${encodeURIComponent(scene.videoUri!)}`,
+                                    );
+                                    if (!response.ok)
+                                        throw new Error("Failed to fetch");
+                                    const result = await response.json();
+                                    if (result?.url) {
+                                        item.content = result.url;
+                                        if (!item.metadata?.originalDuration) {
+                                            const originalDuration =
+                                                await getVideoDuration(
+                                                    result.url,
+                                                    SCENE_DURATION,
+                                                );
+                                            item.metadata = {
+                                                ...item.metadata,
+                                                originalDuration,
+                                                trimStart: 0,
+                                            };
+                                        }
+                                    }
+                                } catch (error) {
+                                    clientLogger.error(
+                                        `Error resolving video URL for item ${item.id}:`,
+                                        error,
+                                    );
                                 }
-                                setLayers(
-                                    JSON.parse(JSON.stringify(workingLayers)),
-                                );
-                                lastSavedLayersRef.current =
-                                    JSON.stringify(workingLayers);
-                            }
-                        } catch (error) {
-                            clientLogger.error(
-                                `Error resolving video URL for item ${item.id}:`,
-                                error,
-                            );
-                        }
+                            })(),
+                        );
                     }
-                }
+                });
             }
 
-            // 2. Resolve Voiceovers
+            // 2. Prepare Voiceover Resolutions
             const voiceoverLayerIndex = workingLayers.findIndex(
                 (l) => l.id === "voiceovers",
             );
@@ -201,78 +203,78 @@ export const EditorTab = memo(function EditorTab() {
                 const voiceoverLayer = workingLayers[voiceoverLayerIndex];
                 if (voiceoverLayer.items.length === 0) {
                     const voiceScenes = scenario?.scenes || [];
-                    for (let i = 0; i < voiceScenes.length; i++) {
-                        const scene = voiceScenes[i];
+                    voiceScenes.forEach((scene, i) => {
                         if (scene.voiceoverAudioUri) {
-                            try {
-                                const result = await getDynamicImageUrl(
-                                    scene.voiceoverAudioUri,
-                                );
-                                if (result?.url) {
-                                    const duration = await getAudioDuration(
-                                        result.url,
-                                        SCENE_DURATION,
-                                    );
-                                    voiceoverLayer.items.push({
-                                        id: `voiceover-${i}`,
-                                        startTime: i * SCENE_DURATION,
-                                        duration,
-                                        content: result.url,
-                                        type: "voiceover",
-                                        metadata: {
-                                            originalDuration: duration,
-                                            trimStart: 0,
-                                        },
-                                    });
-                                    setLayers(
-                                        JSON.parse(
-                                            JSON.stringify(workingLayers),
-                                        ),
-                                    );
-                                    lastSavedLayersRef.current =
-                                        JSON.stringify(workingLayers);
-                                }
-                            } catch (error) {
-                                clientLogger.error(
-                                    `Error resolving voiceover for scene ${i}:`,
-                                    error,
-                                );
-                            }
+                            promises.push(
+                                (async () => {
+                                    try {
+                                        const response = await fetch(
+                                            `/api/media?uri=${encodeURIComponent(scene.voiceoverAudioUri!)}`,
+                                        );
+                                        if (!response.ok)
+                                            throw new Error("Failed to fetch");
+                                        const result = await response.json();
+                                        if (result?.url) {
+                                            const duration =
+                                                await getAudioDuration(
+                                                    result.url,
+                                                    SCENE_DURATION,
+                                                );
+                                            voiceoverLayer.items.push({
+                                                id: `voiceover-${i}`,
+                                                startTime: i * SCENE_DURATION,
+                                                duration,
+                                                content: result.url,
+                                                type: "voiceover",
+                                                metadata: {
+                                                    originalDuration: duration,
+                                                    trimStart: 0,
+                                                },
+                                            });
+                                        }
+                                    } catch (error) {
+                                        clientLogger.error(
+                                            `Error resolving voiceover for scene ${i}:`,
+                                            error,
+                                        );
+                                    }
+                                })(),
+                            );
                         }
-                    }
+                    });
                 } else {
-                    for (const item of voiceoverLayer.items) {
+                    voiceoverLayer.items.forEach((item) => {
                         const sceneIndex = parseInt(
                             item.id.replace("voiceover-", ""),
                         );
                         const scene = scenario?.scenes?.[sceneIndex];
                         if (scene?.voiceoverAudioUri && !item.content) {
-                            try {
-                                const result = await getDynamicImageUrl(
-                                    scene.voiceoverAudioUri,
-                                );
-                                if (result?.url) {
-                                    item.content = result.url;
-                                    setLayers(
-                                        JSON.parse(
-                                            JSON.stringify(workingLayers),
-                                        ),
-                                    );
-                                    lastSavedLayersRef.current =
-                                        JSON.stringify(workingLayers);
-                                }
-                            } catch (error) {
-                                clientLogger.error(
-                                    `Error resolving voiceover URL for item ${item.id}:`,
-                                    error,
-                                );
-                            }
+                            promises.push(
+                                (async () => {
+                                    try {
+                                        const response = await fetch(
+                                            `/api/media?uri=${encodeURIComponent(scene.voiceoverAudioUri!)}`,
+                                        );
+                                        if (!response.ok)
+                                            throw new Error("Failed to fetch");
+                                        const result = await response.json();
+                                        if (result?.url) {
+                                            item.content = result.url;
+                                        }
+                                    } catch (error) {
+                                        clientLogger.error(
+                                            `Error resolving voiceover URL for item ${item.id}:`,
+                                            error,
+                                        );
+                                    }
+                                })(),
+                            );
                         }
-                    }
+                    });
                 }
             }
 
-            // 3. Resolve Music
+            // 3. Prepare Music Resolution
             const musicLayerIndex = workingLayers.findIndex(
                 (l) => l.id === "music",
             );
@@ -282,42 +284,61 @@ export const EditorTab = memo(function EditorTab() {
                     musicLayer.items.length === 0 ||
                     !musicLayer.items[0].content
                 ) {
-                    try {
-                        const result = await getDynamicImageUrl(
-                            scenario.musicUrl,
-                        );
-                        if (result?.url) {
-                            if (musicLayer.items.length === 0) {
-                                const duration = await getAudioDuration(
-                                    result.url,
-                                    SCENE_DURATION,
+                    promises.push(
+                        (async () => {
+                            try {
+                                const response = await fetch(
+                                    `/api/media?uri=${encodeURIComponent(scenario.musicUrl!)}`,
                                 );
-                                musicLayer.items = [
-                                    {
-                                        id: "background-music",
-                                        startTime: 0,
-                                        duration,
-                                        content: result.url,
-                                        type: "music",
-                                        metadata: {
-                                            originalDuration: duration,
-                                            trimStart: 0,
-                                        },
-                                    },
-                                ];
-                            } else {
-                                musicLayer.items[0].content = result.url;
+                                if (!response.ok)
+                                    throw new Error("Failed to fetch");
+                                const result = await response.json();
+                                if (result?.url) {
+                                    if (musicLayer.items.length === 0) {
+                                        const duration = await getAudioDuration(
+                                            result.url,
+                                            SCENE_DURATION,
+                                        );
+                                        musicLayer.items = [
+                                            {
+                                                id: "background-music",
+                                                startTime: 0,
+                                                duration,
+                                                content: result.url,
+                                                type: "music",
+                                                metadata: {
+                                                    originalDuration: duration,
+                                                    trimStart: 0,
+                                                },
+                                            },
+                                        ];
+                                    } else {
+                                        musicLayer.items[0].content =
+                                            result.url;
+                                    }
+                                }
+                            } catch (error) {
+                                clientLogger.error(
+                                    "Error resolving music URL:",
+                                    error,
+                                );
                             }
-                            setLayers(
-                                JSON.parse(JSON.stringify(workingLayers)),
-                            );
-                            lastSavedLayersRef.current =
-                                JSON.stringify(workingLayers);
-                        }
-                    } catch (error) {
-                        clientLogger.error("Error resolving music URL:", error);
-                    }
+                        })(),
+                    );
                 }
+            }
+
+            // Resolve all in parallel (the loader will batch them)
+            if (promises.length > 0) {
+                await Promise.all(promises);
+                // Sort voiceover items by startTime to ensure order after parallel push
+                if (voiceoverLayerIndex !== -1) {
+                    workingLayers[voiceoverLayerIndex].items.sort(
+                        (a, b) => a.startTime - b.startTime,
+                    );
+                }
+                setLayers(workingLayers);
+                lastSavedLayersRef.current = JSON.stringify(workingLayers);
             }
         };
 
@@ -412,7 +433,11 @@ export const EditorTab = memo(function EditorTab() {
 
                 const voiceoverItems: TimelineItem[] = await Promise.all(
                     voiceoverUrls.map(async (url, index) => {
-                        const result = await getDynamicImageUrl(url);
+                        const response = await fetch(
+                            `/api/media?uri=${encodeURIComponent(url)}`,
+                        );
+                        if (!response.ok) throw new Error("Failed to fetch");
+                        const result = await response.json();
                         const dynamicUrl = result.url || url;
                         const duration = await getAudioDuration(
                             dynamicUrl,
@@ -464,7 +489,11 @@ export const EditorTab = memo(function EditorTab() {
                     params?.description ||
                     `Create background music for a video advertisement`;
                 const musicUrl = await generateMusic(prompt);
-                const result = await getDynamicImageUrl(musicUrl);
+                const response = await fetch(
+                    `/api/media?uri=${encodeURIComponent(musicUrl)}`,
+                );
+                if (!response.ok) throw new Error("Failed to fetch");
+                const result = await response.json();
                 const dynamicUrl = result.url || musicUrl;
                 const duration = await getAudioDuration(
                     dynamicUrl,

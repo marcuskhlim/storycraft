@@ -13,40 +13,6 @@ import {
     uploadImageToGCSSchema,
 } from "@/app/schemas";
 
-// Define a cached version of the URL fetching logic
-const getCachedSignedUrl = cache(
-    async (
-        gcsUri: string,
-        download: boolean = false,
-    ): Promise<{ url: string | null; mimeType: string | null }> => {
-        logger.debug(`CACHE MISS: Fetching signed URL for ${gcsUri}`);
-        if (!gcsUri || !gcsUri.startsWith("gs://")) {
-            logger.error(
-                `Invalid GCS URI passed to cached function: ${gcsUri}`,
-            );
-            return { url: null, mimeType: null };
-        }
-        try {
-            // get mime type from gcs uri
-            const mimeType = await getMimeTypeFromGCS(gcsUri);
-            // Call the original GCS function
-            const url = await getSignedUrlFromGCS(gcsUri, download);
-            return { url, mimeType };
-        } catch (error) {
-            logger.error(
-                `Error getting signed URL for ${gcsUri} inside cache function:`,
-                error,
-            );
-            return { url: null, mimeType: null }; // Return null on error
-        }
-    },
-    ["gcs-signed-url"], // Cache key prefix
-    {
-        revalidate: 60 * 55, // Revalidate every 55 minutes (3300 seconds)
-        tags: ["gcs-url"], // Optional tag for on-demand revalidation if needed later
-    },
-);
-
 /**
  * Server Action to securely get a signed URL for a GCS object.
  * Uses unstable_cache for time-based caching.
@@ -69,9 +35,42 @@ export async function getDynamicImageUrl(
         );
         return { url: null, mimeType: null };
     }
+
     // Call the cached function
     logger.debug(`getDynamicImageUrl: ${gcsUri}`);
-    return getCachedSignedUrl(gcsUri, download);
+
+    return cache(
+        async (
+            uri: string,
+            dl: boolean,
+        ): Promise<{ url: string | null; mimeType: string | null }> => {
+            logger.debug(`CACHE MISS: Fetching signed URL for ${uri}`);
+            if (!uri || !uri.startsWith("gs://")) {
+                logger.error(
+                    `Invalid GCS URI passed to cached function: ${uri}`,
+                );
+                return { url: null, mimeType: null };
+            }
+            try {
+                // get mime type from gcs uri
+                const mimeType = await getMimeTypeFromGCS(uri);
+                // Call the original GCS function
+                const url = await getSignedUrlFromGCS(uri, dl);
+                return { url, mimeType };
+            } catch (error) {
+                logger.error(
+                    `Error getting signed URL for ${uri} inside cache function:`,
+                    error,
+                );
+                return { url: null, mimeType: null };
+            }
+        },
+        ["gcs-signed-url", gcsUri, String(download)], // Unique key per URI and download flag
+        {
+            revalidate: 60 * 30, // Revalidate every 30 minutes (1800 seconds)
+            tags: ["gcs-url"],
+        },
+    )(gcsUri, download);
 }
 
 export async function uploadImageToGCS(base64: string): Promise<string | null> {

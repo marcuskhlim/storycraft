@@ -2,8 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
-import { getDynamicImageUrl } from "@/app/features/shared/actions/upload-to-gcs";
-import { useEffect, memo } from "react";
+import { memo } from "react";
 import { clientLogger } from "@/lib/utils/client-logger";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -15,8 +14,6 @@ interface GcsImageProps {
     sizes?: string;
     priority?: boolean;
 }
-
-const isDevelopment = process.env.NODE_ENV === "development";
 
 export const GcsImage = memo(function GcsImage({
     gcsUri,
@@ -37,7 +34,15 @@ export const GcsImage = memo(function GcsImage({
                 return null;
             }
             try {
-                const result = await getDynamicImageUrl(gcsUri);
+                const response = await fetch(
+                    `/api/media?uri=${encodeURIComponent(gcsUri)}`,
+                );
+                if (!response.ok) {
+                    throw new Error(
+                        `Failed to fetch image URL: ${response.status}`,
+                    );
+                }
+                const result = await response.json();
                 return result;
             } catch (error) {
                 clientLogger.error("Error fetching image URL:", error);
@@ -45,18 +50,10 @@ export const GcsImage = memo(function GcsImage({
             }
         },
         enabled: !!gcsUri,
-        staleTime: isDevelopment ? 0 : 60 * 1000 * 50, // 50 minutes in production
+        staleTime: 60 * 1000 * 15,
     });
 
     const imageUrl = imageData?.url || null;
-
-    // Preload the image when we have the URL
-    useEffect(() => {
-        if (imageUrl) {
-            const img = new window.Image();
-            img.src = imageUrl;
-        }
-    }, [imageUrl]);
 
     if (isLoading) {
         return (
