@@ -1,14 +1,8 @@
 import { NextRequest } from "next/server";
-import { generateImageRest } from "@/lib/api/imagen";
-import { imagePromptToString } from "@/lib/utils/prompt-utils";
-import { ImagePrompt } from "@/app/types";
-import yaml from "js-yaml";
-import { createPartFromUri, createPartFromText } from "@google/genai";
-import { generateImage } from "@/lib/api/gemini";
+import { generateImageForScenario } from "@/app/features/shared/actions/image-generation";
 import logger from "@/app/logger";
-import { getRAIUserMessage } from "@/lib/utils/rai";
-import { createCollage } from "@/app/features/storyboard/actions/resize-image";
 import { auth } from "@/auth";
+import { Scenario } from "@/app/types";
 
 import { DEFAULT_SETTINGS } from "@/lib/ai-config";
 import {
@@ -21,8 +15,6 @@ import {
     errorResponse,
     validationErrorResponse,
 } from "@/lib/api/response";
-
-//export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
     const session = await auth();
@@ -45,133 +37,13 @@ export async function POST(request: NextRequest) {
             modelName = DEFAULT_SETTINGS.imageModel,
         } = parseResult.data;
 
-        const useR2I = true;
-        if (useR2I) {
-            const presentCharacters: Array<{
-                name: string;
-                description: string;
-                imageGcsUri?: string;
-            }> = scenario.characters.filter((character) =>
-                prompt.Subject.map((subject) => subject.name).includes(
-                    character.name,
-                ),
-            );
-            const props: Array<{
-                name: string;
-                description: string;
-                imageGcsUri?: string;
-            }> = scenario.props.filter((prop) =>
-                prompt.Prop?.map((prop) => prop.name).includes(prop.name),
-            );
-            const settings: Array<{
-                name: string;
-                description: string;
-                imageGcsUri?: string;
-            }> = scenario.settings.filter((setting) =>
-                prompt.Context.map((context) => context.name).includes(
-                    setting.name,
-                ),
-            );
-            const orderedPrompt = {
-                Style: prompt.Style,
-                Scene: prompt.Scene,
-                Composition: {
-                    shot_type: prompt.Composition.shot_type,
-                    lighting: prompt.Composition.lighting,
-                    overall_mood: prompt.Composition.overall_mood,
-                },
-            };
-            const promptString = yaml.dump(orderedPrompt, {
-                indent: 2,
-                lineWidth: -1,
-            });
-            logger.debug(`Prompt string:\n${promptString}`);
+        const result = await generateImageForScenario({
+            scenario,
+            imagePrompt: prompt,
+            modelName,
+        });
 
-            let result;
-            if (
-                presentCharacters.length + props.length + settings.length <=
-                3
-            ) {
-                const characterParts = presentCharacters.flatMap(
-                    (character) => [
-                        createPartFromText(character.name),
-                        createPartFromUri(character.imageGcsUri!, "image/png"),
-                    ],
-                );
-                const propsParts = props.flatMap((prop) => [
-                    createPartFromText(prop.name),
-                    createPartFromUri(prop.imageGcsUri!, "image/png"),
-                ]);
-                const settingsParts = settings.flatMap((setting) => [
-                    createPartFromText(setting.name),
-                    createPartFromText(setting.description),
-                ]);
-                logger.debug(JSON.stringify(settingsParts, null, 2));
-                result = await generateImage(
-                    characterParts
-                        .concat(propsParts)
-                        .concat(settingsParts)
-                        .concat([createPartFromText(promptString)]),
-                    {
-                        responseModalities: ["IMAGE"],
-                        candidateCount: 1,
-                        imageConfig: {
-                            aspectRatio: scenario.aspectRatio,
-                        },
-                    },
-                    modelName,
-                );
-            } else {
-                const collageUri = await createCollage(
-                    presentCharacters,
-                    props,
-                    scenario.aspectRatio,
-                );
-                const settingsParts = settings.flatMap((setting) => [
-                    createPartFromText(setting.name),
-                    createPartFromText(setting.description),
-                ]);
-                result = await generateImage(
-                    [createPartFromUri(collageUri, "image/png")]
-                        .concat(settingsParts)
-                        .concat([createPartFromText(promptString)]),
-                    {
-                        responseModalities: ["IMAGE"],
-                        candidateCount: 1,
-                        imageConfig: {
-                            aspectRatio: scenario.aspectRatio,
-                        },
-                    },
-                    modelName,
-                );
-            }
-            return successResponse(result);
-        } else {
-            // Convert structured prompt to string if needed
-            const promptString =
-                typeof prompt === "string"
-                    ? prompt
-                    : imagePromptToString(prompt as ImagePrompt);
-
-            logger.debug(`Regenerating image with prompt: ${promptString}`);
-
-            const resultJson = await generateImageRest(promptString);
-
-            if (resultJson.predictions[0].raiFilteredReason) {
-                throw new Error(
-                    getRAIUserMessage(
-                        resultJson.predictions[0].raiFilteredReason,
-                    ),
-                );
-            } else {
-                logger.debug(
-                    `Generated image: ${resultJson.predictions[0].gcsUri}`,
-                );
-                return successResponse({
-                    imageGcsUri: resultJson.predictions[0].gcsUri,
-                });
-            }
-        }
+        return successResponse(result);
     } catch (error) {
         logger.error("Error regenerating image:", error);
         return errorResponse(
@@ -193,6 +65,7 @@ export async function PUT(request: NextRequest) {
         const body = await request.json();
 
         // Validate request body
+        // Note: regenerateImageApiPutSchema only has 'prompt'
         const parseResult = regenerateImageApiPutSchema.safeParse(body);
         if (!parseResult.success) {
             return validationErrorResponse(parseResult.error.format());
@@ -200,22 +73,38 @@ export async function PUT(request: NextRequest) {
 
         const { prompt } = parseResult.data;
 
-        logger.debug(`Regenerating character image with prompt: ${prompt}`);
+        // For PUT (character/entity regeneration), we can still use generateImageForScenario
+        // if we provide a minimal scenario and the entity description.
+        // However, the current regenerateImageApiPutSchema is very minimal.
+        // To maintain backward compatibility while using the centralized action,
+        // we'll need to adapt it.
 
-        const resultJson = await generateImageRest(prompt, "1:1", false);
+        // Actually, looking at modify-scenario.ts, PUT is NOT used.
+        // It seems PUT might be legacy or unused from client side.
+        // But let's refactor it to use the new action assuming prompt is the entity description.
 
-        if (resultJson.predictions[0].raiFilteredReason) {
-            throw new Error(
-                getRAIUserMessage(resultJson.predictions[0].raiFilteredReason),
-            );
-        } else {
-            logger.debug(
-                `Generated character image: ${resultJson.predictions[0].gcsUri}`,
-            );
-            return successResponse({
-                imageGcsUri: resultJson.predictions[0].gcsUri,
-            });
-        }
+        const result = await generateImageForScenario({
+            scenario: {
+                style: "Photographic",
+                aspectRatio: "1:1",
+                characters: [],
+                settings: [],
+                props: [],
+                name: "",
+                pitch: "",
+                scenario: "",
+                durationSeconds: 0,
+                genre: "",
+                mood: "",
+                music: "",
+                language: { name: "English", code: "en-US" },
+                scenes: [],
+            } as Scenario,
+            entity: { name: "Entity", description: prompt },
+            entityType: "character", // Default to character for 1:1
+        });
+
+        return successResponse(result);
     } catch (error) {
         logger.error("Error regenerating character image:", error);
         return errorResponse(

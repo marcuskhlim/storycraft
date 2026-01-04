@@ -132,7 +132,7 @@ export function StyleSelector({
                 className={`group relative flex aspect-square w-full flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed transition-all duration-200 ${
                     isCustomSelected
                         ? "border-[#0EA5E9] bg-[#0EA5E9]/5 ring-2 ring-[#0EA5E9] ring-offset-1"
-                        : "border-border hover:border-[#0EA5E9]/50 hover:bg-zinc-50  dark:hover:bg-zinc-900"
+                        : "border-border hover:border-[#0EA5E9]/50 hover:bg-zinc-50 dark:hover:bg-zinc-900"
                 }`}
             >
                 {styleImageUri ? (
@@ -215,7 +215,7 @@ export function StyleSelector({
                                         </Button>
                                     </div>
                                 ) : (
-                                    <Label className="flex w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-6 transition-colors hover:border-[#0EA5E9]/50 hover:bg-zinc-50  dark:hover:bg-zinc-900">
+                                    <Label className="flex w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-6 transition-colors hover:border-[#0EA5E9]/50 hover:bg-zinc-50 dark:hover:bg-zinc-900">
                                         {isUploading ? (
                                             <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
                                         ) : (

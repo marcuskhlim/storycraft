@@ -26,7 +26,7 @@ export function VisualStyleSelector({
     setStyleImageUri,
 }: VisualStyleSelectorProps) {
     return (
-        <Card className="border border-border shadow-none ">
+        <Card className="border border-border shadow-none">
             <CardHeader className="flex flex-row items-center space-x-2 space-y-0">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <Sparkles className="h-5 w-5" />

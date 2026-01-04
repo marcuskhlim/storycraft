@@ -25,15 +25,18 @@ const config: Config = {
                 },
                 popover: {
                     DEFAULT: "rgb(var(--popover) / <alpha-value>)",
-                    foreground: "rgb(var(--popover-foreground) / <alpha-value>)",
+                    foreground:
+                        "rgb(var(--popover-foreground) / <alpha-value>)",
                 },
                 primary: {
                     DEFAULT: "rgb(var(--primary) / <alpha-value>)",
-                    foreground: "rgb(var(--primary-foreground) / <alpha-value>)",
+                    foreground:
+                        "rgb(var(--primary-foreground) / <alpha-value>)",
                 },
                 secondary: {
                     DEFAULT: "rgb(var(--secondary) / <alpha-value>)",
-                    foreground: "rgb(var(--secondary-foreground) / <alpha-value>)",
+                    foreground:
+                        "rgb(var(--secondary-foreground) / <alpha-value>)",
                 },
                 accent: {
                     DEFAULT: "rgb(var(--accent) / <alpha-value>)",
@@ -45,7 +48,8 @@ const config: Config = {
                 },
                 destructive: {
                     DEFAULT: "rgb(var(--destructive) / <alpha-value>)",
-                    foreground: "rgb(var(--destructive-foreground) / <alpha-value>)",
+                    foreground:
+                        "rgb(var(--destructive-foreground) / <alpha-value>)",
                 },
                 border: "rgb(var(--border) / <alpha-value>)",
                 input: "rgb(var(--input) / <alpha-value>)",

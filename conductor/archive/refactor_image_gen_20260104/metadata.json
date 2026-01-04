@@ -1,0 +1,8 @@
+{
+    "track_id": "refactor_image_gen_20260104",
+    "type": "refactor",
+    "status": "new",
+    "created_at": "2026-01-04T15:55:00Z",
+    "updated_at": "2026-01-04T15:55:00Z",
+    "description": "refactor : image generation is called in a lot of different places; I want to centralize in one place the params passed to generateImage based on the scenario atttributes and parameters; so that I can centralize the prompt and params management when generating an image;"
+}

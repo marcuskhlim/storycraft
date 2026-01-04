@@ -1,11 +1,10 @@
 "use server";
 
-import { generateContent, generateImage } from "@/lib/api/gemini";
+import { generateContent } from "@/lib/api/gemini";
 import { z } from "zod";
-import yaml from "js-yaml";
 import logger from "@/app/logger";
-import { createPartFromText, createPartFromUri } from "@google/genai";
-import { Character, Setting, Prop } from "@/app/types";
+import { generateImageForScenario } from "@/app/features/shared/actions/image-generation";
+import { Character, Setting, Prop, Scenario } from "@/app/types";
 import {
     deleteCharacterSchema,
     deletePropSchema,
@@ -143,135 +142,6 @@ Return ONLY the updated scenario text, no additional formatting or explanations.
     return text!.trim();
 }
 
-// Generate character image from description
-async function generateCharacterImage(
-    description: string,
-    style: string,
-    modelName: string = DEFAULT_SETTINGS.imageModel,
-): Promise<string> {
-    const orderedPrompt = {
-        style,
-        shot_type: "Medium Shot",
-        description,
-    };
-
-    const imageResult = await generateImage(
-        [
-            createPartFromText(
-                yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }),
-            ),
-        ],
-        {
-            responseModalities: ["IMAGE"],
-            candidateCount: 1,
-            imageConfig: {
-                aspectRatio: "1:1",
-            },
-        },
-        modelName,
-    );
-
-    if (!imageResult.success) {
-        throw new Error(`Image generation failed: ${imageResult.errorMessage}`);
-    }
-
-    return imageResult.imageGcsUri!;
-}
-
-async function generateSettingImage(
-    description: string,
-    style: string,
-    aspectRatio: string = "16:9",
-    modelName: string = DEFAULT_SETTINGS.imageModel,
-): Promise<string> {
-    const orderedPrompt = {
-        style,
-        shot_type: "Wide Shot",
-        description,
-    };
-    const imageResult = await generateImage(
-        [
-            createPartFromText(
-                yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }),
-            ),
-        ],
-        {
-            responseModalities: ["IMAGE"],
-            candidateCount: 1,
-            imageConfig: {
-                aspectRatio: aspectRatio,
-            },
-        },
-        modelName,
-    );
-
-    if (!imageResult.success) {
-        throw new Error(`Image generation failed: ${imageResult.errorMessage}`);
-    }
-
-    return imageResult.imageGcsUri!;
-}
-
-async function generatePropImage(
-    description: string,
-    style: string,
-    modelName: string = DEFAULT_SETTINGS.imageModel,
-): Promise<string> {
-    const orderedPrompt = {
-        style,
-        shot_type: "Close Shot",
-        description,
-    };
-    const imageResult = await generateImage(
-        [
-            createPartFromText(
-                yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }),
-            ),
-        ],
-        {
-            responseModalities: ["IMAGE"],
-            candidateCount: 1,
-            imageConfig: {
-                aspectRatio: "1:1",
-            },
-        },
-        modelName,
-    );
-
-    if (!imageResult.success) {
-        throw new Error(`Image generation failed: ${imageResult.errorMessage}`);
-    }
-
-    return imageResult.imageGcsUri!;
-}
-
-async function styleImage(
-    imageGcsUri: string,
-    description: string,
-    style: string,
-    modelName: string = DEFAULT_SETTINGS.imageModel,
-): Promise<string> {
-    const orderedPrompt = {
-        style: style,
-        //name: setting.name,
-        shot_type: "Medium Shot",
-        description: description,
-    };
-    const prompt = yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 });
-    const result = await generateImage(
-        [
-            createPartFromUri(imageGcsUri, "image/png"),
-            createPartFromText(prompt),
-        ],
-        {
-            responseModalities: ["IMAGE"],
-            candidateCount: 1,
-        },
-        modelName,
-    );
-    return result.imageGcsUri!;
-}
-
 export async function deleteCharacterFromScenario(
     currentScenario: string,
     oldName: string,
@@ -371,7 +241,7 @@ export async function deletePropFromScenario(
  * Creates a new character image and updates the scenario accordingly
  */
 export async function regenerateCharacterAndScenarioFromText(
-    currentScenario: string,
+    scenario: Scenario,
     oldCharacterName: string,
     newCharacterName: string,
     newCharacterDescription: string,
@@ -380,9 +250,11 @@ export async function regenerateCharacterAndScenarioFromText(
     thinkingBudget: number = DEFAULT_SETTINGS.thinkingBudget,
     imageModel: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<ScenarioUpdateResult> {
+    logger.info("regenerateCharacterAndScenarioFromText");
+    logger.debug("scenario :" + JSON.stringify(scenario, null, 2));
     try {
         const parseResult = regenerateCharacterTextSchema.safeParse({
-            currentScenario,
+            currentScenario: scenario.scenario,
             oldCharacterName,
             newCharacterName,
             newCharacterDescription,
@@ -399,15 +271,25 @@ export async function regenerateCharacterAndScenarioFromText(
         }
 
         // Generate new character image
-        const newImageGcsUri = await generateCharacterImage(
-            newCharacterDescription,
-            style,
-            imageModel,
-        );
+        const imageResult = await generateImageForScenario({
+            scenario,
+            entity: {
+                name: newCharacterName,
+                description: newCharacterDescription,
+            },
+            entityType: "character",
+            modelName: imageModel,
+        });
+
+        if (!imageResult.success) {
+            throw new Error(
+                `Character image generation failed: ${imageResult.errorMessage}`,
+            );
+        }
 
         // Update scenario text
         const updatedScenario = await updateScenarioText(
-            currentScenario,
+            scenario.scenario,
             oldCharacterName,
             newCharacterName,
             newCharacterDescription,
@@ -418,7 +300,7 @@ export async function regenerateCharacterAndScenarioFromText(
 
         return {
             updatedScenario,
-            newImageGcsUri,
+            newImageGcsUri: imageResult.imageGcsUri,
         };
     } catch (error) {
         handleError("regenerate character and scenario from text", error);
@@ -431,7 +313,7 @@ export async function regenerateCharacterAndScenarioFromText(
  * Analyzes an existing character image and updates both character description and scenario
  */
 export async function regenerateCharacterAndScenarioFromImage(
-    currentScenario: string,
+    scenario: Scenario,
     characterName: string,
     currentCharacterDescription: string,
     currentCharacterVoice: string,
@@ -444,7 +326,7 @@ export async function regenerateCharacterAndScenarioFromImage(
 ): Promise<ScenarioUpdateResult> {
     try {
         const parseResult = regenerateCharacterImageSchema.safeParse({
-            currentScenario,
+            currentScenario: scenario.scenario,
             characterName,
             currentCharacterDescription,
             currentCharacterVoice,
@@ -474,7 +356,7 @@ export async function regenerateCharacterAndScenarioFromImage(
                 `Analyze the provided image and update both the character description and scenario text to match the visual characteristics shown.
 
 CURRENT SCENARIO:
-"${currentScenario}"
+"${scenario.scenario}"
 
 ALL CHARACTERS IN THE STORY:
 ${characterListText}
@@ -516,17 +398,21 @@ Return both the updated scenario (maintaining all characters) and the updated de
         }
         const characterScenarioUpdate = characterScenarioUpdateResult.data!;
 
-        const newImageGcsUri = await styleImage(
-            imageGcsUri,
-            characterScenarioUpdate.updatedCharacter.description,
-            style,
-            imageModel,
-        );
+        const imageResult = await generateImageForScenario({
+            scenario,
+            entity: {
+                name: characterScenarioUpdate.updatedCharacter.name,
+                description:
+                    characterScenarioUpdate.updatedCharacter.description,
+            },
+            entityType: "character",
+            modelName: imageModel,
+        });
 
         return {
             updatedScenario: characterScenarioUpdate.updatedScenario,
             updatedCharacter: characterScenarioUpdate.updatedCharacter,
-            newImageGcsUri,
+            newImageGcsUri: imageResult.imageGcsUri,
         };
     } catch (error) {
         handleError("regenerate character and scenario", error);
@@ -539,7 +425,7 @@ Return both the updated scenario (maintaining all characters) and the updated de
  * Updates scenario text to reflect setting modifications
  */
 export async function regenerateSettingAndScenarioFromText(
-    currentScenario: string,
+    scenario: Scenario,
     oldSettingName: string,
     newSettingName: string,
     newSettingDescription: string,
@@ -551,7 +437,7 @@ export async function regenerateSettingAndScenarioFromText(
 ): Promise<ScenarioUpdateResult> {
     try {
         const parseResult = regenerateSettingTextSchema.safeParse({
-            currentScenario,
+            currentScenario: scenario.scenario,
             oldSettingName,
             newSettingName,
             newSettingDescription,
@@ -565,17 +451,27 @@ export async function regenerateSettingAndScenarioFromText(
             handleError("regenerate scenario from setting", parseResult.error);
         }
 
-        // Generate new character image
-        const newImageGcsUri = await generateSettingImage(
-            newSettingDescription,
-            style,
+        // Generate new setting image
+        const imageResult = await generateImageForScenario({
+            scenario,
+            entity: {
+                name: newSettingName,
+                description: newSettingDescription,
+            },
+            entityType: "setting",
+            modelName: imageModel,
             aspectRatio,
-            imageModel,
-        );
+        });
+
+        if (!imageResult.success) {
+            throw new Error(
+                `Setting image generation failed: ${imageResult.errorMessage}`,
+            );
+        }
 
         // Update scenario text
         const updatedScenario = await updateScenarioText(
-            currentScenario,
+            scenario.scenario,
             oldSettingName,
             newSettingName,
             newSettingDescription,
@@ -588,7 +484,7 @@ export async function regenerateSettingAndScenarioFromText(
 
         return {
             updatedScenario,
-            newImageGcsUri,
+            newImageGcsUri: imageResult.imageGcsUri,
         };
     } catch (error) {
         handleError("regenerate scenario from setting", error);
@@ -601,7 +497,7 @@ export async function regenerateSettingAndScenarioFromText(
  * Updates scenario text to reflect prop modifications
  */
 export async function regeneratePropAndScenarioFromText(
-    currentScenario: string,
+    scenario: Scenario,
     oldPropName: string,
     newPropName: string,
     newPropDescription: string,
@@ -612,7 +508,7 @@ export async function regeneratePropAndScenarioFromText(
 ): Promise<ScenarioUpdateResult> {
     try {
         const parseResult = regeneratePropTextSchema.safeParse({
-            currentScenario,
+            currentScenario: scenario.scenario,
             oldPropName,
             newPropName,
             newPropDescription,
@@ -625,16 +521,23 @@ export async function regeneratePropAndScenarioFromText(
             handleError("regenerate scenario from prop", parseResult.error);
         }
 
-        // Generate new character image
-        const newImageGcsUri = await generatePropImage(
-            newPropDescription,
-            style,
-            imageModel,
-        );
+        // Generate new prop image
+        const imageResult = await generateImageForScenario({
+            scenario,
+            entity: { name: newPropName, description: newPropDescription },
+            entityType: "prop",
+            modelName: imageModel,
+        });
+
+        if (!imageResult.success) {
+            throw new Error(
+                `Prop image generation failed: ${imageResult.errorMessage}`,
+            );
+        }
 
         // Update scenario text
         const updatedScenario = await updateScenarioText(
-            currentScenario,
+            scenario.scenario,
             oldPropName,
             newPropName,
             newPropDescription,
@@ -647,7 +550,7 @@ export async function regeneratePropAndScenarioFromText(
 
         return {
             updatedScenario,
-            newImageGcsUri,
+            newImageGcsUri: imageResult.imageGcsUri,
         };
     } catch (error) {
         handleError("regenerate scenario from prop", error);
@@ -660,7 +563,7 @@ export async function regeneratePropAndScenarioFromText(
  * Analyzes an existing character image and updates both character description and scenario
  */
 export async function regenerateSettingAndScenarioFromImage(
-    currentScenario: string,
+    scenario: Scenario,
     settingName: string,
     currentSettingDescription: string,
     imageGcsUri: string,
@@ -672,7 +575,7 @@ export async function regenerateSettingAndScenarioFromImage(
 ): Promise<ScenarioUpdateResult> {
     try {
         const parseResult = regenerateSettingImageSchema.safeParse({
-            currentScenario,
+            currentScenario: scenario.scenario,
             settingName,
             currentSettingDescription,
             imageGcsUri,
@@ -701,7 +604,7 @@ export async function regenerateSettingAndScenarioFromImage(
                 `Analyze the provided image and update both the setting description and scenario text to match the visual characteristics shown.
 
 CURRENT SCENARIO:
-"${currentScenario}"
+"${scenario.scenario}"
 
 ALL SETTINGS IN THE STORY:
 ${settingListText}
@@ -741,17 +644,20 @@ Return both the updated scenario (maintaining all settings) and the updated desc
         }
         const settingScenarioUpdate = settingScenarioUpdateResult.data!;
 
-        const newImageGcsUri = await styleImage(
-            imageGcsUri,
-            settingScenarioUpdate.updatedSetting.description,
-            style,
-            imageModel,
-        );
+        const imageResult = await generateImageForScenario({
+            scenario,
+            entity: {
+                name: settingScenarioUpdate.updatedSetting.name,
+                description: settingScenarioUpdate.updatedSetting.description,
+            },
+            entityType: "setting",
+            modelName: imageModel,
+        });
 
         return {
             updatedScenario: settingScenarioUpdate.updatedScenario,
             updatedSetting: settingScenarioUpdate.updatedSetting,
-            newImageGcsUri,
+            newImageGcsUri: imageResult.imageGcsUri,
         };
     } catch (error) {
         handleError("regenerate setting and scenario", error);
@@ -764,7 +670,7 @@ Return both the updated scenario (maintaining all settings) and the updated desc
  * Analyzes an existing character image and updates both character description and scenario
  */
 export async function regeneratePropAndScenarioFromImage(
-    currentScenario: string,
+    scenario: Scenario,
     propName: string,
     currentPropDescription: string,
     imageGcsUri: string,
@@ -776,7 +682,7 @@ export async function regeneratePropAndScenarioFromImage(
 ): Promise<ScenarioUpdateResult> {
     try {
         const parseResult = regeneratePropImageSchema.safeParse({
-            currentScenario,
+            currentScenario: scenario.scenario,
             propName,
             currentPropDescription,
             imageGcsUri,
@@ -805,7 +711,7 @@ export async function regeneratePropAndScenarioFromImage(
                 `Analyze the provided image and update both the prop description and scenario text to match the visual characteristics shown.
 
 CURRENT SCENARIO:
-"${currentScenario}"
+"${scenario.scenario}"
 
 ALL PROPS IN THE STORY:
 ${propListText}
@@ -846,17 +752,20 @@ Return both the updated scenario (maintaining all props) and the updated descrip
         }
         const propScenarioUpdate = propScenarioUpdateResult.data!;
 
-        const newImageGcsUri = await styleImage(
-            imageGcsUri,
-            propScenarioUpdate.updatedProp.description,
-            style,
-            imageModel,
-        );
+        const imageResult = await generateImageForScenario({
+            scenario,
+            entity: {
+                name: propScenarioUpdate.updatedProp.name,
+                description: propScenarioUpdate.updatedProp.description,
+            },
+            entityType: "prop",
+            modelName: imageModel,
+        });
 
         return {
             updatedScenario: propScenarioUpdate.updatedScenario,
             updatedProp: propScenarioUpdate.updatedProp,
-            newImageGcsUri,
+            newImageGcsUri: imageResult.imageGcsUri,
         };
     } catch (error) {
         handleError("regenerate prop and scenario", error);

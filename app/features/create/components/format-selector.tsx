@@ -19,7 +19,7 @@ export function FormatSelector({
     setAspectRatio,
 }: FormatSelectorProps) {
     return (
-        <Card className="flex-1 border border-border shadow-none ">
+        <Card className="flex-1 border border-border shadow-none">
             <CardHeader className="flex flex-row items-center space-x-2 space-y-0">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <div className="h-4 w-4 rounded border-2 border-current" />

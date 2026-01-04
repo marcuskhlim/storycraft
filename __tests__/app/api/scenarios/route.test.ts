@@ -75,17 +75,15 @@ describe("Scenarios API Route", () => {
                 expires: "",
             });
 
-            const mockDoc = { id: "s1", data: () => ({ name: "Scenario 1" }) };
+            const mockData = { name: "Scenario 1", userId: "user123" };
             const mockGet = vi.fn().mockResolvedValue({
-                empty: false,
-                docs: [mockDoc],
+                exists: true,
+                data: () => mockData,
             });
-            const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
-            const mockWhere2 = vi.fn().mockReturnValue({ limit: mockLimit });
-            const mockWhere1 = vi.fn().mockReturnValue({ where: mockWhere2 });
+            const mockDoc = vi.fn().mockReturnValue({ get: mockGet });
 
             mockedFirestore.collection.mockReturnValue({
-                where: mockWhere1,
+                doc: mockDoc,
             });
 
             const req = new NextRequest("http://localhost/api/scenarios?id=s1");
@@ -95,6 +93,7 @@ describe("Scenarios API Route", () => {
             expect(res.status).toBe(200);
             expect(data.data.id).toBe("s1");
             expect(data.data.name).toBe("Scenario 1");
+            expect(mockDoc).toHaveBeenCalledWith("s1");
         });
 
         it("should return 404 if scenario not found", async () => {
@@ -104,14 +103,12 @@ describe("Scenarios API Route", () => {
             });
 
             const mockGet = vi.fn().mockResolvedValue({
-                empty: true,
+                exists: false,
             });
-            const mockLimit = vi.fn().mockReturnValue({ get: mockGet });
-            const mockWhere2 = vi.fn().mockReturnValue({ limit: mockLimit });
-            const mockWhere1 = vi.fn().mockReturnValue({ where: mockWhere2 });
+            const mockDoc = vi.fn().mockReturnValue({ get: mockGet });
 
             mockedFirestore.collection.mockReturnValue({
-                where: mockWhere1,
+                doc: mockDoc,
             });
 
             const req = new NextRequest("http://localhost/api/scenarios?id=s1");

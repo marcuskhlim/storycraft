@@ -1,15 +1,16 @@
 "use server";
 
-import { generateImage } from "@/lib/api/gemini";
-import { createPartFromText, createPartFromUri } from "@google/genai";
+import { generateImageForScenario } from "@/app/features/shared/actions/image-generation";
 import logger from "@/app/logger";
 import { conversationalEditSchema } from "@/app/schemas";
+import { Scenario } from "@/app/types";
 
 interface ConversationalEditParams {
     imageGcsUri: string;
     instruction: string;
     sceneNumber: number;
     scenarioId: string;
+    scenario?: Scenario; // Optional scenario context
 }
 
 interface ConversationalEditResult {
@@ -21,7 +22,8 @@ interface ConversationalEditResult {
 export async function conversationalEdit(
     params: ConversationalEditParams,
 ): Promise<ConversationalEditResult> {
-    const { imageGcsUri, instruction, sceneNumber, scenarioId } = params;
+    const { imageGcsUri, instruction, sceneNumber, scenarioId, scenario } =
+        params;
     try {
         const parseResult = conversationalEditSchema.safeParse(params);
         if (!parseResult.success) {
@@ -39,10 +41,13 @@ export async function conversationalEdit(
             `Starting conversational edit for scene ${sceneNumber} in scenario ${scenarioId}`,
         );
 
-        const result = await generateImage([
-            createPartFromUri(imageGcsUri, "image/png"),
-            createPartFromText(instruction),
-        ]);
+        // We use a minimal scenario if none provided, but style might be missing.
+        // In real usage, the caller should ideally provide the scenario.
+        const result = await generateImageForScenario({
+            scenario: scenario || ({ id: scenarioId } as Scenario),
+            instruction,
+            imageGcsUri,
+        });
 
         if (result.success && result.imageGcsUri) {
             logger.info(

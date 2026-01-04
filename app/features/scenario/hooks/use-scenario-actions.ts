@@ -74,7 +74,7 @@ export function useScenarioActions() {
         try {
             const { updatedScenario: newScenarioText, newImageGcsUri } =
                 await regenerateCharacterAndScenarioFromText(
-                    scenario.scenario,
+                    scenario,
                     scenario.characters[characterIndex].name,
                     name,
                     description,
@@ -125,7 +125,7 @@ export function useScenarioActions() {
             const resizedImageGcsUri = await uploadImageFile(file);
 
             const result = await regenerateCharacterAndScenarioFromImage(
-                scenario.scenario,
+                scenario,
                 scenario.characters[characterIndex].name,
                 scenario.characters[characterIndex].description,
                 scenario.characters[characterIndex].voice || "",
@@ -178,7 +178,7 @@ export function useScenarioActions() {
         try {
             const { updatedScenario: newScenarioText, newImageGcsUri } =
                 await regenerateSettingAndScenarioFromText(
-                    scenario.scenario,
+                    scenario,
                     scenario.settings[settingIndex].name,
                     name,
                     description,
@@ -225,7 +225,7 @@ export function useScenarioActions() {
             const resizedImageGcsUri = await uploadImageFile(file);
 
             const result = await regenerateSettingAndScenarioFromImage(
-                scenario.scenario,
+                scenario,
                 scenario.settings[settingIndex].name,
                 scenario.settings[settingIndex].description,
                 resizedImageGcsUri,
@@ -276,7 +276,7 @@ export function useScenarioActions() {
         try {
             const { updatedScenario: newScenarioText, newImageGcsUri } =
                 await regeneratePropAndScenarioFromText(
-                    scenario.scenario,
+                    scenario,
                     scenario.props[propIndex].name,
                     name,
                     description,
@@ -319,7 +319,7 @@ export function useScenarioActions() {
             const resizedImageGcsUri = await uploadImageFile(file);
 
             const result = await regeneratePropAndScenarioFromImage(
-                scenario.scenario,
+                scenario,
                 scenario.props[propIndex].name,
                 scenario.props[propIndex].description,
                 resizedImageGcsUri,

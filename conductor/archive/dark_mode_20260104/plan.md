@@ -3,6 +3,7 @@
 This plan outlines the implementation of dark mode support for StoryCraft, including theme configuration, persistence, and a header toggle.
 
 ## Phase 1: Foundation & Theme Configuration
+
 - [x] Task: Configure Tailwind CSS for class-based dark mode 6316233
     - [x] Sub-task: Update `tailwind.config.ts` to include `darkMode: 'class'`
     - [x] Sub-task: Verify base dark mode styles in `globals.css`
@@ -12,6 +13,7 @@ This plan outlines the implementation of dark mode support for StoryCraft, inclu
 - [x] Task: Conductor - User Manual Verification 'Foundation & Theme Configuration' (Protocol in workflow.md) [checkpoint: 1ef82eb]
 
 ## Phase 2: Theme Management Logic
+
 - [x] Task: Create Theme Context and Provider 015531a
     - [x] Sub-task: Write unit tests for `useTheme` hook (toggle logic, persistence)
     - [x] Sub-task: Implement `ThemeProvider` with system preference detection and `localStorage` persistence
@@ -20,6 +22,7 @@ This plan outlines the implementation of dark mode support for StoryCraft, inclu
 - [ ] Task: Conductor - User Manual Verification 'Theme Management Logic' (Protocol in workflow.md)
 
 ## Phase 3: UI Implementation
+
 - [x] Task: Implement Theme Toggle Component f605764
     - [x] Sub-task: Write unit tests for `ThemeToggle` component
     - [x] Sub-task: Create `ThemeToggle` component using Radix UI primitives and Lucide icons (Sun/Moon)
@@ -30,6 +33,7 @@ This plan outlines the implementation of dark mode support for StoryCraft, inclu
 - [x] Task: Conductor - User Manual Verification 'UI Implementation' (Protocol in workflow.md) [checkpoint: f605764]
 
 ## Phase 4: Final Polishing
+
 - [x] Task: Ensure accessibility compliance 214a4b8
     - [x] Sub-task: Verify contrast ratios in dark mode using automated tools/manual check
 - [x] Task: Final end-to-end verification 214a4b8

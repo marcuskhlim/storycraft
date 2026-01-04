@@ -43,7 +43,8 @@ export function ConversationalEditModal({
                 imageGcsUri: scene.imageGcsUri,
                 instruction: instruction.trim(),
                 sceneNumber,
-                scenarioId: scenario.name, // Using scenario name as ID
+                scenarioId: scenario.id || scenario.name,
+                scenario,
             });
 
             if (result.success && result.imageGcsUri) {
