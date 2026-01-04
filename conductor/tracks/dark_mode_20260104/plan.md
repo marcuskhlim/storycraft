@@ -12,11 +12,11 @@ This plan outlines the implementation of dark mode support for StoryCraft, inclu
 - [x] Task: Conductor - User Manual Verification 'Foundation & Theme Configuration' (Protocol in workflow.md) [checkpoint: 1ef82eb]
 
 ## Phase 2: Theme Management Logic
-- [ ] Task: Create Theme Context and Provider
-    - [ ] Sub-task: Write unit tests for `useTheme` hook (toggle logic, persistence)
-    - [ ] Sub-task: Implement `ThemeProvider` with system preference detection and `localStorage` persistence
-- [ ] Task: Integrate ThemeProvider into the root layout
-    - [ ] Sub-task: Update `app/layout.tsx` or `app/client-layout.tsx` to wrap the application
+- [x] Task: Create Theme Context and Provider 015531a
+    - [x] Sub-task: Write unit tests for `useTheme` hook (toggle logic, persistence)
+    - [x] Sub-task: Implement `ThemeProvider` with system preference detection and `localStorage` persistence
+- [x] Task: Integrate ThemeProvider into the root layout 015531a
+    - [x] Sub-task: Update `app/layout.tsx` or `app/client-layout.tsx` to wrap the application
 - [ ] Task: Conductor - User Manual Verification 'Theme Management Logic' (Protocol in workflow.md)
 
 ## Phase 3: UI Implementation
