@@ -15,8 +15,8 @@ const config: Config = {
             },
             colors: {
                 background: {
-                    DEFAULT: "#FAFAFB",
-                    foreground: "#373F51",
+                    DEFAULT: "rgb(var(--background))",
+                    foreground: "rgb(var(--foreground))",
                 },
                 foreground: "rgb(var(--foreground))",
                 card: {
@@ -28,20 +28,20 @@ const config: Config = {
                     foreground: "rgb(var(--popover-foreground))",
                 },
                 primary: {
-                    DEFAULT: "#008DD5",
-                    foreground: "#FFFFFF",
+                    DEFAULT: "rgb(var(--primary))",
+                    foreground: "rgb(var(--primary-foreground))",
                 },
                 secondary: {
-                    DEFAULT: "#373F51",
-                    foreground: "#FFFFFF",
+                    DEFAULT: "rgb(var(--secondary))",
+                    foreground: "rgb(var(--secondary-foreground))",
                 },
                 accent: {
-                    DEFAULT: "#F56476",
-                    foreground: "#FFFFFF",
+                    DEFAULT: "rgb(var(--accent))",
+                    foreground: "rgb(var(--accent-foreground))",
                 },
                 muted: {
-                    DEFAULT: "#EBEBEB",
-                    foreground: "#373F51",
+                    DEFAULT: "rgb(var(--muted))",
+                    foreground: "rgb(var(--muted-foreground))",
                 },
                 destructive: {
                     DEFAULT: "rgb(var(--destructive))",
