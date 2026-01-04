@@ -215,7 +215,8 @@ export const Sidebar = memo(function Sidebar() {
                             onClick={() => handleSelect(scenario)}
                             className={cn(
                                 "flex h-12 w-full items-center overflow-hidden rounded-full transition-all duration-200",
-                                currentScenarioId === scenario.id
+                                activeTab !== "stories" &&
+                                    currentScenarioId === scenario.id
                                     ? "bg-secondary text-secondary-foreground"
                                     : "text-foreground hover:bg-muted",
                             )}
