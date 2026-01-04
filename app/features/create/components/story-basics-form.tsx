@@ -41,7 +41,7 @@ export function StoryBasicsForm({
     return (
         <Card className="border border-border shadow-none md:col-span-3 lg:col-span-2">
             <CardHeader className="flex flex-row items-center space-x-2 space-y-0">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <Clapperboard className="h-5 w-5" />
                 </div>
                 <CardTitle className="text-xl">Story Basics</CardTitle>

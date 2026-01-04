@@ -74,7 +74,7 @@ export function UserProfile({ isCollapsed }: { isCollapsed: boolean }) {
         <div className="user-profile-dropdown relative">
             <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex cursor-pointer items-center gap-2 rounded-md bg-gray-100 p-2 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+                className="flex cursor-pointer items-center gap-2 rounded-md bg-muted p-2 transition-colors hover:bg-muted/80"
             >
                 {displayPicture ? (
                     <Image
@@ -93,12 +93,12 @@ export function UserProfile({ isCollapsed }: { isCollapsed: boolean }) {
                 )}
                 {!isCollapsed && (
                     <>
-                        <span className="truncate text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <span className="truncate text-sm font-medium text-foreground">
                             {displayName}
                         </span>
                         <ChevronDown
                             size={16}
-                            className={`text-gray-500 transition-transform ${isDropdownOpen ? "rotate-180" : ""}`}
+                            className={`text-muted-foreground transition-transform ${isDropdownOpen ? "rotate-180" : ""}`}
                         />
                     </>
                 )}
@@ -106,14 +106,14 @@ export function UserProfile({ isCollapsed }: { isCollapsed: boolean }) {
 
             {/* Dropdown Menu */}
             {isDropdownOpen && (
-                <div className="absolute left-0 top-full z-50 mt-2 w-48 rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                <div className="absolute left-0 top-full z-50 mt-2 w-48 rounded-md border border-border bg-card shadow-lg">
                     <div className="py-1">
                         {/* User Info */}
-                        <div className="border-b border-gray-200 px-4 py-2 dark:border-gray-700">
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        <div className="border-b border-border px-4 py-2">
+                            <div className="text-sm font-medium text-foreground">
                                 {displayName}
                             </div>
-                            <div className="truncate text-xs text-gray-500 dark:text-gray-400">
+                            <div className="truncate text-xs text-muted-foreground">
                                 {user.email}
                             </div>
                         </div>
@@ -121,7 +121,7 @@ export function UserProfile({ isCollapsed }: { isCollapsed: boolean }) {
                         {/* Sign Out Option */}
                         <button
                             onClick={handleSignOut}
-                            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted"
                         >
                             <LogOut size={16} />
                             Sign Out

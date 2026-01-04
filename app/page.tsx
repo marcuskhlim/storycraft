@@ -53,6 +53,7 @@ const StoriesTab = dynamic(
 );
 
 import { UserProfile } from "@/app/features/shared/components/user-profile";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { Sidebar } from "@/app/features/shared/components/layout/sidebar";
 import { TopNav } from "@/app/features/shared/components/layout/top-nav";
 import { Button } from "@/components/ui/button";
@@ -162,6 +163,7 @@ export default function Home() {
                     </div>
 
                     <div className="flex w-1/3 items-center justify-end gap-4">
+                        <ThemeToggle />
                         <UserProfile isCollapsed={false} />
                     </div>
                 </header>

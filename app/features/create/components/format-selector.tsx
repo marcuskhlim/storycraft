@@ -19,9 +19,9 @@ export function FormatSelector({
     setAspectRatio,
 }: FormatSelectorProps) {
     return (
-        <Card className="flex-1 border border-zinc-200 shadow-none dark:border-zinc-800">
+        <Card className="flex-1 border border-border shadow-none ">
             <CardHeader className="flex flex-row items-center space-x-2 space-y-0">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <div className="h-4 w-4 rounded border-2 border-current" />
                 </div>
                 <CardTitle className="text-lg">Format</CardTitle>
@@ -38,7 +38,7 @@ export function FormatSelector({
                                 className={cn(
                                     "flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all",
                                     isSelected
-                                        ? "border-[#0EA5E9] bg-blue-50/50 dark:bg-blue-900/20"
+                                        ? "border-primary bg-primary/5"
                                         : "border-transparent bg-gray-50 hover:bg-gray-100 dark:bg-gray-900 dark:hover:bg-gray-800",
                                 )}
                             >
