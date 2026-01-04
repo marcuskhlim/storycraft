@@ -45,7 +45,7 @@ export function signedUrlToGcsUri(signedUrl: string): string {
         return `gs://${bucket}/${path}`;
     } catch (error) {
         logger.error("Error parsing signed URL:", error);
-        return "error";
+        throw new Error(`Error parsing signed URL ${signedUrl}: ${error}`);
     }
 }
 

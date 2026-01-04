@@ -18,18 +18,12 @@ if (process.env.NODE_ENV !== "production") {
     globalForStorage.storage = storage;
 }
 
-const storageUri = env.GCS_VIDEOS_STORAGE_URI; // Make sure this env var is set
+const storageUri = env.GCS_VIDEOS_STORAGE_URI;
 
 export async function uploadImage(
     base64: string,
     filename: string,
 ): Promise<string | null> {
-    if (!storageUri) {
-        logger.error("GCS_VIDEOS_STORAGE_URI environment variable is not set.");
-        // Depending on requirements, you might want to throw an error instead
-        // throw new Error('Server configuration error: STORAGE_URI not specified.');
-        return null; // Return null to indicate failure due to missing config
-    }
     if (!base64) {
         logger.warn("Attempted to upload an empty base64 string.");
         return null;
