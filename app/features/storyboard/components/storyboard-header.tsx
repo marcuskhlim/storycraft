@@ -113,7 +113,10 @@ export const StoryboardHeader = memo(function StoryboardHeader({
                         <Video className="h-4 w-4 text-muted-foreground" />
                     </div>
                 </div>
-                <LoadingMessages isLoading={isVideoLoading} phase="video" />
+                <LoadingMessages
+                    isLoading={isVideoLoading || isAnySceneGenerating}
+                    phase="video"
+                />
                 <Button
                     size="lg"
                     onClick={onGenerateAllVideos}

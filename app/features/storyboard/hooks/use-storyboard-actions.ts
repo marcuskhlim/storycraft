@@ -16,7 +16,7 @@ import { toast } from "sonner";
 export function useStoryboardActions() {
     const { scenario, setScenario, setErrorMessage } = useScenarioStore();
 
-    const { startLoading, stopLoading } = useLoadingStore();
+    const { setLoading, startLoading, stopLoading } = useLoadingStore();
     const { setActiveTab } = useEditorStore();
     const { settings } = useSettings();
     const { getCurrentScenarioId } = useScenario();
@@ -89,6 +89,7 @@ export function useStoryboardActions() {
 
         if (!scenario) return;
         setErrorMessage(null);
+        setLoading("video", true);
         clientLogger.log("[Client] Generating videos for all scenes - START");
 
         scenario.scenes.forEach((_, i) => startLoading("scenes", i));
@@ -105,62 +106,71 @@ export function useStoryboardActions() {
 
         const limit = pLimit(10); // Max 10 concurrent client requests to avoid browser limits
 
-        const regeneratedScenes = await Promise.all(
-            scenario.scenes.map((scene, index) =>
-                limit(async () => {
-                    try {
-                        const response = await fetch("/api/videos", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                scenes: [scene],
-                                scenario: scenario,
-                                language: scenario?.language,
-                                aspectRatio: scenario?.aspectRatio,
-                                model: targetModel,
-                                generateAudio: targetAudio,
-                                durationSeconds: scenario?.durationSeconds,
-                            }),
-                        });
+        try {
+            const regeneratedScenes = await Promise.all(
+                scenario.scenes.map((scene, index) =>
+                    limit(async () => {
+                        try {
+                            const response = await fetch("/api/videos", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    scenes: [scene],
+                                    scenario: scenario,
+                                    language: scenario?.language,
+                                    aspectRatio: scenario?.aspectRatio,
+                                    model: targetModel,
+                                    generateAudio: targetAudio,
+                                    durationSeconds: scenario?.durationSeconds,
+                                }),
+                            });
 
-                        const result = (await response.json()) as ApiResponse<{
-                            videoUrls: string[];
-                        }>;
+                            const result =
+                                (await response.json()) as ApiResponse<{
+                                    videoUrls: string[];
+                                }>;
 
-                        if (result.success && result.data) {
-                            return {
-                                ...scene,
-                                videoUri: result.data.videoUrls[0] || undefined,
-                            };
-                        } else {
-                            throw new Error(
-                                result.error?.message ||
-                                    "Failed to generate video",
+                            if (result.success && result.data) {
+                                return {
+                                    ...scene,
+                                    videoUri:
+                                        result.data.videoUrls[0] || undefined,
+                                };
+                            } else {
+                                throw new Error(
+                                    result.error?.message ||
+                                        "Failed to generate video",
+                                );
+                            }
+                        } catch (error) {
+                            clientLogger.error(
+                                "Error regenerating video:",
+                                error,
                             );
+                            if (error instanceof Error) {
+                                return {
+                                    ...scene,
+                                    videoUri: undefined,
+                                    errorMessage: error.message,
+                                };
+                            } else {
+                                return { ...scene, videoUri: undefined };
+                            }
+                        } finally {
+                            stopLoading("scenes", index);
                         }
-                    } catch (error) {
-                        clientLogger.error("Error regenerating video:", error);
-                        if (error instanceof Error) {
-                            return {
-                                ...scene,
-                                videoUri: undefined,
-                                errorMessage: error.message,
-                            };
-                        } else {
-                            return { ...scene, videoUri: undefined };
-                        }
-                    } finally {
-                        stopLoading("scenes", index);
-                    }
-                }),
-            ),
-        );
+                    }),
+                ),
+            );
 
-        setScenario({
-            ...scenario,
-            scenes: regeneratedScenes,
-        });
-        setActiveTab("editor");
+            setScenario({
+                ...scenario,
+                scenes: regeneratedScenes,
+            });
+            setActiveTab("editor");
+        } finally {
+            setLoading("video", false);
+        }
     };
 
     const handleGenerateVideo = async (index: number) => {

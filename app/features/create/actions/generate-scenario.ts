@@ -1,6 +1,11 @@
 "use server";
 
 import { getScenarioPrompt, scenarioSchema } from "@/app/prompts";
+import {
+    createPartFromUri,
+    createPartFromText,
+    ContentListUnion,
+} from "@google/genai";
 import { generateContent, generateImage } from "@/lib/api/gemini";
 import yaml from "js-yaml";
 
@@ -117,20 +122,39 @@ export async function generateScenario(
                                     description: character.description,
                                     // prohibited_elements: "watermark, text overlay, warped face, floating limbs, distorted hands, blurry edges"
                                 };
-                                // const resultJson = await generateImageRest(yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }), "1:1", true);
-                                const result = await generateImage(
-                                    yaml.dump(orderedPrompt, {
+                                let content: ContentListUnion = yaml.dump(
+                                    orderedPrompt,
+                                    {
                                         indent: 2,
                                         lineWidth: -1,
-                                    }),
-                                    {
-                                        responseModalities: ["IMAGE"],
-                                        candidateCount: 1,
-                                        imageConfig: {
-                                            aspectRatio: "1:1",
-                                        },
                                     },
                                 );
+                                if (styleImageUri) {
+                                    content = [
+                                        createPartFromText(
+                                            `I am providing a reference image. Use this image strictly for its visual style (color palette, lighting, texture, and art medium). Ignore the subjects, settings, locations, and objects matter of the reference image entirely.
+                                            Constraints:
+
+                                            * Adopt: The color grading, shadow density, and line quality of the reference.
+                                            * Discard: The original composition and subject matter.
+                                            * Reference Strength: High for style, 0% for content.`,
+                                        ),
+                                        createPartFromUri(
+                                            styleImageUri,
+                                            "image/png",
+                                        ),
+                                        createPartFromText(content),
+                                    ];
+                                }
+
+                                // const resultJson = await generateImageRest(yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }), "1:1", true);
+                                const result = await generateImage(content, {
+                                    responseModalities: ["IMAGE"],
+                                    candidateCount: 1,
+                                    imageConfig: {
+                                        aspectRatio: "1:1",
+                                    },
+                                });
 
                                 // if (resultJson.predictions[0].raiFilteredReason) {
                                 //   throw new Error(getRAIUserMessage(getRAIUserMessage(resultJson.predictions[0].raiFilteredReason)))
@@ -167,20 +191,39 @@ export async function generateScenario(
                                     description: setting.description,
                                     //prohibited_elements: "people, characters, watermark, text overlay, warped face, floating limbs, distorted hands, blurry edges"
                                 };
-                                // const resultJson = await generateImageRest(yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }), aspectRatio, true);
-                                const result = await generateImage(
-                                    yaml.dump(orderedPrompt, {
+                                let content: ContentListUnion = yaml.dump(
+                                    orderedPrompt,
+                                    {
                                         indent: 2,
                                         lineWidth: -1,
-                                    }),
-                                    {
-                                        responseModalities: ["IMAGE"],
-                                        candidateCount: 1,
-                                        imageConfig: {
-                                            aspectRatio: aspectRatio,
-                                        },
                                     },
                                 );
+                                if (styleImageUri) {
+                                    content = [
+                                        createPartFromText(
+                                            `I am providing a reference image. Use this image strictly for its visual style (color palette, lighting, texture, and art medium). Ignore the subjects, settings, locations, and objects matter of the reference image entirely.
+                                            Constraints:
+                                            
+                                            * Adopt: The color grading, shadow density, and line quality of the reference.
+                                            * Discard: The original composition and subject matter.
+                                            * Reference Strength: High for style, 0% for content.`,
+                                        ),
+                                        createPartFromUri(
+                                            styleImageUri,
+                                            "image/png",
+                                        ),
+                                        createPartFromText(content),
+                                    ];
+                                }
+
+                                // const resultJson = await generateImageRest(yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }), aspectRatio, true);
+                                const result = await generateImage(content, {
+                                    responseModalities: ["IMAGE"],
+                                    candidateCount: 1,
+                                    imageConfig: {
+                                        aspectRatio: aspectRatio,
+                                    },
+                                });
                                 // if (resultJson.predictions[0].raiFilteredReason) {
                                 //   throw new Error(getRAIUserMessage(resultJson.predictions[0].raiFilteredReason))
                                 // } else {
@@ -216,20 +259,38 @@ export async function generateScenario(
                                     description: prop.description,
                                     //prohibited_elements: "people, characters, watermark, text overlay, warped face, floating limbs, distorted hands, blurry edges"
                                 };
-                                // const resultJson = await generateImageRest(yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }), "1:1", true);
-                                const result = await generateImage(
-                                    yaml.dump(orderedPrompt, {
+                                let content: ContentListUnion = yaml.dump(
+                                    orderedPrompt,
+                                    {
                                         indent: 2,
                                         lineWidth: -1,
-                                    }),
-                                    {
-                                        responseModalities: ["IMAGE"],
-                                        candidateCount: 1,
-                                        imageConfig: {
-                                            aspectRatio: "1:1",
-                                        },
                                     },
                                 );
+                                if (styleImageUri) {
+                                    content = [
+                                        createPartFromText(
+                                            `I am providing a reference image. Use this image strictly for its visual style (color palette, lighting, texture, and art medium). Ignore the subjects, settings, locations, and objects matter of the reference image entirely.
+                                            Constraints:
+                                            
+                                            * Adopt: The color grading, shadow density, and line quality of the reference.
+                                            * Discard: The original composition and subject matter.
+                                            * Reference Strength: High for style, 0% for content.`,
+                                        ),
+                                        createPartFromUri(
+                                            styleImageUri,
+                                            "image/png",
+                                        ),
+                                        createPartFromText(content),
+                                    ];
+                                }
+                                // const resultJson = await generateImageRest(yaml.dump(orderedPrompt, { indent: 2, lineWidth: -1 }), "1:1", true);
+                                const result = await generateImage(content, {
+                                    responseModalities: ["IMAGE"],
+                                    candidateCount: 1,
+                                    imageConfig: {
+                                        aspectRatio: "1:1",
+                                    },
+                                });
                                 // if (resultJson.predictions[0].raiFilteredReason) {
                                 //   throw new Error(getRAIUserMessage(resultJson.predictions[0].raiFilteredReason))
                                 // } else {
