@@ -18,6 +18,7 @@ import {
 } from "@/app/schemas";
 
 import { DEFAULT_SETTINGS } from "@/lib/ai-config";
+import { requireAuth } from "@/lib/api/auth-utils";
 
 // ScenarioUpdateResult interface remains as it's specific to these actions
 export interface ScenarioUpdateResult {
@@ -147,6 +148,7 @@ export async function deleteCharacterFromScenario(
     oldName: string,
     oldDescription: string,
 ): Promise<ScenarioUpdateResult> {
+    await requireAuth();
     try {
         const parseResult = deleteCharacterSchema.safeParse({
             currentScenario,
@@ -181,6 +183,7 @@ export async function deleteSettingFromScenario(
     oldName: string,
     oldDescription: string,
 ): Promise<ScenarioUpdateResult> {
+    await requireAuth();
     try {
         const parseResult = deleteSettingSchema.safeParse({
             currentScenario,
@@ -211,6 +214,7 @@ export async function deletePropFromScenario(
     oldName: string,
     oldDescription: string,
 ): Promise<ScenarioUpdateResult> {
+    await requireAuth();
     try {
         const parseResult = deletePropSchema.safeParse({
             currentScenario,
@@ -250,6 +254,7 @@ export async function regenerateCharacterAndScenarioFromText(
     thinkingBudget: number = DEFAULT_SETTINGS.thinkingBudget,
     imageModel: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<ScenarioUpdateResult> {
+    await requireAuth();
     logger.info("regenerateCharacterAndScenarioFromText");
     logger.debug("scenario :" + JSON.stringify(scenario, null, 2));
     try {
@@ -324,6 +329,7 @@ export async function regenerateCharacterAndScenarioFromImage(
     thinkingBudget: number = DEFAULT_SETTINGS.thinkingBudget,
     imageModel: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<ScenarioUpdateResult> {
+    await requireAuth();
     try {
         const parseResult = regenerateCharacterImageSchema.safeParse({
             currentScenario: scenario.scenario,
@@ -435,6 +441,7 @@ export async function regenerateSettingAndScenarioFromText(
     thinkingBudget: number = DEFAULT_SETTINGS.thinkingBudget,
     imageModel: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<ScenarioUpdateResult> {
+    await requireAuth();
     try {
         const parseResult = regenerateSettingTextSchema.safeParse({
             currentScenario: scenario.scenario,
@@ -506,6 +513,7 @@ export async function regeneratePropAndScenarioFromText(
     thinkingBudget: number = DEFAULT_SETTINGS.thinkingBudget,
     imageModel: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<ScenarioUpdateResult> {
+    await requireAuth();
     try {
         const parseResult = regeneratePropTextSchema.safeParse({
             currentScenario: scenario.scenario,
@@ -573,6 +581,7 @@ export async function regenerateSettingAndScenarioFromImage(
     thinkingBudget: number = DEFAULT_SETTINGS.thinkingBudget,
     imageModel: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<ScenarioUpdateResult> {
+    await requireAuth();
     try {
         const parseResult = regenerateSettingImageSchema.safeParse({
             currentScenario: scenario.scenario,
@@ -680,6 +689,7 @@ export async function regeneratePropAndScenarioFromImage(
     thinkingBudget: number = DEFAULT_SETTINGS.thinkingBudget,
     imageModel: string = DEFAULT_SETTINGS.imageModel,
 ): Promise<ScenarioUpdateResult> {
+    await requireAuth();
     try {
         const parseResult = regeneratePropImageSchema.safeParse({
             currentScenario: scenario.scenario,

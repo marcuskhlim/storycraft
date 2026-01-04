@@ -12,6 +12,7 @@ import {
     getDynamicImageUrlSchema,
     uploadImageToGCSSchema,
 } from "@/app/schemas";
+import { requireAuth } from "@/lib/api/auth-utils";
 
 /**
  * Server Action to securely get a signed URL for a GCS object.
@@ -24,6 +25,7 @@ export async function getDynamicImageUrl(
     gcsUri: string,
     download: boolean = false,
 ): Promise<{ url: string | null; mimeType: string | null }> {
+    await requireAuth();
     const parseResult = getDynamicImageUrlSchema.safeParse({
         gcsUri,
         download,
@@ -74,6 +76,7 @@ export async function getDynamicImageUrl(
 }
 
 export async function uploadImageToGCS(base64: string): Promise<string | null> {
+    await requireAuth();
     const parseResult = uploadImageToGCSSchema.safeParse({ base64 });
     if (!parseResult.success) {
         logger.error(

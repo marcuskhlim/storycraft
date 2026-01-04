@@ -1,4 +1,5 @@
 import { GoogleAuth } from "google-auth-library";
+import { auth as getSession } from "@/auth";
 
 const globalForAuth = global as unknown as { auth: GoogleAuth };
 
@@ -25,4 +26,18 @@ export async function getAccessToken(): Promise<string> {
     } else {
         throw new Error("Failed to obtain access token.");
     }
+}
+
+/**
+ * Requires an authenticated user session.
+ * Throws an error if the user is not authenticated.
+ */
+export async function requireAuth() {
+    const session = await getSession();
+
+    if (!session?.user) {
+        throw new Error("Unauthorized");
+    }
+
+    return session;
 }

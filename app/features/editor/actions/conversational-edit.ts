@@ -4,6 +4,7 @@ import { generateImageForScenario } from "@/app/features/shared/actions/image-ge
 import logger from "@/app/logger";
 import { conversationalEditSchema } from "@/app/schemas";
 import { Scenario } from "@/app/types";
+import { requireAuth } from "@/lib/api/auth-utils";
 
 interface ConversationalEditParams {
     imageGcsUri: string;
@@ -22,6 +23,7 @@ interface ConversationalEditResult {
 export async function conversationalEdit(
     params: ConversationalEditParams,
 ): Promise<ConversationalEditResult> {
+    await requireAuth();
     const { imageGcsUri, instruction, sceneNumber, scenarioId, scenario } =
         params;
     try {

@@ -3,8 +3,10 @@
 import { generateMusicRest } from "@/lib/api/lyria";
 import logger from "@/app/logger";
 import { generateMusicSchema } from "@/app/schemas";
+import { requireAuth } from "@/lib/api/auth-utils";
 
 export async function generateMusic(prompt: string): Promise<string> {
+    await requireAuth();
     const parseResult = generateMusicSchema.safeParse({ prompt });
     if (!parseResult.success) {
         logger.error("Validation error in generateMusic:", parseResult.error);

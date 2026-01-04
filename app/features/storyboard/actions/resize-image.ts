@@ -6,12 +6,14 @@ import sharp from "sharp";
 import { v4 as uuidv4 } from "uuid";
 import logger from "@/app/logger";
 import { createCollageSchema, resizeImageSchema } from "@/app/schemas";
+import { requireAuth } from "@/lib/api/auth-utils";
 
 export async function resizeImage(
     base64Image: string,
     width: number = 1920,
     height: number = 1080,
 ): Promise<string> {
+    await requireAuth();
     const parseResult = resizeImageSchema.safeParse({
         base64Image,
         width,
@@ -72,6 +74,7 @@ export async function createCollage(
     props: Array<{ name: string; description: string; imageGcsUri?: string }>,
     aspectRatio: string,
 ): Promise<string> {
+    await requireAuth();
     const parseResult = createCollageSchema.safeParse({
         characters,
         props,

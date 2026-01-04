@@ -4,8 +4,10 @@ import { uploadImage, getSignedUrlFromGCS } from "@/lib/storage/storage";
 import { v4 as uuidv4 } from "uuid";
 import { uploadStyleImageToGCSSchema } from "@/app/schemas";
 import { z } from "zod";
+import { requireAuth } from "@/lib/api/auth-utils";
 
 export async function uploadStyleImageToGCS(base64: string, filename: string) {
+    await requireAuth();
     const parseResult = uploadStyleImageToGCSSchema.safeParse({
         base64,
         filename,
@@ -19,6 +21,7 @@ export async function uploadStyleImageToGCS(base64: string, filename: string) {
 }
 
 export async function getSignedUrlAction(gcsUri: string) {
+    await requireAuth();
     const parseResult = z.string().safeParse(gcsUri);
     if (!parseResult.success) {
         throw new Error(`Invalid GCS URI: ${parseResult.error.message}`);

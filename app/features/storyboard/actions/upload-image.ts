@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import { saveImageToPublicSchema } from "@/app/schemas";
+import { requireAuth } from "@/lib/api/auth-utils";
 
 import logger from "@/app/logger";
 
@@ -11,6 +12,7 @@ export async function saveImageToPublic(
     base64String: string,
     originalFilename: string,
 ): Promise<string> {
+    await requireAuth();
     try {
         const parseResult = saveImageToPublicSchema.safeParse({
             base64String,

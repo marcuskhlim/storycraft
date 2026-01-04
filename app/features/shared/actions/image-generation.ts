@@ -7,6 +7,7 @@ import { Scenario, ImagePrompt, Entity } from "@/app/types";
 import logger from "@/app/logger";
 import { createCollage } from "@/app/features/storyboard/actions/resize-image";
 import { DEFAULT_SETTINGS } from "@/lib/ai-config";
+import { requireAuth } from "@/lib/api/auth-utils";
 
 export interface GenerateImageOptions {
     scenario: Scenario;
@@ -40,6 +41,7 @@ export async function generateImageForScenario({
     aspectRatio,
     modelName = DEFAULT_SETTINGS.imageModel,
 }: GenerateImageOptions) {
+    await requireAuth();
     try {
         let targetAspectRatio = aspectRatio || scenario.aspectRatio || "16:9";
 

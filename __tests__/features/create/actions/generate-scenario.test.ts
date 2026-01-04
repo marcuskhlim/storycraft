@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { generateScenario } from "@/app/features/create/actions/generate-scenario";
 
+vi.mock("@/auth", () => ({
+    auth: vi.fn().mockResolvedValue({ user: { id: "test-user" } }),
+}));
+
 // Mock the AI APIs
 vi.mock("@/lib/api/gemini", () => ({
     generateContent: vi.fn().mockResolvedValue(

@@ -10,6 +10,7 @@ import { generateStoryboardSchema } from "@/app/schemas";
 
 import { DEFAULT_SETTINGS } from "@/lib/ai-config";
 import pLimit from "p-limit";
+import { requireAuth } from "@/lib/api/auth-utils";
 
 export async function generateStoryboard(
     scenario: Scenario,
@@ -19,6 +20,7 @@ export async function generateStoryboard(
     modelName: string = DEFAULT_SETTINGS.llmModel,
     thinkingBudget: number = DEFAULT_SETTINGS.thinkingBudget,
 ): Promise<Scenario> {
+    await requireAuth();
     logger.debug("Create a storyboard");
     logger.debug(scenario.scenario);
     try {

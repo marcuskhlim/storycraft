@@ -4,6 +4,7 @@ import { exportMovie as exportMovieFFMPEG } from "@/lib/utils/ffmpeg";
 import { TimelineLayer } from "@/app/types";
 import logger from "@/app/logger";
 import { exportMovieSchema } from "@/app/schemas";
+import { requireAuth } from "@/lib/api/auth-utils";
 
 export async function exportMovieAction(
     layers: Array<TimelineLayer>,
@@ -11,6 +12,7 @@ export async function exportMovieAction(
     | { success: true; videoUrl: string; vttUrl?: string }
     | { success: false; error: string }
 > {
+    await requireAuth();
     try {
         const parseResult = exportMovieSchema.safeParse({ layers });
         if (!parseResult.success) {

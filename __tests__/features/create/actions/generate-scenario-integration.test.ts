@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { generateScenario } from "@/app/features/create/actions/generate-scenario";
 import { generateImageForScenario } from "@/app/features/shared/actions/image-generation";
 
+vi.mock("@/auth", () => ({
+    auth: vi.fn().mockResolvedValue({ user: { id: "test-user" } }),
+}));
+
 vi.mock("@/lib/api/gemini", () => ({
     generateContent: vi.fn().mockResolvedValue(
         JSON.stringify({

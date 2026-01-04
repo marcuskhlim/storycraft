@@ -3,6 +3,10 @@ import { generateStoryboard } from "@/app/features/scenario/actions/generate-sce
 import { generateImageForScenario } from "@/app/features/shared/actions/image-generation";
 import { Scenario } from "@/app/types";
 
+vi.mock("@/auth", () => ({
+    auth: vi.fn().mockResolvedValue({ user: { id: "test-user" } }),
+}));
+
 vi.mock("@/lib/api/gemini", () => ({
     generateContent: vi.fn().mockResolvedValue(
         JSON.stringify({

@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach, Mock } from "vitest";
 import { generateImageForScenario } from "@/app/features/shared/actions/image-generation";
 import { Scenario, ImagePrompt } from "@/app/types";
 
+vi.mock("@/auth", () => ({
+    auth: vi.fn().mockResolvedValue({ user: { id: "test-user" } }),
+}));
+
 vi.mock("@/lib/api/gemini", () => ({
     generateImage: vi.fn(),
     createPartFromText: (text: string) => ({ text }),

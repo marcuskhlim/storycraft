@@ -10,6 +10,7 @@ import { generateScenarioSchema } from "@/app/schemas";
 
 import { DEFAULT_SETTINGS } from "@/lib/ai-config";
 import pLimit from "p-limit";
+import { requireAuth } from "@/lib/api/auth-utils";
 
 export async function generateScenario(
     name: string,
@@ -23,6 +24,7 @@ export async function generateScenario(
     thinkingBudget: number = DEFAULT_SETTINGS.thinkingBudget,
     styleImageUri?: string,
 ): Promise<Scenario> {
+    await requireAuth();
     try {
         const parseResult = generateScenarioSchema.safeParse({
             name,

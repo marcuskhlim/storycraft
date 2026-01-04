@@ -4,6 +4,7 @@ import { tts } from "@/lib/api/tts";
 import { Language } from "@/app/types";
 import logger from "@/app/logger";
 import { generateVoiceoverSchema } from "@/app/schemas";
+import { requireAuth } from "@/lib/api/auth-utils";
 
 export async function generateVoiceover(
     scenes: Array<{
@@ -12,6 +13,7 @@ export async function generateVoiceover(
     language: Language,
     voiceName?: string,
 ): Promise<string[]> {
+    await requireAuth();
     const parseResult = generateVoiceoverSchema.safeParse({
         scenes,
         language,

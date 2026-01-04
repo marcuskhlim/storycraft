@@ -4,6 +4,10 @@ import { SceneCard } from "@/app/features/storyboard/components/scene-card";
 import { Scenario } from "@/app/types";
 import { vi, describe, it, expect } from "vitest";
 
+vi.mock("@/auth", () => ({
+    auth: vi.fn().mockResolvedValue({ user: { id: "test-user" } }),
+}));
+
 vi.mock("./edit-scene-modal", () => ({
     EditSceneModal: () => <div data-testid="edit-modal" />,
 }));
