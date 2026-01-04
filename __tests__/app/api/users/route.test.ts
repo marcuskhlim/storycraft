@@ -1,4 +1,5 @@
 import { GET, POST } from "@/app/api/users/route";
+import { NextRequest } from "next/server";
 import { auth } from "@/auth";
 import { firestore } from "@/lib/storage/firestore";
 import { vi, describe, it, expect, beforeEach, Mock } from "vitest";
@@ -33,7 +34,8 @@ describe("Users API Route", () => {
     describe("GET", () => {
         it("should return 401 if unauthorized", async () => {
             mockedAuth.mockResolvedValue(null);
-            const res = await GET();
+            const req = new NextRequest("http://localhost/api/users");
+            const res = await GET(req);
             expect(res.status).toBe(401);
         });
 
@@ -52,7 +54,8 @@ describe("Users API Route", () => {
                 doc: vi.fn().mockReturnValue({ get: mockGet }),
             });
 
-            const res = await GET();
+            const req = new NextRequest("http://localhost/api/users");
+            const res = await GET(req);
             const data = await res.json();
 
             expect(res.status).toBe(200);
@@ -71,7 +74,8 @@ describe("Users API Route", () => {
                 doc: vi.fn().mockReturnValue({ get: mockGet }),
             });
 
-            const res = await GET();
+            const req = new NextRequest("http://localhost/api/users");
+            const res = await GET(req);
             expect(res.status).toBe(404);
         });
     });
@@ -102,7 +106,10 @@ describe("Users API Route", () => {
                 },
             );
 
-            const res = await POST();
+            const req = new NextRequest("http://localhost/api/users", {
+                method: "POST",
+            });
+            const res = await POST(req);
             const data = await res.json();
 
             expect(res.status).toBe(200);

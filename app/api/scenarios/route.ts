@@ -1,40 +1,32 @@
-import { NextRequest } from "next/server";
 import { firestore } from "@/lib/storage/firestore";
-import { auth } from "@/auth";
 import { Scene } from "@/app/types";
 import logger from "@/app/logger";
 import { scenarioApiPostSchema } from "@/app/schemas";
 import { z } from "zod";
 import {
     successResponse,
-    unauthorizedResponse,
     forbiddenResponse,
     errorResponse,
     notFoundResponse,
-    validationErrorResponse,
 } from "@/lib/api/response";
+import { withAuth } from "@/lib/api/with-auth";
+import { validateInput } from "@/lib/utils/validation";
 
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request, { userId }) => {
     try {
-        const session = await auth();
-        if (!session?.user?.id) {
-            return unauthorizedResponse();
-        }
-
-        const userId = session.user.id;
         const body = await request.json();
 
         // Validate request body
-        const parseResult = scenarioApiPostSchema.safeParse(body);
-        if (!parseResult.success) {
-            logger.error(
-                `Scenario validation failed: ${JSON.stringify(parseResult.error.format())}`,
-            );
-            return validationErrorResponse(parseResult.error.format());
+        const validation = validateInput(
+            body,
+            scenarioApiPostSchema,
+            "Scenario validation failed",
+        );
+        if (!validation.success) {
+            return validation.errorResponse;
         }
-        // ... (rest of the code)
 
-        const { scenario, scenarioId } = parseResult.data;
+        const { scenario, scenarioId } = validation.data;
 
         // Generate a unique ID if not provided
         const id = scenarioId || firestore.collection("scenarios").doc().id;
@@ -125,30 +117,25 @@ export async function POST(request: NextRequest) {
         logger.error(`Error saving scenario: ${error}`);
         return errorResponse("Failed to save scenario", "SAVE_ERROR");
     }
-}
+});
 
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request, { userId }) => {
     try {
-        const session = await auth();
-        if (!session?.user?.id) {
-            return unauthorizedResponse();
-        }
-
-        const userId = session.user.id;
         const { searchParams } = new URL(request.url);
         const scenarioIdParam = searchParams.get("id");
 
         // Validate scenarioId if provided
         let scenarioId: string | null = null;
         if (scenarioIdParam) {
-            const idResult = z.string().safeParse(scenarioIdParam);
-            if (!idResult.success) {
-                return validationErrorResponse(
-                    idResult.error.format(),
-                    "Invalid scenario ID",
-                );
+            const validation = validateInput(
+                scenarioIdParam,
+                z.string(),
+                "Invalid scenario ID",
+            );
+            if (!validation.success) {
+                return validation.errorResponse;
             }
-            scenarioId = idResult.data;
+            scenarioId = validation.data;
         }
 
         if (scenarioId) {
@@ -194,16 +181,10 @@ export async function GET(request: NextRequest) {
         logger.error(`Error fetching scenarios: ${error}`);
         return errorResponse("Failed to fetch scenarios", "FETCH_ERROR");
     }
-}
+});
 
-export async function DELETE(request: NextRequest) {
+export const DELETE = withAuth(async (request, { userId }) => {
     try {
-        const session = await auth();
-        if (!session?.user?.id) {
-            return unauthorizedResponse();
-        }
-
-        const userId = session.user.id;
         const { searchParams } = new URL(request.url);
         const scenarioIdParam = searchParams.get("id");
 
@@ -215,14 +196,15 @@ export async function DELETE(request: NextRequest) {
             );
         }
 
-        const idResult = z.string().safeParse(scenarioIdParam);
-        if (!idResult.success) {
-            return validationErrorResponse(
-                idResult.error.format(),
-                "Invalid scenario ID",
-            );
+        const validation = validateInput(
+            scenarioIdParam,
+            z.string(),
+            "Invalid scenario ID",
+        );
+        if (!validation.success) {
+            return validation.errorResponse;
         }
-        const scenarioId = idResult.data;
+        const scenarioId = validation.data;
 
         // Get the scenario reference
         const scenarioRef = firestore.collection("scenarios").doc(scenarioId);
@@ -269,4 +251,4 @@ export async function DELETE(request: NextRequest) {
         logger.error(`Error deleting scenario: ${error}`);
         return errorResponse("Failed to delete scenario", "DELETE_ERROR");
     }
-}
+});

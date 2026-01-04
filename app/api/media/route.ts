@@ -1,34 +1,29 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { NextResponse } from "next/server";
 import { getDynamicImageUrlSchema } from "@/app/schemas";
 import { getDynamicImageUrl } from "@/app/features/shared/actions/upload-to-gcs";
 import logger from "@/app/logger";
+import { withAuth } from "@/lib/api/with-auth";
+import { validateInput } from "@/lib/utils/validation";
+import { errorResponse } from "@/lib/api/response";
 
-export async function GET(req: NextRequest) {
-    const session = await auth();
-    if (!session) {
-        return new NextResponse("Unauthorized", { status: 401 });
-    }
-
+export const GET = withAuth(async (req) => {
     const { searchParams } = new URL(req.url);
     const gcsUri = searchParams.get("uri");
     const download = searchParams.get("download") === "true";
 
     if (!gcsUri) {
-        return NextResponse.json({ error: "Missing uri" }, { status: 400 });
+        return errorResponse("Missing uri", "VALIDATION_ERROR", 400);
     }
 
     // Validate using existing schema
-    const parseResult = getDynamicImageUrlSchema.safeParse({
-        gcsUri,
-        download,
-    });
+    const validation = validateInput(
+        { gcsUri, download },
+        getDynamicImageUrlSchema,
+        "Invalid URI format",
+    );
 
-    if (!parseResult.success) {
-        return NextResponse.json(
-            { error: "Invalid URI format", details: parseResult.error },
-            { status: 400 },
-        );
+    if (!validation.success) {
+        return validation.errorResponse;
     }
 
     try {
@@ -41,9 +36,10 @@ export async function GET(req: NextRequest) {
         });
     } catch (error) {
         logger.error("Error in URL API:", error);
-        return NextResponse.json(
-            { error: "Internal Server Error" },
-            { status: 500 },
+        return errorResponse(
+            "Internal Server Error",
+            "INTERNAL_SERVER_ERROR",
+            500,
         );
     }
-}
+});

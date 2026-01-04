@@ -1,35 +1,27 @@
-import { NextRequest } from "next/server";
 import { firestore } from "@/lib/storage/firestore";
-import { auth } from "@/auth";
 import { timelineApiPostSchema } from "@/app/schemas";
 import { z } from "zod";
 import logger from "@/app/logger";
 import {
     successResponse,
-    unauthorizedResponse,
     forbiddenResponse,
     errorResponse,
-    validationErrorResponse,
 } from "@/lib/api/response";
+import { withAuth } from "@/lib/api/with-auth";
+import { validateInput } from "@/lib/utils/validation";
 
 // Save or update timeline state
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request, { userId }) => {
     try {
-        const session = await auth();
-        if (!session?.user?.id) {
-            return unauthorizedResponse();
-        }
-
-        const userId = session.user.id;
         const body = await request.json();
 
         // Validate request body
-        const parseResult = timelineApiPostSchema.safeParse(body);
-        if (!parseResult.success) {
-            return validationErrorResponse(parseResult.error.format());
+        const validation = validateInput(body, timelineApiPostSchema);
+        if (!validation.success) {
+            return validation.errorResponse;
         }
 
-        const { scenarioId, layers } = parseResult.data;
+        const { scenarioId, layers } = validation.data;
 
         // Use scenarioId as the timeline document ID (1:1 relationship)
         const timelineRef = firestore.collection("timelines").doc(scenarioId);
@@ -68,16 +60,11 @@ export async function POST(request: NextRequest) {
         logger.error(`Error saving timeline: ${error}`);
         return errorResponse("Failed to save timeline", "SAVE_TIMELINE_ERROR");
     }
-}
+});
 
 // Load timeline state
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request, { userId }) => {
     try {
-        const session = await auth();
-        if (!session?.user?.id) {
-            return unauthorizedResponse();
-        }
-
         const { searchParams } = new URL(request.url);
         const scenarioIdParam = searchParams.get("scenarioId");
 
@@ -89,14 +76,15 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        const idResult = z.string().min(1).safeParse(scenarioIdParam);
-        if (!idResult.success) {
-            return validationErrorResponse(
-                idResult.error.format(),
-                "Invalid scenarioId",
-            );
+        const validation = validateInput(
+            scenarioIdParam,
+            z.string().min(1),
+            "Invalid scenarioId",
+        );
+        if (!validation.success) {
+            return validation.errorResponse;
         }
-        const scenarioId = idResult.data;
+        const scenarioId = validation.data;
 
         const timelineDoc = await firestore
             .collection("timelines")
@@ -109,7 +97,7 @@ export async function GET(request: NextRequest) {
 
         const data = timelineDoc.data();
 
-        if (data?.userId !== session.user.id) {
+        if (data?.userId !== userId) {
             // Treat as not found/null for security
             return successResponse({ timeline: null });
         }
@@ -119,16 +107,11 @@ export async function GET(request: NextRequest) {
         logger.error(`Error loading timeline: ${error}`);
         return errorResponse("Failed to load timeline", "LOAD_TIMELINE_ERROR");
     }
-}
+});
 
 // Delete timeline (reset to scenario defaults)
-export async function DELETE(request: NextRequest) {
+export const DELETE = withAuth(async (request, { userId }) => {
     try {
-        const session = await auth();
-        if (!session?.user?.id) {
-            return unauthorizedResponse();
-        }
-
         const { searchParams } = new URL(request.url);
         const scenarioIdParam = searchParams.get("scenarioId");
 
@@ -140,16 +123,16 @@ export async function DELETE(request: NextRequest) {
             );
         }
 
-        const idResult = z.string().min(1).safeParse(scenarioIdParam);
-        if (!idResult.success) {
-            return validationErrorResponse(
-                idResult.error.format(),
-                "Invalid scenarioId",
-            );
+        const validation = validateInput(
+            scenarioIdParam,
+            z.string().min(1),
+            "Invalid scenarioId",
+        );
+        if (!validation.success) {
+            return validation.errorResponse;
         }
-        const scenarioId = idResult.data;
+        const scenarioId = validation.data;
 
-        const userId = session.user.id;
         const timelineRef = firestore.collection("timelines").doc(scenarioId);
 
         await firestore.runTransaction(async (transaction) => {
@@ -178,4 +161,4 @@ export async function DELETE(request: NextRequest) {
             "DELETE_TIMELINE_ERROR",
         );
     }
-}
+});

@@ -1,7 +1,6 @@
 import { Scene, Scenario } from "@/app/types";
 import { videoPromptToString } from "@/lib/utils/prompt-utils";
 import { generateSceneVideo, waitForOperation } from "@/lib/api/veo";
-import { auth } from "@/auth";
 import pLimit from "p-limit";
 
 import logger from "@/app/logger";
@@ -10,12 +9,12 @@ import { DEFAULT_SETTINGS } from "@/lib/ai-config";
 import { videoApiPostSchema } from "@/app/schemas";
 import {
     successResponse,
-    unauthorizedResponse,
     forbiddenResponse,
     errorResponse,
-    validationErrorResponse,
 } from "@/lib/api/response";
 import { verifyScenarioOwnership } from "@/lib/api/ownership";
+import { withAuth } from "@/lib/api/with-auth";
+import { validateInput } from "@/lib/utils/validation";
 
 const USE_COSMO = process.env.USE_COSMO === "true";
 const GCS_VIDEOS_STORAGE_URI = process.env.GCS_VIDEOS_STORAGE_URI;
@@ -42,20 +41,14 @@ const placeholderVideoUrls916 = [
  * @returns A Promise that resolves to a Response object. The response will be a JSON object
  *          with either a success flag and the generated video URLs or an error message.
  */
-export async function POST(req: Request): Promise<Response> {
-    const session = await auth();
-    if (!session?.user?.id) {
-        return unauthorizedResponse();
-    }
-    const userId = session.user.id;
-
+export const POST = withAuth(async (req, { userId }) => {
     try {
         const body = await req.json();
 
         // Validate request body
-        const parseResult = videoApiPostSchema.safeParse(body);
-        if (!parseResult.success) {
-            return validationErrorResponse(parseResult.error.format());
+        const validation = validateInput(body, videoApiPostSchema);
+        if (!validation.success) {
+            return validation.errorResponse;
         }
 
         const {
@@ -65,7 +58,7 @@ export async function POST(req: Request): Promise<Response> {
             model,
             generateAudio,
             durationSeconds,
-        } = parseResult.data;
+        } = validation.data;
 
         // Verify ownership if scenario has an ID
         if (scenario.id) {
@@ -177,4 +170,4 @@ export async function POST(req: Request): Promise<Response> {
             "VIDEO_GENERATION_ERROR",
         );
     }
-}
+});

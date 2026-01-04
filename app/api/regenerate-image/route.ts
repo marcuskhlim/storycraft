@@ -1,7 +1,5 @@
-import { NextRequest } from "next/server";
 import { generateImageForScenario } from "@/app/features/shared/actions/image-generation";
 import logger from "@/app/logger";
-import { auth } from "@/auth";
 import { Scenario } from "@/app/types";
 
 import { DEFAULT_SETTINGS } from "@/lib/ai-config";
@@ -11,34 +9,28 @@ import {
 } from "@/app/schemas";
 import {
     successResponse,
-    unauthorizedResponse,
     forbiddenResponse,
     errorResponse,
-    validationErrorResponse,
 } from "@/lib/api/response";
 import { verifyScenarioOwnership } from "@/lib/api/ownership";
+import { withAuth } from "@/lib/api/with-auth";
+import { validateInput } from "@/lib/utils/validation";
 
-export async function POST(request: NextRequest) {
-    const session = await auth();
-    if (!session?.user?.id) {
-        return unauthorizedResponse();
-    }
-    const userId = session.user.id;
-
+export const POST = withAuth(async (request, { userId }) => {
     try {
         const body = await request.json();
 
         // Validate request body
-        const parseResult = regenerateImageApiPostSchema.safeParse(body);
-        if (!parseResult.success) {
-            return validationErrorResponse(parseResult.error.format());
+        const validation = validateInput(body, regenerateImageApiPostSchema);
+        if (!validation.success) {
+            return validation.errorResponse;
         }
 
         const {
             prompt,
             scenario,
             modelName = DEFAULT_SETTINGS.imageModel,
-        } = parseResult.data;
+        } = validation.data;
 
         // Verify ownership if scenario has an ID
         if (scenario.id) {
@@ -64,25 +56,20 @@ export async function POST(request: NextRequest) {
             error instanceof Error ? error.message : "Unknown error",
         );
     }
-}
+});
 
-export async function PUT(request: NextRequest) {
-    const session = await auth();
-    if (!session?.user?.id) {
-        return unauthorizedResponse();
-    }
-
+export const PUT = withAuth(async (request) => {
     try {
         const body = await request.json();
 
         // Validate request body
         // Note: regenerateImageApiPutSchema only has 'prompt'
-        const parseResult = regenerateImageApiPutSchema.safeParse(body);
-        if (!parseResult.success) {
-            return validationErrorResponse(parseResult.error.format());
+        const validation = validateInput(body, regenerateImageApiPutSchema);
+        if (!validation.success) {
+            return validation.errorResponse;
         }
 
-        const { prompt } = parseResult.data;
+        const { prompt } = validation.data;
 
         // Note: PUT currently doesn't receive a scenario ID, so it's technically
         // not checking ownership of any specific scenario.
@@ -119,4 +106,4 @@ export async function PUT(request: NextRequest) {
             error instanceof Error ? error.message : "Unknown error",
         );
     }
-}
+});

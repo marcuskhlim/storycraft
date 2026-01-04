@@ -1,22 +1,23 @@
 import { firestore } from "@/lib/storage/firestore";
-import { auth } from "@/auth";
 import type { FirestoreUser } from "@/types/firestore";
 import logger from "@/app/logger";
 import {
     successResponse,
-    unauthorizedResponse,
     errorResponse,
     notFoundResponse,
 } from "@/lib/api/response";
+import { withAuth } from "@/lib/api/with-auth";
 
-export async function POST() {
+export const POST = withAuth(async (request, { session, userId }) => {
     try {
-        const session = await auth();
-        if (!session?.user?.id || !session?.user?.email) {
-            return unauthorizedResponse();
+        if (!session.user?.email) {
+            return errorResponse(
+                "User email is required",
+                "VALIDATION_ERROR",
+                400,
+            );
         }
 
-        const userId = session.user.id;
         const userEmail = session.user.email;
         const displayName = session.user.name || userEmail.split("@")[0];
         const photoURL = session.user.image || "";
@@ -64,16 +65,10 @@ export async function POST() {
         logger.error(`Error managing user: ${error}`);
         return errorResponse("Failed to manage user", "USER_MANAGEMENT_ERROR");
     }
-}
+});
 
-export async function GET() {
+export const GET = withAuth(async (request, { userId }) => {
     try {
-        const session = await auth();
-        if (!session?.user?.id) {
-            return unauthorizedResponse();
-        }
-
-        const userId = session.user.id;
         const userRef = firestore.collection("users").doc(userId);
         const userDoc = await userRef.get();
 
@@ -89,4 +84,4 @@ export async function GET() {
         logger.error(`Error fetching user: ${error}`);
         return errorResponse("Failed to fetch user", "FETCH_USER_ERROR");
     }
-}
+});
