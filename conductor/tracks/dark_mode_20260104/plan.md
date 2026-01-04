@@ -9,7 +9,7 @@ This plan outlines the implementation of dark mode support for StoryCraft, inclu
 - [x] Task: Define dark theme color tokens 6316233
     - [x] Sub-task: Define CSS variables for dark mode in `globals.css`
     - [x] Sub-task: Map Radix UI/Tailwind colors to dark mode variants
-- [ ] Task: Conductor - User Manual Verification 'Foundation & Theme Configuration' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Foundation & Theme Configuration' (Protocol in workflow.md) [checkpoint: 1ef82eb]
 
 ## Phase 2: Theme Management Logic
 - [ ] Task: Create Theme Context and Provider
