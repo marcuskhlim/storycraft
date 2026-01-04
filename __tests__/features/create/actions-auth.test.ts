@@ -26,7 +26,10 @@ describe("Create Actions Authentication", () => {
             vi.mocked(auth).mockResolvedValue(null as any);
 
             await expect(
-                generateScenario("name", "pitch", 1, "style", "16:9", 60, { name: "English", code: "en" })
+                generateScenario("name", "pitch", 1, "style", "16:9", 60, {
+                    name: "English",
+                    code: "en",
+                }),
             ).rejects.toThrow("Unauthorized");
         });
     });

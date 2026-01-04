@@ -26,7 +26,9 @@ describe("Editor Actions Authentication", () => {
 
     it("conversationalEdit should throw Unauthorized when user is not authenticated", async () => {
         vi.mocked(auth).mockResolvedValue(null as any);
-        await expect(conversationalEdit({} as any)).rejects.toThrow("Unauthorized");
+        await expect(conversationalEdit({} as any)).rejects.toThrow(
+            "Unauthorized",
+        );
     });
 
     it("generateMusic should throw Unauthorized when user is not authenticated", async () => {
@@ -41,6 +43,8 @@ describe("Editor Actions Authentication", () => {
 
     it("generateVoiceover should throw Unauthorized when user is not authenticated", async () => {
         vi.mocked(auth).mockResolvedValue(null as any);
-        await expect(generateVoiceover([], {} as any)).rejects.toThrow("Unauthorized");
+        await expect(generateVoiceover([], {} as any)).rejects.toThrow(
+            "Unauthorized",
+        );
     });
 });

@@ -12,7 +12,9 @@ describe("requireAuth", () => {
     });
 
     it("should return session when user is authenticated", async () => {
-        const mockSession = { user: { id: "user-123", email: "test@example.com" } };
+        const mockSession = {
+            user: { id: "user-123", email: "test@example.com" },
+        };
         vi.mocked(auth).mockResolvedValue(mockSession as any);
 
         const session = await requireAuth();

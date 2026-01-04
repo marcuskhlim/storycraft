@@ -27,7 +27,12 @@ describe("Scenario Actions Authentication", () => {
             vi.mocked(auth).mockResolvedValue(null as any);
 
             await expect(
-                generateStoryboard({ scenario: "test", scenes: [] } as any, 1, "style", { name: "English", code: "en" })
+                generateStoryboard(
+                    { scenario: "test", scenes: [] } as any,
+                    1,
+                    "style",
+                    { name: "English", code: "en" },
+                ),
             ).rejects.toThrow("Unauthorized");
         });
     });
@@ -37,7 +42,7 @@ describe("Scenario Actions Authentication", () => {
             vi.mocked(auth).mockResolvedValue(null as any);
 
             await expect(
-                deleteCharacterFromScenario("scenario", "char", "desc")
+                deleteCharacterFromScenario("scenario", "char", "desc"),
             ).rejects.toThrow("Unauthorized");
         });
     });

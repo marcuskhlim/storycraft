@@ -46,24 +46,24 @@ export async function POST(req: Request): Promise<Response> {
         return unauthorizedResponse();
     }
 
-    const body = await req.json();
-
-    // Validate request body
-    const parseResult = videoApiPostSchema.safeParse(body);
-    if (!parseResult.success) {
-        return validationErrorResponse(parseResult.error.format());
-    }
-
-    const {
-        scenes,
-        scenario,
-        aspectRatio,
-        model,
-        generateAudio,
-        durationSeconds,
-    } = parseResult.data;
-
     try {
+        const body = await req.json();
+
+        // Validate request body
+        const parseResult = videoApiPostSchema.safeParse(body);
+        if (!parseResult.success) {
+            return validationErrorResponse(parseResult.error.format());
+        }
+
+        const {
+            scenes,
+            scenario,
+            aspectRatio,
+            model,
+            generateAudio,
+            durationSeconds,
+        } = parseResult.data;
+
         logger.debug("Generating videos in parallel...");
         logger.debug(`model: ${model}`);
         logger.debug(`generateAudio: ${generateAudio}`);

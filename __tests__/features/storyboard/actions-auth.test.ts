@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { resizeImage, createCollage } from "@/app/features/storyboard/actions/resize-image";
+import {
+    resizeImage,
+    createCollage,
+} from "@/app/features/storyboard/actions/resize-image";
 import { saveImageToPublic } from "@/app/features/storyboard/actions/upload-image";
 import { auth } from "@/auth";
 
@@ -27,7 +30,7 @@ describe("Storyboard Actions Authentication", () => {
             vi.mocked(auth).mockResolvedValue(null as any);
 
             await expect(
-                resizeImage("data:image/png;base64,test", 100, 100)
+                resizeImage("data:image/png;base64,test", 100, 100),
             ).rejects.toThrow("Unauthorized");
         });
     });
@@ -36,9 +39,9 @@ describe("Storyboard Actions Authentication", () => {
         it("should throw Unauthorized when user is not authenticated", async () => {
             vi.mocked(auth).mockResolvedValue(null as any);
 
-            await expect(
-                createCollage([], [], "16:9")
-            ).rejects.toThrow("Unauthorized");
+            await expect(createCollage([], [], "16:9")).rejects.toThrow(
+                "Unauthorized",
+            );
         });
     });
 
@@ -47,7 +50,7 @@ describe("Storyboard Actions Authentication", () => {
             vi.mocked(auth).mockResolvedValue(null as any);
 
             await expect(
-                saveImageToPublic("data:image/png;base64,test", "test.png")
+                saveImageToPublic("data:image/png;base64,test", "test.png"),
             ).rejects.toThrow("Unauthorized");
         });
     });
