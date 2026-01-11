@@ -154,7 +154,7 @@ export default function Home() {
                                 height={32}
                                 className="rounded-lg"
                             />
-                            StoryCraft
+                            VidFreak
                         </div>
                     </div>
 

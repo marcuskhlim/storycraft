@@ -32,7 +32,8 @@ export function VideoPlayer({
             }
             try {
                 const response = await fetch(
-                    `/api/media?uri=${encodeURIComponent(videoGcsUri)}`,
+                    //`/api/media?uri=${encodeURIComponent(videoGcsUri)}`,
+                    `/api/media?uri=${videoGcsUri}`,
                 );
                 if (!response.ok) {
                     throw new Error(

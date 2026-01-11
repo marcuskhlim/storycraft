@@ -25,20 +25,23 @@ export const TopNav = memo(function TopNav() {
                         {!isFirst && (
                             <div className="mx-0.5 h-5 w-[1px] bg-border/40" />
                         )}
-                        <button
-                            disabled={step.disabled}
-                            onClick={() => onTabChange(step.id)}
-                            className={cn(
-                                "group relative mx-0.5 flex items-center gap-2 rounded-full px-3 py-1 text-[13px] font-semibold transition-all duration-300",
-                                isActive
-                                    ? "bg-blue-50 text-blue-600 shadow-[0_0_0_1px_rgba(59,130,246,0.1)]"
-                                    : isCompleted
-                                      ? "text-slate-900"
-                                      : "text-slate-500 hover:bg-muted/50 hover:text-slate-700",
-                                step.disabled &&
-                                    "cursor-not-allowed opacity-40 hover:bg-transparent",
-                            )}
-                        >
+<button
+  disabled={step.disabled}
+  onClick={() => onTabChange(step.id)}
+  className={cn(
+    "group relative mx-0.5 flex items-center gap-2 rounded-full px-3 py-1 text-[13px] font-semibold transition-all duration-300",
+
+    isActive
+      ? "bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400 shadow-[0_0_0_1px_rgba(59,130,246,0.1)]"
+      : isCompleted
+        ? "text-slate-900 dark:text-slate-100"
+        : "text-slate-500 dark:text-slate-400 hover:bg-muted/50 hover:text-slate-700 dark:hover:text-slate-200",
+
+    step.disabled &&
+      "cursor-not-allowed opacity-40 hover:bg-transparent",
+  )}
+>
+
                             <div
                                 className={cn(
                                     "flex h-5 w-5 items-center justify-center rounded-full border-2 text-[10px] font-bold transition-all duration-300",

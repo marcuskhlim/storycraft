@@ -74,3 +74,19 @@ StoryCraft can be deployed to [Google Cloud Run](https://cloud.google.com/run/do
 4. Deploy using the command: `gcloud run deploy --source .`
 
 The application will automatically scale based on demand and only incur costs when actively processing video generation requests.
+
+## changes 20251229
+- .keys folder to include the json file containing google cloud service account credentials
+- prisma.ts in lib folder was missing
+- prisma.config.ts was missing
+- npx prisma migrate dev --name init will also run npx prisma generate
+- to properly set password for the postgres db, need to run psql first, then run 
+ALTER USER postgres WITH PASSWORD 'YourNewPassword';
+- sign-in/page.tsx still had the old google signin
+
+## changes 20260105
+- the most up to date repo now has sidebar.
+- the prisma.ts is now moved to lib/utils
+- there is an env.ts in lib/utils, the GOOGLE AUTH LOGIN env variables to
+be commented out
+- in shared/components/layout/top-nav.ts, the button is now dark aware

@@ -385,7 +385,7 @@ export const Sidebar = memo(function Sidebar() {
                             : "h-auto w-full text-center opacity-100 transition-all duration-300",
                     )}
                 >
-                    Made with ❤️ by @mblanc
+                    Made with ❤️ by @AliG
                 </p>
             </div>
         </aside>

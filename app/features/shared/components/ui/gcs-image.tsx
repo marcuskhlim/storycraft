@@ -24,8 +24,10 @@ export const GcsImage = memo(function GcsImage({
     priority = false,
 }: GcsImageProps) {
     const { data: imageData, isLoading } = useQuery({
+        
         queryKey: ["image", gcsUri],
         queryFn: async () => {
+            clientLogger.info("gcsUri ",gcsUri);
             if (!gcsUri) {
                 return null;
             }
@@ -35,7 +37,8 @@ export const GcsImage = memo(function GcsImage({
             }
             try {
                 const response = await fetch(
-                    `/api/media?uri=${encodeURIComponent(gcsUri)}`,
+                    //`/api/media?uri=${encodeURIComponent(gcsUri)}`,
+                    `/api/media?uri=${gcsUri}`,
                 );
                 if (!response.ok) {
                     throw new Error(

@@ -1,7 +1,10 @@
-import NextAuth from "next-auth";
-import type { NextAuthConfig } from "next-auth";
-import Google from "next-auth/providers/google";
-import { env } from "@/lib/utils/env";
+import NextAuth from "next-auth"
+import type { NextAuthConfig } from "next-auth"
+import Google from "next-auth/providers/google"
+import Credentials from "next-auth/providers/credentials"
+import { PrismaAdapter } from "@auth/prisma-adapter"
+import { prisma } from "@/lib/utils/prisma"
+import bcrypt from "bcryptjs"
 
 export const authConfig = {
     pages: {
@@ -9,21 +12,21 @@ export const authConfig = {
     },
     callbacks: {
         authorized({ auth, request: { nextUrl } }) {
-            const isLoggedIn = !!auth?.user;
-            const isOnSignIn = nextUrl.pathname.startsWith("/sign-in");
+            const isLoggedIn = !!auth?.user
+            const isOnSignIn = nextUrl.pathname.startsWith("/sign-in")
 
             if (isLoggedIn) {
                 if (isOnSignIn) {
-                    return Response.redirect(new URL("/", nextUrl));
+                    return Response.redirect(new URL("/", nextUrl))
                 }
-                return true;
+                return true
             }
 
             if (isOnSignIn) {
-                return true;
+                return true
             }
 
-            return false;
+            return false
         },
         // Add user info to the session token
         async jwt({ token, profile, account }) {
@@ -32,16 +35,16 @@ export const authConfig = {
                 // The exact structure might depend on the provider (Google usually has picture)
                 const googleProfile = profile as { picture?: string };
                 if (googleProfile.picture) {
-                    token.picture = googleProfile.picture;
+                    token.picture = googleProfile.picture
                 }
             }
-
+            
             // Store Google's stable user ID in the token
-            if (account?.provider === "google" && account.providerAccountId) {
-                token.googleUserId = account.providerAccountId;
+            if (account?.provider === 'google' && account.providerAccountId) {
+                token.googleUserId = account.providerAccountId
             }
-
-            return token;
+            
+            return token
         },
         // Add user info to the session object
         async session({ session, token }) {
@@ -55,22 +58,55 @@ export const authConfig = {
                 // Fallback to NextAuth's ID if Google ID is not available
                 session.user.id = token.sub;
             }
-            return session;
+            return session
         },
     },
     providers: [
+
+   Credentials({
+      name: "Email and Password",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        const { email, password } = (credentials ?? {}) as {
+          email?: string
+          password?: string
+        }
+        if (!email || !password) return null
+
+        const user = await prisma.user.findUnique({ where: { email } })
+        if (!user || !user.passwordHash) return null
+
+        const ok = await bcrypt.compare(password, user.passwordHash)
+        if (!ok) {
+            console.log("the password hash of "+password +" does not match "+user.passwordHash)
+            return null
+        }
+        return {
+          id: user.id,
+          email: user.email ?? undefined,
+          name: user.name ?? undefined,
+          image: user.image ?? undefined,
+          isPaid: user.isPaid,
+        }
+      },
+    }),
+
+
         Google({
-            clientId: env.AUTH_GOOGLE_ID,
-            clientSecret: env.AUTH_GOOGLE_SECRET,
+            clientId: process.env.AUTH_GOOGLE_ID,
+            clientSecret: process.env.AUTH_GOOGLE_SECRET,
             authorization: {
                 params: {
                     prompt: "consent",
                     access_type: "offline",
-                    response_type: "code",
-                },
-            },
+                    response_type: "code"
+                }
+            }
         }),
     ],
-} satisfies NextAuthConfig;
+} satisfies NextAuthConfig
 
-export const { handlers, signIn, signOut, auth } = NextAuth(authConfig);
+export const { handlers, signIn, signOut, auth } = NextAuth(authConfig)
